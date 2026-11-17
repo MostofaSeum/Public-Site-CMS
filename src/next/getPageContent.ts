@@ -37,6 +37,22 @@ export async function getPageContent<T = Record<string, unknown>>(
   }
 }
 
+/**
+ * Load the published content of every page in the config, keyed by page key, ready
+ * for `<CmsProvider initialContent={...}>`. With it, the server-rendered HTML already
+ * contains the edited text (good for SEO, no flash of default content). Pages whose
+ * storage cannot be reached fall back to their defaults.
+ */
+export async function getAllPageContent(
+  config: Pick<CmsConfig, 'pages'>,
+  options: { storage: CmsStorageAdapter }
+): Promise<Record<string, Record<string, unknown>>> {
+  const entries = await Promise.all(
+    config.pages.map(async (page) => [page.key, await getPageContent<Record<string, unknown>>(config, page.key, options)] as const)
+  );
+  return Object.fromEntries(entries);
+}
+
 /** Build Next.js metadata from a page's editable "seo" section, on top of a fallback. */
 export function buildPageMetadata(content: { seo?: PageSeoConfig } | Record<string, unknown>, fallback: Metadata = {}): Metadata {
   const seo = (content as { seo?: PageSeoConfig }).seo;

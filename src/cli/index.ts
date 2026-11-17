@@ -4,7 +4,7 @@ import readline from 'node:readline/promises';
 import { CliError, runInit, type Action, type InitOptions, type InitReport } from './init';
 import { askMissingOptions } from './prompts';
 import { runAddPage } from './addPage';
-import { checkDjango, checkProject, summarize, type Check } from './doctor';
+import { checkDjango, checkProductionApi, checkProductionFiles, checkProject, summarize, type Check } from './doctor';
 import { runScan } from './scan';
 
 const HELP = `visual-cms: set up @brainicon/visual-cms in a Next.js project
@@ -32,6 +32,9 @@ add-page options
 doctor options
   --api-url <url>           Check this Django API instead of the one in cms.config.ts
   --frontend-origin <url>   Origin to test CORS with (default: http://localhost:3000)
+  --production              Check a production setup: HTTPS, Secure cookies, same-site domains, CORS,
+                            DEBUG off, env-based API URL, server rendering. Needs --frontend-origin
+                            (your public site URL) and --api-url (or NEXT_PUBLIC_CMS_API_URL)
 
 init options
   --backend <files|django>  Where content is stored (default: files)
@@ -112,11 +115,23 @@ const LABEL: Record<Action['kind'], string> = {
 };
 
 async function runDoctor(cwd: string, flags: Map<string, string | true>): Promise<number> {
-  const origin = (flags.get('frontend-origin') as string | undefined) ?? 'http://localhost:3000';
+  const production = flags.has('production');
+  const givenOrigin = flags.get('frontend-origin') as string | undefined;
+  const origin = givenOrigin ?? 'http://localhost:3000';
   const local = checkProject(path.resolve(cwd));
-  const apiUrl = (flags.get('api-url') as string | undefined) ?? local.djangoBaseUrl;
   const checks: Check[] = [...local.checks];
-  if (apiUrl) checks.push(...(await checkDjango(apiUrl, origin)));
+  if (production) {
+    checks.push(...checkProductionFiles(path.resolve(cwd)));
+    const apiUrl = (flags.get('api-url') as string | undefined) ?? process.env.NEXT_PUBLIC_CMS_API_URL ?? null;
+    if (!givenOrigin) checks.push({ level: 'fail', title: 'No site URL given', fix: 'Pass --frontend-origin https://your-site.com (the public URL of the site).' });
+    if (local.djangoBaseUrl !== null || apiUrl) {
+      if (!apiUrl) checks.push({ level: 'fail', title: 'No production API URL given', fix: 'Pass --api-url https://api.your-site.com/api/cms, or set NEXT_PUBLIC_CMS_API_URL.' });
+      else if (givenOrigin) checks.push(...(await checkProductionApi(apiUrl, givenOrigin)));
+    }
+  } else {
+    const apiUrl = (flags.get('api-url') as string | undefined) ?? local.djangoBaseUrl;
+    if (apiUrl) checks.push(...(await checkDjango(apiUrl, origin)));
+  }
 
   const icon = { ok: green('  ok  '), warn: yellow(' warn '), fail: red(' FAIL ') };
   console.log('');
@@ -127,7 +142,7 @@ async function runDoctor(cwd: string, flags: Map<string, string | true>): Promis
   const { ok, warn, fail } = summarize(checks);
   console.log('');
   console.log(`${ok} ok, ${warn} warning${warn === 1 ? '' : 's'}, ${fail} problem${fail === 1 ? '' : 's'}.`);
-  if (apiUrl) console.log(dim('Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'));
+  if (local.djangoBaseUrl) console.log(dim('Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'));
   console.log('');
   return fail > 0 ? 1 : 0;
 }

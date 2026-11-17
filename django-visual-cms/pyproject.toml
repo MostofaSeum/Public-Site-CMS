@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-visual-cms"
-version = "0.2.0"
+version = "0.3.0"
 description = "Django backend for @brainicon/visual-cms: stores page content edited in the visual CMS and serves its REST API."
 readme = "README.md"
 license = { text = "MIT" }

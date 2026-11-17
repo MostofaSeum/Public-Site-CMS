@@ -59,8 +59,9 @@ describe('add-page', () => {
     expect(JSON.parse(read(dir, 'content', 'about.json'))).toHaveProperty('team.title');
     const view = read(dir, 'components', 'AboutView.tsx');
     expect(view).toContain('<CmsSection sectionKey="team" title="Team">');
-    expect(view).toContain("usePageContent<Content>('about', { initialData })");
-    expect(read(dir, 'app', 'about', 'page.tsx')).toContain("getPageContent<typeof pageDefaults>(cms, 'about', { storage })");
+    expect(view).toContain("usePageContent<Content>('about');");
+    expect(read(dir, 'app', 'about', 'page.tsx')).toContain('return <AboutView />;');
+    expect(read(dir, 'app', 'about', 'page.tsx')).not.toContain('dynamic');
     const config = read(dir, 'cms.config.ts');
     expect(config).toContain("import aboutDefaults from '@/content/about.json';");
     expect(config).toContain("key: 'about'");

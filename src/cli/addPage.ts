@@ -120,8 +120,6 @@ export function runAddPage(options: AddPageOptions): AddPageReport {
 
   const configFile = [path.join(base, 'cms.config.ts'), path.join(root, 'cms.config.ts')].find(exists);
   if (!configFile) throw new CliError('cms.config.ts not found. Run `npx visual-cms init` first.');
-  const storageFile = path.join(base, 'lib', 'cms-storage.ts');
-  if (!exists(storageFile)) throw new CliError('lib/cms-storage.ts not found. Run `npx visual-cms init` first.');
 
   const tsconfig = path.join(root, 'tsconfig.json');
   const alias: AliasInfo | null = exists(tsconfig) ? detectAlias(read(tsconfig), root) : null;
@@ -174,8 +172,8 @@ import type pageDefaults from '${imp(viewFile, jsonFile)}';
 
 type Content = typeof pageDefaults;
 
-export function ${name}View({ initialData }: { initialData: Content }) {
-  const { ${sections.map(camel).join(', ')} } = usePageContent<Content>('${options.key}', { initialData });
+export function ${name}View() {
+  const { ${sections.map(camel).join(', ')} } = usePageContent<Content>('${options.key}');
 
   return (
     <main>
@@ -186,21 +184,13 @@ ${blocks}
 `
   );
 
-  // app/<route>/page.tsx
+  // app/<route>/page.tsx: the root layout's <CmsProviders> already loads the content on the server.
   write(
     pageFile,
-    `import { getPageContent } from '@brainicon/visual-cms/next';
-import { cms } from '${imp(pageFile, configFile)}';
-import { storage } from '${imp(pageFile, storageFile)}';
-import { ${name}View } from '${imp(pageFile, viewFile)}';
-import type pageDefaults from '${imp(pageFile, jsonFile)}';
+    `import { ${name}View } from '${imp(pageFile, viewFile)}';
 
-// Always read fresh content: it can change at any moment from the CMS.
-export const dynamic = 'force-dynamic';
-
-export default async function ${name}Page() {
-  const data = await getPageContent<typeof pageDefaults>(cms, '${options.key}', { storage });
-  return <${name}View initialData={data} />;
+export default function ${name}Page() {
+  return <${name}View />;
 }
 `
   );

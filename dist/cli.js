@@ -204,7 +204,10 @@ function runDjangoSetup(opts) {
 // src/cli/templates.ts
 function cmsConfig(opts) {
   const adapterImport = opts.backend === "django" ? "import { djangoAdapter } from '@brainicon/visual-cms/adapters';" : "import { restAdapter } from '@brainicon/visual-cms/adapters';";
-  const adapter = opts.backend === "django" ? `djangoAdapter({ baseUrl: '${opts.apiUrl}' }), // change for production` : "restAdapter({ baseUrl: '/api/cms' }),";
+  const adapter = opts.backend === "django" ? `djangoAdapter({
+    // Set NEXT_PUBLIC_CMS_API_URL in production, e.g. https://api.example.com/api/cms
+    baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '${opts.apiUrl}',
+  }),` : "restAdapter({ baseUrl: '/api/cms' }),";
   const examplePage2 = `    {
       key: 'example',
       title: 'Example page',
@@ -285,7 +288,7 @@ export const { GET, PUT, DELETE, POST } = createCmsRouteHandler({
 });
 `;
 }
-function providers(configImport) {
+function providersV1(configImport) {
   return `'use client';
 
 import { CmsProvider } from '@brainicon/visual-cms/site';
@@ -293,6 +296,61 @@ import { cms } from '${configImport}';
 
 export function CmsProviders({ children }: { children: React.ReactNode }) {
   return <CmsProvider config={cms}>{children}</CmsProvider>;
+}
+`;
+}
+function providers(opts) {
+  const imports = {
+    cache: "import { cacheLife } from 'next/cache';",
+    connection: "import { connection } from 'next/server';",
+    nostore: "import { unstable_noStore as noStore } from 'next/cache';"
+  }[opts.mode];
+  const loader = opts.mode === "cache" ? `// cacheComponents is on: cache the content briefly instead of rendering every request.
+// Visitors' browsers still fetch the latest content right after the page loads.
+async function loadContent() {
+  'use cache';
+  cacheLife('minutes');
+  return getAllPageContent(cms, { storage });
+}
+
+export async function CmsProviders({ children }: { children: React.ReactNode }) {
+  const initialContent = await loadContent();
+  return <CmsClientProviders initialContent={initialContent}>{children}</CmsClientProviders>;
+}` : `export async function CmsProviders({ children }: { children: React.ReactNode }) {
+  // Content can change at any moment from the CMS, so read it on every request.
+  ${opts.mode === "connection" ? "await connection();" : "noStore();"}
+  const initialContent = await getAllPageContent(cms, { storage });
+  return <CmsClientProviders initialContent={initialContent}>{children}</CmsClientProviders>;
+}`;
+  return `${imports}
+import { getAllPageContent } from '@brainicon/visual-cms/next';
+import { cms } from '${opts.configImport}';
+import { storage } from '${opts.storageImport}';
+import { CmsClientProviders } from '${opts.clientImport}';
+
+// Published content of every CMS page is loaded on the server and passed down, so the
+// HTML already contains the edited text (good for SEO, no flash of default content).
+${loader}
+`;
+}
+function clientProviders(configImport) {
+  return `'use client';
+
+import { CmsProvider } from '@brainicon/visual-cms/site';
+import { cms } from '${configImport}';
+
+export function CmsClientProviders({
+  initialContent,
+  children,
+}: {
+  initialContent?: Record<string, Record<string, unknown>>;
+  children: React.ReactNode;
+}) {
+  return (
+    <CmsProvider config={cms} initialContent={initialContent}>
+      {children}
+    </CmsProvider>
+  );
 }
 `;
 }
@@ -329,19 +387,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 `;
 }
 function examplePage(opts) {
-  return `import { getPageContent } from '@brainicon/visual-cms/next';
-import { cms } from '${opts.configImport}';
-import { storage } from '${opts.storageImport}';
-import { CmsExampleView } from '${opts.viewImport}';
-import type example from '${opts.jsonImport}';
+  return `import { CmsExampleView } from '${opts.viewImport}';
 
-// Always read fresh content: it can change at any moment from the CMS.
-export const dynamic = 'force-dynamic';
-
-export default async function CmsExamplePage() {
-  // Defaults from content/cms-example.json, overlaid by anything saved in the CMS.
-  const content = await getPageContent<typeof example>(cms, 'example', { storage });
-  return <CmsExampleView initialData={content} />;
+// The published content is loaded on the server by <CmsProviders> in the root layout,
+// so this page needs no data fetching of its own.
+export default function CmsExamplePage() {
+  return <CmsExampleView />;
 }
 `;
 }
@@ -359,8 +410,8 @@ type ExampleContent = typeof example;
  *   2. usePageContent('<page key>') reads it,
  *   3. each editable block is wrapped in <CmsSection sectionKey="..." title="...">.
  */
-export function CmsExampleView({ initialData }: { initialData: ExampleContent }) {
-  const { hero, features } = usePageContent<ExampleContent>('example', { initialData });
+export function CmsExampleView() {
+  const { hero, features } = usePageContent<ExampleContent>('example');
 
   return (
     <main>
@@ -493,6 +544,7 @@ function runInit(options) {
     config: import_node_path3.default.join(base, "cms.config.ts"),
     storage: import_node_path3.default.join(base, "lib", "cms-storage.ts"),
     providers: import_node_path3.default.join(base, "components", "CmsProviders.tsx"),
+    clientProviders: import_node_path3.default.join(base, "components", "CmsClientProviders.tsx"),
     exampleJson: import_node_path3.default.join(base, "content", "cms-example.json"),
     exampleView: import_node_path3.default.join(base, "components", "CmsExampleView.tsx"),
     apiRoute: import_node_path3.default.join(appDir, "api", "cms", "[...path]", "route.ts"),
@@ -542,7 +594,22 @@ function runInit(options) {
   } else {
     writeNew(files.storage, djangoStorage(imp(files.storage, files.config)));
   }
-  writeNew(files.providers, providers(imp(files.providers, files.config)));
+  const nextConfigFile = firstExisting(root, ["next.config.ts", "next.config.mjs", "next.config.js", "next.config.cjs"]);
+  const cacheComponents = nextConfigFile ? /cacheComponents\s*:\s*true/.test(read(nextConfigFile)) : false;
+  const renderMode = cacheComponents ? "cache" : nextMajor >= 15 || !nextMajor ? "connection" : "nostore";
+  writeNew(files.clientProviders, clientProviders(imp(files.clientProviders, files.config)));
+  const providersSource = providers({
+    configImport: imp(files.providers, files.config),
+    storageImport: imp(files.providers, files.storage),
+    clientImport: imp(files.providers, files.clientProviders),
+    mode: renderMode
+  });
+  if (exists(files.providers) && read(files.providers) === providersV1(imp(files.providers, files.config)) && read(files.providers) !== providersSource) {
+    if (!options.dryRun) import_node_fs2.default.writeFileSync(files.providers, providersSource);
+    actions.push({ kind: "overwritten", file: rel(files.providers), note: "upgraded: content is now loaded on the server (SEO)" });
+  } else {
+    writeNew(files.providers, providersSource);
+  }
   writeNew(files.adminPage, adminPage(imp(files.adminPage, files.config)));
   const adminLayoutSource = adminLayout({ href: adminUrl });
   const adminLayoutIsOurs = exists(files.adminLayout) && read(files.adminLayout) === adminLayoutSource;
@@ -554,12 +621,7 @@ function runInit(options) {
     writeNew(files.exampleView, exampleView(jsonSpec(files.exampleView)));
     writeNew(
       files.examplePage,
-      examplePage({
-        configImport: imp(files.examplePage, files.config),
-        storageImport: imp(files.examplePage, files.storage),
-        viewImport: imp(files.examplePage, files.exampleView),
-        jsonImport: jsonSpec(files.examplePage)
-      })
+      examplePage({ viewImport: imp(files.examplePage, files.exampleView) })
     );
   }
   const layoutFile = firstExisting(appDir, ["layout.tsx", "layout.jsx", "layout.js"]);
@@ -626,6 +688,13 @@ function runInit(options) {
     warnings.push(
       `${rel(files.apiRoute)} only allows editing while running \`next dev\`. Replace its authorize() with a check of your own login before deploying.`
     );
+  }
+  if (options.backend === "django") {
+    manual.push(
+      'Before deploying: set NEXT_PUBLIC_CMS_API_URL to your production API (for example https://api.example.com/api/cms), then run  npx visual-cms doctor --production --api-url <that URL> --frontend-origin <your site URL>  (see the README, "Deploying to production").'
+    );
+  }
+  if (options.backend === "files") {
   } else if (djangoDir) {
     console.log(`
 Setting up Django in ${djangoDir} ...`);
@@ -783,8 +852,6 @@ function runAddPage(options) {
   const base = appDir === srcApp ? import_node_path5.default.join(root, "src") : root;
   const configFile = [import_node_path5.default.join(base, "cms.config.ts"), import_node_path5.default.join(root, "cms.config.ts")].find(exists2);
   if (!configFile) throw new CliError("cms.config.ts not found. Run `npx visual-cms init` first.");
-  const storageFile = import_node_path5.default.join(base, "lib", "cms-storage.ts");
-  if (!exists2(storageFile)) throw new CliError("lib/cms-storage.ts not found. Run `npx visual-cms init` first.");
   const tsconfig = import_node_path5.default.join(root, "tsconfig.json");
   const alias = exists2(tsconfig) ? detectAlias(read2(tsconfig), root) : null;
   const name = pascal(options.key);
@@ -826,8 +893,8 @@ import type pageDefaults from '${imp(viewFile, jsonFile)}';
 
 type Content = typeof pageDefaults;
 
-export function ${name}View({ initialData }: { initialData: Content }) {
-  const { ${sections.map(camel).join(", ")} } = usePageContent<Content>('${options.key}', { initialData });
+export function ${name}View() {
+  const { ${sections.map(camel).join(", ")} } = usePageContent<Content>('${options.key}');
 
   return (
     <main>
@@ -839,18 +906,10 @@ ${blocks}
   );
   write(
     pageFile,
-    `import { getPageContent } from '@brainicon/visual-cms/next';
-import { cms } from '${imp(pageFile, configFile)}';
-import { storage } from '${imp(pageFile, storageFile)}';
-import { ${name}View } from '${imp(pageFile, viewFile)}';
-import type pageDefaults from '${imp(pageFile, jsonFile)}';
+    `import { ${name}View } from '${imp(pageFile, viewFile)}';
 
-// Always read fresh content: it can change at any moment from the CMS.
-export const dynamic = 'force-dynamic';
-
-export default async function ${name}Page() {
-  const data = await getPageContent<typeof pageDefaults>(cms, '${options.key}', { storage });
-  return <${name}View initialData={data} />;
+export default function ${name}Page() {
+  return <${name}View />;
 }
 `
   );
@@ -938,7 +997,7 @@ function checkProject(root) {
   else {
     add("ok", `Config found (${import_node_path6.default.relative(root, config).split(import_node_path6.default.sep).join("/")})`);
     const text = read3(config);
-    djangoBaseUrl = text.match(/djangoAdapter\(\s*\{\s*baseUrl:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? null;
+    djangoBaseUrl = text.match(/djangoAdapter\(\s*\{[\s\S]*?baseUrl:\s*(?:process\.env\.\w+\s*\?\?\s*)?['"`]([^'"`]+)['"`]/)?.[1] ?? null;
     if (!/\bkey:\s*['"]/.test(text)) add("warn", "No pages are listed in cms.config.ts yet", "Add one with:  npx visual-cms add-page <name>");
   }
   const sources = walk(appDir, (f) => /\.(tsx|jsx|ts|js)$/.test(f)).concat(walk(import_node_path6.default.join(base, "components"), (f) => /\.(tsx|jsx)$/.test(f)));
@@ -948,6 +1007,94 @@ function checkProject(root) {
   add(studio ? "ok" : "fail", studio ? `CMS screen found (${import_node_path6.default.relative(root, studio).split(import_node_path6.default.sep).join("/")})` : "No CMS screen found", studio ? void 0 : "Create a page that renders <CmsStudio config={cms} /> (init creates app/admin/cms/page.tsx).");
   if (!has(/<CmsSection\b/)) add("warn", "No page uses <CmsSection> yet, so nothing shows a pencil button", 'Wrap an editable block:  <CmsSection sectionKey="hero" title="Hero">\u2026</CmsSection>');
   return { checks, djangoBaseUrl };
+}
+function siteOf(url) {
+  const host = new URL(url).hostname;
+  if (/^[\d.]+$/.test(host) || host === "localhost") return host;
+  return host.split(".").slice(-2).join(".");
+}
+function checkProductionFiles(root) {
+  const checks = [];
+  const add = (level, title, fix) => checks.push({ level, title, fix });
+  const srcApp = import_node_path6.default.join(root, "src", "app");
+  const base = exists3(srcApp) ? import_node_path6.default.join(root, "src") : root;
+  const appDir = exists3(srcApp) ? srcApp : import_node_path6.default.join(root, "app");
+  const config = [import_node_path6.default.join(base, "cms.config.ts"), import_node_path6.default.join(root, "cms.config.ts")].find(exists3);
+  const configText = config ? read3(config) : "";
+  if (/djangoAdapter\(/.test(configText)) {
+    const literal = configText.match(/baseUrl:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? "";
+    if (/process\.env\./.test(configText.match(/baseUrl:[^\n]+/)?.[0] ?? "")) add("ok", "The API URL comes from an environment variable");
+    else if (/localhost|127\.0\.0\.1/.test(literal)) add("fail", `The API URL is hardcoded to ${literal}`, "Use baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '<dev URL>' in cms.config.ts and set the variable in production.");
+    else add("ok", `The API URL is ${literal}`);
+  }
+  const storage = import_node_path6.default.join(base, "lib", "cms-storage.ts");
+  if (exists3(storage) && /fileStorage\(/.test(read3(storage))) {
+    add("warn", "Content is stored in a JSON file (file backend)", "Fine on one server with a persistent disk. On serverless or several servers (Vercel, Netlify, autoscaling) edits get lost: use Django or a database adapter.");
+  }
+  const route = import_node_path6.default.join(appDir, "api", "cms", "[...path]", "route.ts");
+  if (exists3(route) && /NODE_ENV\s*===\s*['"]development['"]/.test(read3(route))) {
+    add("fail", "Saving is only allowed under `next dev` (generated authorize())", `Replace authorize() in ${import_node_path6.default.relative(root, route).split(import_node_path6.default.sep).join("/")} with your real login check, or editors cannot save in production.`);
+  }
+  const providers2 = [import_node_path6.default.join(base, "components", "CmsProviders.tsx")].find(exists3);
+  if (providers2 && /getAllPageContent/.test(read3(providers2))) add("ok", "Content is rendered on the server (search engines see the edited text)");
+  else add("warn", "Content is only loaded in the browser, so search engines index the default text", "Run  npx visual-cms init  again: it upgrades components/CmsProviders.tsx to load content on the server.");
+  return checks;
+}
+async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch) {
+  const checks = [];
+  const add = (level, title, fix) => checks.push({ level, title, fix });
+  const url = apiUrl.replace(/\/+$/, "");
+  let api;
+  try {
+    api = new URL(url);
+    new URL(siteOrigin);
+  } catch {
+    add("fail", "The API URL or the site origin is not a valid URL", "Pass full URLs, for example --api-url https://api.example.com/api/cms --frontend-origin https://example.com");
+    return checks;
+  }
+  add(api.protocol === "https:" ? "ok" : "fail", api.protocol === "https:" ? "The API uses HTTPS" : "The API does not use HTTPS", api.protocol === "https:" ? void 0 : "Serve Django over HTTPS; browsers do not send secure login cookies over plain HTTP.");
+  if (!siteOrigin.startsWith("https://")) add("fail", "The site does not use HTTPS", "Serve the site over HTTPS.");
+  if (/localhost|127\.0\.0\.1/.test(url + siteOrigin)) add("warn", "A localhost URL was given", "Pass the real production URLs.");
+  const sameSite = siteOf(url) === siteOf(siteOrigin);
+  if (sameSite) add("ok", `The site and the API are on the same site (${siteOf(siteOrigin)}), so the login cookie works with the default settings`);
+  else
+    add(
+      "fail",
+      `The site (${siteOf(siteOrigin)}) and the API (${siteOf(url)}) are different sites`,
+      "The editor login cookie becomes a third-party cookie, which Safari and other browsers block: saving fails even after logging in. Put the API on a subdomain of the site (api.example.com) or behind the same domain (example.com/api/ through a reverse proxy)."
+    );
+  let res;
+  try {
+    res = await fetchFn(`${url}/csrf`, { headers: { Origin: siteOrigin } });
+  } catch {
+    add("fail", `Cannot reach the API at ${url}`, "Check the URL, DNS, and that Django is running.");
+    return checks;
+  }
+  if (res.status !== 200) {
+    add("fail", `${url}/csrf returned ${res.status}`, res.status === 404 ? 'Add path("api/cms/", include("visual_cms.urls")) to the production urls.py.' : "Check ALLOWED_HOSTS and the Django logs.");
+    return checks;
+  }
+  add("ok", "The production API is reachable");
+  if (api.origin !== new URL(siteOrigin).origin) {
+    const allow = res.headers.get("access-control-allow-origin");
+    if (allow !== siteOrigin && allow !== "*") add("fail", `Django does not allow ${siteOrigin} (CORS)`, `Add "${siteOrigin}" to CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS.`);
+    else if (res.headers.get("access-control-allow-credentials") !== "true") add("fail", "CORS does not allow credentials", "Set CORS_ALLOW_CREDENTIALS = True.");
+    else add("ok", `CORS allows ${siteOrigin} with credentials`);
+  }
+  const cookie = (res.headers.get("set-cookie") ?? "").split(/,(?=\s*\w+=)/).find((c) => /^\s*csrftoken=/.test(c)) ?? "";
+  if (cookie) {
+    if (/;\s*secure/i.test(cookie)) add("ok", "Cookies are marked Secure");
+    else add("fail", "Cookies are not marked Secure", "Set CSRF_COOKIE_SECURE = True and SESSION_COOKIE_SECURE = True.");
+    if (!sameSite && !/samesite=none/i.test(cookie)) add("fail", "Cookies use SameSite=Lax across different sites", 'If you cannot share a domain: CSRF_COOKIE_SAMESITE = "None" and SESSION_COOKIE_SAMESITE = "None" (with Secure). Some browsers still block it.');
+  }
+  try {
+    const probe = await fetchFn(`${api.origin}/visual-cms-doctor-missing-page/`);
+    const body = probe.text ? await probe.text() : "";
+    if (/DEBUG\s*=\s*True/.test(body)) add("fail", "Django runs with DEBUG = True", "Set DEBUG = False in production (it shows settings and code to anyone).");
+    else add("ok", "Django does not show debug pages");
+  } catch {
+  }
+  return checks;
 }
 async function checkDjango(baseUrl, frontendOrigin, fetchFn = fetch) {
   const checks = [];
@@ -1403,6 +1550,9 @@ add-page options
 doctor options
   --api-url <url>           Check this Django API instead of the one in cms.config.ts
   --frontend-origin <url>   Origin to test CORS with (default: http://localhost:3000)
+  --production              Check a production setup: HTTPS, Secure cookies, same-site domains, CORS,
+                            DEBUG off, env-based API URL, server rendering. Needs --frontend-origin
+                            (your public site URL) and --api-url (or NEXT_PUBLIC_CMS_API_URL)
 
 init options
   --backend <files|django>  Where content is stored (default: files)
@@ -1473,11 +1623,23 @@ var LABEL = {
   skipped: "- skipped    "
 };
 async function runDoctor(cwd, flags) {
-  const origin = flags.get("frontend-origin") ?? "http://localhost:3000";
+  const production = flags.has("production");
+  const givenOrigin = flags.get("frontend-origin");
+  const origin = givenOrigin ?? "http://localhost:3000";
   const local = checkProject(import_node_path8.default.resolve(cwd));
-  const apiUrl = flags.get("api-url") ?? local.djangoBaseUrl;
   const checks = [...local.checks];
-  if (apiUrl) checks.push(...await checkDjango(apiUrl, origin));
+  if (production) {
+    checks.push(...checkProductionFiles(import_node_path8.default.resolve(cwd)));
+    const apiUrl = flags.get("api-url") ?? process.env.NEXT_PUBLIC_CMS_API_URL ?? null;
+    if (!givenOrigin) checks.push({ level: "fail", title: "No site URL given", fix: "Pass --frontend-origin https://your-site.com (the public URL of the site)." });
+    if (local.djangoBaseUrl !== null || apiUrl) {
+      if (!apiUrl) checks.push({ level: "fail", title: "No production API URL given", fix: "Pass --api-url https://api.your-site.com/api/cms, or set NEXT_PUBLIC_CMS_API_URL." });
+      else if (givenOrigin) checks.push(...await checkProductionApi(apiUrl, givenOrigin));
+    }
+  } else {
+    const apiUrl = flags.get("api-url") ?? local.djangoBaseUrl;
+    if (apiUrl) checks.push(...await checkDjango(apiUrl, origin));
+  }
   const icon = { ok: green("  ok  "), warn: yellow(" warn "), fail: red(" FAIL ") };
   console.log("");
   for (const c of checks) {
@@ -1487,7 +1649,7 @@ async function runDoctor(cwd, flags) {
   const { ok, warn, fail } = summarize(checks);
   console.log("");
   console.log(`${ok} ok, ${warn} warning${warn === 1 ? "" : "s"}, ${fail} problem${fail === 1 ? "" : "s"}.`);
-  if (apiUrl) console.log(dim('Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'));
+  if (local.djangoBaseUrl) console.log(dim('Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'));
   console.log("");
   return fail > 0 ? 1 : 0;
 }

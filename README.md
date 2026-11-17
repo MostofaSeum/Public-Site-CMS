@@ -30,11 +30,10 @@ Safety rules (most important):
 
 Steps:
 1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py).
-2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.2.0   then check: npx visual-cms --version
+2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.3.0   then check: npx visual-cms --version
 3. Set it up with `npx visual-cms init --yes`:
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
    - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
-   - if next.config has cacheComponents: true, add --no-example.
    Do every task listed under "Warnings" and "Still to do by hand" in its output.
 4. Add a link to the CMS screen in the admin panel's menu, in the same style as the other menu items.
 5. Make the pages editable, one page at a time, starting with the homepage:
@@ -44,7 +43,8 @@ Steps:
    - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
 6. Run npx visual-cms doctor and fix every FAIL.
 7. Start the dev server and open the CMS screen. With Django, log in first at http://localhost:8000/admin/ as a staff user (use localhost, not 127.0.0.1). Hover a section, click the pencil, change a text, Save & Publish, and check the public page shows it. Then reset it.
-8. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, and anything I still have to do (for example the real login check for saving, or a production database).
+8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx visual-cms doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
+9. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
 ```
 
 ## Contents
@@ -70,13 +70,13 @@ Steps:
 In your Next.js project:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.2.0
+npm install github:MostofaSeum/Public-Site-CMS#v0.3.0
 ```
 
-`#v0.2.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
+`#v0.3.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
 
 ```bash
-npx visual-cms --version     # prints 0.2.0
+npx visual-cms --version     # prints 0.3.0
 ```
 
 ### Step 2. Run the setup command
@@ -108,7 +108,7 @@ It also installs `lucide-react` and `react-hot-toast` if they are missing, using
 
 It is safe to run again. It never overwrites a file you already have (use `--force` to replace), and a second run changes nothing. Under `src/`, files go under `src/`.
 
-> **Next.js 16 with `cacheComponents: true`:** add `--no-example`. The example page uses `export const dynamic`, which that mode does not allow.
+> **Content is rendered on the server.** `components/CmsProviders.tsx` (used by your root layout) loads the published content of every CMS page on the server, so the HTML that visitors and search engines receive already contains the edited text. It adapts to your setup: on Next.js 15+ it reads on every request; with Next.js 16 `cacheComponents: true` it caches for about a minute (`'use cache'` + `cacheLife('minutes')`), and visitors' browsers still fetch the newest content right after the page loads.
 
 **Using Django as the backend?** One command sets up both sides. Point it at the folder that contains `manage.py`:
 
@@ -281,7 +281,6 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 | `node -e "const p=require('./package.json');const d={...p.dependencies,...p.devDependencies};console.log(d.next,d.tailwindcss)"` | prints a Next.js version and a Tailwind version starting with 4 (`^4`, `4.1.0`…) | not Next.js: use [Other setups](#other-setups-manual) or stop. Tailwind below 4 or missing: tell the developer, since the CMS screens need v4 |
 | `app/` or `src/app/` exists | yes | Pages Router only: not supported by `init`; tell the developer |
 | `tsconfig.json` exists | yes | JavaScript-only: not supported by `init`; tell the developer |
-| `next.config.*` contains `cacheComponents: true` | note it | pass `--no-example` to `init` |
 | `git status` | clean, or the developer agreed | create the branch `visual-cms-setup` |
 
 **Step 2. Find the admin panel.** Decide which case applies:
@@ -294,7 +293,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 **Step 3. Install the library.**
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.2.0
+npm install github:MostofaSeum/Public-Site-CMS#v0.3.0
 npx visual-cms --version
 ```
 
@@ -307,7 +306,7 @@ Pass when the last command prints a version.
 | NO_ADMIN or EXTERNAL_ADMIN, files backend | `npx visual-cms init --yes` |
 | NEXT_ADMIN | add `--admin-path "<ADMIN_AREA>/cms"` |
 | Django backend | add `--django-dir <DJANGO_DIR>`, plus `--api-url <API_URL> --frontend-origin <FRONTEND_ORIGIN>` when they differ from the defaults |
-| `cacheComponents: true`, or the developer does not want the example page | add `--no-example` |
+| The developer does not want the example page | add `--no-example` |
 | Package install must be skipped | add `--no-install` and install `lucide-react react-hot-toast` yourself |
 
 Pass when the command exits with code 0 and lists created and modified files. **Every line under "Warnings" and "Still to do by hand" in its output is a task for you:** do it, or report it to the developer. Then run `npx tsc --noEmit`.
@@ -409,32 +408,16 @@ pages: [
 ],
 ```
 
-**3. Read the content and wrap each block.** The server loads content so the page has no flash and search engines see it; a client component renders it:
+**3. Read the content and wrap each block.** In a client component. The published content is already loaded on the server by `<CmsProviders>` in your root layout, so the HTML contains the edited text and the page needs no data fetching of its own:
 
 ```tsx
-// app/page.tsx  (server)
-import { getPageContent } from '@brainicon/visual-cms/next';
-import { cms } from '@/cms.config';
-import { storage } from '@/lib/cms-storage';
-import { HomeView } from '@/components/HomeView';
-import type home from '@/content/home.json';
-
-export const dynamic = 'force-dynamic';   // always show the latest edits
-
-export default async function Page() {
-  const content = await getPageContent<typeof home>(cms, 'home', { storage });
-  return <HomeView initialData={content} />;
-}
-```
-
-```tsx
-// components/HomeView.tsx  (client)
+// components/HomeView.tsx  (client), rendered by app/page.tsx: export default function Page() { return <HomeView />; }
 'use client';
 import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
 import type home from '@/content/home.json';
 
-export function HomeView({ initialData }: { initialData: typeof home }) {
-  const { hero, features } = usePageContent<typeof home>('home', { initialData });
+export function HomeView() {
+  const { hero, features } = usePageContent<typeof home>('home');
   return (
     <main>
       <CmsSection sectionKey="hero" title="Hero">
@@ -461,13 +444,58 @@ Tips:
 
 ## 5. Before you go live
 
-- [ ] **Replace the dev-only `authorize()`** in `app/api/cms/[...path]/route.ts` with your real login check. Until then, editing works only under `next dev`, so a deployed site cannot be edited at all.
+### Deploying to production
+
+Everything you tested on `localhost` works the same in production once these settings point at the real URLs. Check them with one command:
+
+```bash
+npx visual-cms doctor --production --frontend-origin https://example.com --api-url https://api.example.com/api/cms
+```
+
+It checks HTTPS, Secure cookies, that the site and the API share a site, CORS with credentials, `DEBUG = False`, that the API URL comes from an environment variable, that content is rendered on the server, and the file-backend pitfalls below. It exits with an error code when something is wrong, so you can run it in CI.
+
+**1. Choose the domains (most important).** Editors log in to Django, and the CMS sends that login cookie with every save.
+
+| Setup | Works? |
+|---|---|
+| `example.com` + `api.example.com` | yes, with the default cookie settings |
+| `example.com` with Django behind `example.com/api/` (reverse proxy) | yes, nothing extra |
+| `mysite.vercel.app` + `myapi.herokuapp.com` (two different sites) | **avoid**: the login cookie becomes a third-party cookie, which Safari and other browsers block, so saving fails even after logging in |
+
+**2. Next.js environment.** `init` generates `baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? 'http://localhost:8000/api/cms'`. Set the variable on your host (Vercel, Docker, …) before building:
+
+```bash
+NEXT_PUBLIC_CMS_API_URL=https://api.example.com/api/cms
+```
+
+**3. Django settings** (production values):
+
+```python
+DEBUG = False
+ALLOWED_HOSTS = ["api.example.com"]
+CSRF_TRUSTED_ORIGINS = ["https://example.com"]
+CORS_ALLOWED_ORIGINS = ["https://example.com"]      # not needed behind the same domain
+CORS_ALLOW_CREDENTIALS = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+```
+
+Use any database Django supports (PostgreSQL, MySQL…): the CMS is a normal model, so `python manage.py migrate` on the production database is all it needs.
+
+**4. Uploaded images.** With `DEBUG = False` Django does not serve `/media/`. Configure a storage backend such as `django-storages` with S3 (uploads use Django's default storage), or serve `MEDIA_ROOT` with your web server.
+
+**5. Editors.** Create staff users on the production Django (`python manage.py createsuperuser`). Editors log in at the production Django admin first, then use the CMS.
+
+**6. Caching.** Content is rendered on the server by `<CmsProviders>`: on every request (Next.js 15+), or cached for about a minute with Next.js 16 `cacheComponents`. If you put a CDN in front of the site, do not cache HTML for longer than you want edits to take to appear.
+
+### Checklist
+
+- [ ] `npx visual-cms doctor --production …` reports no FAIL.
+- [ ] **File backend only: replace the dev-only `authorize()`** in `app/api/cms/[...path]/route.ts` with your real login check. Until then, editing works only under `next dev`, so a deployed site cannot be edited at all.
 - [ ] **Protect the CMS page.** Keep it inside your admin area, behind the same guard as your other admin pages.
 - [ ] **Check where content is stored.** `fileStorage()` writes `.cms/content.json` and `public/cms-uploads/`. That needs a disk that is writable and persistent: a VPS, or Docker with a volume. On Vercel or other serverless/read-only hosts the edits are lost, so use Django or a database-backed adapter.
-- [ ] **Back up** `.cms/` and `public/cms-uploads/` if you use file storage. They are in `.gitignore`.
-- [ ] **Edited pages must not be cached forever.** The generated pages use `export const dynamic = 'force-dynamic'`. Do the same for your pages, or use revalidation.
+- [ ] **Back up** your database (Django) or `.cms/` and `public/cms-uploads/` (file storage, they are in `.gitignore`).
 - [ ] **Middleware.** If it redirects visitors, let the preview through ([below](#redirects-and-the-preview-iframe)).
-- [ ] **Django:** set CORS, CSRF and cookie options if the site and API are on different domains ([django-visual-cms/README.md](django-visual-cms/README.md)).
 
 ---
 
@@ -505,7 +533,7 @@ A copy of each edited file is saved next to it as `*.visual-cms.bak`. Running th
 You can also run the Django part on its own, without the Next.js part:
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"
 python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
@@ -513,7 +541,7 @@ Then create the editor login: any Django user with **staff** status can edit (`p
 
 #### By hand
 
-Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -557,15 +585,15 @@ interface CmsStorageAdapter {
 |---|---|---|
 | anything does not work | many possible causes | run `npx visual-cms doctor`: it checks the common ones and says what to fix |
 | Django: "Failed to save section changes" | you are not logged in to Django as a **staff** user (401), or the CSRF origin is missing (403) | log in at the Django admin (same host name as the site, for example `localhost` not `127.0.0.1`); check `CSRF_TRUSTED_ORIGINS` contains your site's origin |
-| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.2.0` in the project root, then retry |
-| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.2.0` |
+| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.3.0` in the project root, then retry |
+| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.3.0` |
 | the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/visual-cms/dist";` below `@import "tailwindcss";` |
 | the preview shows "Loading…" forever, or is blank | the page's `route` in `cms.config.ts` is wrong, the page throws an error, a redirect catches the preview, or the site blocks being framed | open the route in a normal tab; check `middleware.ts` ([below](#redirects-and-the-preview-iframe)); remove `X-Frame-Options: DENY` |
 | hovering shows no pencil | the block is not wrapped in `<CmsSection>`, `CmsProviders` is missing from the root layout, or Edit Mode is off | wrap the block; check `app/layout.tsx`; turn Edit Mode on in the toolbar |
 | clicking the pencil says "Section '…' is not configured for this page" | the `sectionKey` is not in that page's `sections` | add `{ key: '…', label: '…' }` to the page in `cms.config.ts` |
 | saving fails with 401 | `authorize()` returned false. The generated one allows editing only under `next dev` | implement your login check ([Case B step 4](#case-b-your-admin-panel-is-part-of-this-nextjs-app)); log in |
 | saving fails with 404 "Unknown page" | the page key is not in `cms.config.ts` `pages` | register the page |
-| saved edits do not show on the site | the page is cached, or it was saved as a draft | add `export const dynamic = 'force-dynamic'`; use **Save & Publish** |
+| saved edits do not show on the site | it was saved as a draft, the page or a CDN caches the HTML, or (with `cacheComponents`) the one-minute cache has not refreshed yet | use **Save & Publish**; check your CDN; wait a minute. Run `npx visual-cms init` again if `components/CmsProviders.tsx` does not use `getAllPageContent` (older installs) |
 | edits vanish after a deploy | file storage on a host with a temporary disk | use Django or a database adapter ([section 5](#5-before-you-go-live)) |
 | TypeScript error importing a `.json` file | `resolveJsonModule` is off | set `"resolveJsonModule": true` in `tsconfig.json` |
 | `Module not found: @brainicon/visual-cms/...` | the library is not installed, or the install is stale | reinstall it ([section 9](#9-updating)), delete `.next`, restart |
@@ -613,7 +641,7 @@ Afterwards, replace the placeholder markup in the generated view with your own d
 
 ### `visual-cms doctor`
 
-Checks the setup and says exactly what to fix: Next.js and the packages, Tailwind v4 and the `@source` line, `cms.config.ts`, the provider, the CMS screen, and (for Django) whether the API answers, whether Django allows your origin with cookies (CORS), and whether saving is allowed by the preflight. It exits with an error code when something is wrong, so it also works in CI. Options: `--api-url <url>` (check another Django URL), `--frontend-origin <url>`. It cannot tell whether you are logged in to Django; if saving still fails with "Failed to save", log in at the Django admin as a staff user.
+Checks the setup and says exactly what to fix: Next.js and the packages, Tailwind v4 and the `@source` line, `cms.config.ts`, the provider, the CMS screen, and (for Django) whether the API answers, whether Django allows your origin with cookies (CORS), and whether saving is allowed by the preflight. It exits with an error code when something is wrong, so it also works in CI. Options: `--api-url <url>` (check another Django URL), `--frontend-origin <url>`, and `--production` for the deployment checks in [section 5](#deploying-to-production). It cannot tell whether you are logged in to Django; if saving still fails with "Failed to save", log in at the Django admin as a staff user.
 
 `init` supports the Next.js App Router with TypeScript and Tailwind v4. It stops with a clear message for the Pages Router and JavaScript-only projects, and leaves a manual step for Tailwind v3. It was tested with npm; pnpm, yarn and bun are detected from the lockfile but were not tested.
 
@@ -725,6 +753,7 @@ There is no schema to write. The editor reads the section's content and picks a 
 | `<CmsSection sectionKey title activeOnPath? buttonPlacement?>` | `/site` | make a block editable |
 | `getDynamicIcon(name)` | `/icons` | draw any icon chosen in the icon picker (adds the whole lucide icon set to your bundle) |
 | `getPageContent(config, pageKey, { storage })` | `/next` | load a page's content on the server |
+| `getAllPageContent(config, { storage })` | `/next` | load every page's content on the server, for `<CmsProvider initialContent>` (used by the generated `CmsProviders`) |
 | `getPageMetadata(config, pageKey, { storage, fallback? })` | `/next` | build Next.js metadata from the `seo` section |
 | `createCmsRouteHandler({ storage, authorize, … })` | `/next` | the API route |
 | `fileStorage()` | `/next` | JSON-file storage |
@@ -760,11 +789,11 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 Install a newer release by its tag, then restart the dev server:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.2.0     # use the new tag
+npm install github:MostofaSeum/Public-Site-CMS#v0.3.0     # use the new tag
 rm -rf .next                                               # PowerShell: Remove-Item -Recurse -Force .next
 ```
 
-With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"`.
+With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"`.
 
 ### Development
 

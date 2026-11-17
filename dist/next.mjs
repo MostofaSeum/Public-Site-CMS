@@ -238,6 +238,12 @@ async function getPageContent(config, pageKey, options) {
     return mergePageContent(page, []);
   }
 }
+async function getAllPageContent(config, options) {
+  const entries = await Promise.all(
+    config.pages.map(async (page) => [page.key, await getPageContent(config, page.key, options)])
+  );
+  return Object.fromEntries(entries);
+}
 function buildPageMetadata(content, fallback = {}) {
   const seo = content.seo;
   if (!seo || typeof seo !== "object") return fallback;
@@ -293,6 +299,7 @@ export {
   buildPageMetadata,
   createCmsRouteHandler,
   fileStorage,
+  getAllPageContent,
   getPageContent,
   getPageMetadata,
   isCmsPreviewRequest

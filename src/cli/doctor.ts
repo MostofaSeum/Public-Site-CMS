@@ -82,7 +82,8 @@ export function checkProject(root: string): LocalFindings {
   else {
     add('ok', `Config found (${path.relative(root, config).split(path.sep).join('/')})`);
     const text = read(config);
-    djangoBaseUrl = text.match(/djangoAdapter\(\s*\{\s*baseUrl:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? null;
+    // baseUrl: '...'  or  baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '...'
+    djangoBaseUrl = text.match(/djangoAdapter\(\s*\{[\s\S]*?baseUrl:\s*(?:process\.env\.\w+\s*\?\?\s*)?['"`]([^'"`]+)['"`]/)?.[1] ?? null;
     if (!/\bkey:\s*['"]/.test(text)) add('warn', 'No pages are listed in cms.config.ts yet', 'Add one with:  npx visual-cms add-page <name>');
   }
 
@@ -96,7 +97,114 @@ export function checkProject(root: string): LocalFindings {
   return { checks, djangoBaseUrl };
 }
 
-type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string> }) => Promise<{ status: number; headers: { get(name: string): string | null } }>;
+type Fetch = (
+  url: string,
+  init?: { method?: string; headers?: Record<string, string> }
+) => Promise<{ status: number; headers: { get(name: string): string | null }; text?: () => Promise<string> }>;
+
+/** "example.com" for "https://api.example.com" (last two labels: good enough to tell sites apart). */
+export function siteOf(url: string): string {
+  const host = new URL(url).hostname;
+  if (/^[\d.]+$/.test(host) || host === 'localhost') return host;
+  return host.split('.').slice(-2).join('.');
+}
+
+/** Project files that matter only for production. */
+export function checkProductionFiles(root: string): Check[] {
+  const checks: Check[] = [];
+  const add = (level: CheckLevel, title: string, fix?: string) => checks.push({ level, title, fix });
+  const srcApp = path.join(root, 'src', 'app');
+  const base = exists(srcApp) ? path.join(root, 'src') : root;
+  const appDir = exists(srcApp) ? srcApp : path.join(root, 'app');
+
+  const config = [path.join(base, 'cms.config.ts'), path.join(root, 'cms.config.ts')].find(exists);
+  const configText = config ? read(config) : '';
+  if (/djangoAdapter\(/.test(configText)) {
+    const literal = configText.match(/baseUrl:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? '';
+    if (/process\.env\./.test(configText.match(/baseUrl:[^\n]+/)?.[0] ?? '')) add('ok', 'The API URL comes from an environment variable');
+    else if (/localhost|127\.0\.0\.1/.test(literal)) add('fail', `The API URL is hardcoded to ${literal}`, "Use baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '<dev URL>' in cms.config.ts and set the variable in production.");
+    else add('ok', `The API URL is ${literal}`);
+  }
+
+  const storage = path.join(base, 'lib', 'cms-storage.ts');
+  if (exists(storage) && /fileStorage\(/.test(read(storage))) {
+    add('warn', 'Content is stored in a JSON file (file backend)', 'Fine on one server with a persistent disk. On serverless or several servers (Vercel, Netlify, autoscaling) edits get lost: use Django or a database adapter.');
+  }
+  const route = path.join(appDir, 'api', 'cms', '[...path]', 'route.ts');
+  if (exists(route) && /NODE_ENV\s*===\s*['"]development['"]/.test(read(route))) {
+    add('fail', 'Saving is only allowed under `next dev` (generated authorize())', `Replace authorize() in ${path.relative(root, route).split(path.sep).join('/')} with your real login check, or editors cannot save in production.`);
+  }
+
+  const providers = [path.join(base, 'components', 'CmsProviders.tsx')].find(exists);
+  if (providers && /getAllPageContent/.test(read(providers))) add('ok', 'Content is rendered on the server (search engines see the edited text)');
+  else add('warn', 'Content is only loaded in the browser, so search engines index the default text', 'Run  npx visual-cms init  again: it upgrades components/CmsProviders.tsx to load content on the server.');
+  return checks;
+}
+
+/** Checks against the production API, as seen from the production site. */
+export async function checkProductionApi(apiUrl: string, siteOrigin: string, fetchFn: Fetch = fetch as unknown as Fetch): Promise<Check[]> {
+  const checks: Check[] = [];
+  const add = (level: CheckLevel, title: string, fix?: string) => checks.push({ level, title, fix });
+  const url = apiUrl.replace(/\/+$/, '');
+  let api: URL;
+  try {
+    api = new URL(url);
+    new URL(siteOrigin);
+  } catch {
+    add('fail', 'The API URL or the site origin is not a valid URL', 'Pass full URLs, for example --api-url https://api.example.com/api/cms --frontend-origin https://example.com');
+    return checks;
+  }
+
+  add(api.protocol === 'https:' ? 'ok' : 'fail', api.protocol === 'https:' ? 'The API uses HTTPS' : 'The API does not use HTTPS', api.protocol === 'https:' ? undefined : 'Serve Django over HTTPS; browsers do not send secure login cookies over plain HTTP.');
+  if (!siteOrigin.startsWith('https://')) add('fail', 'The site does not use HTTPS', 'Serve the site over HTTPS.');
+  if (/localhost|127\.0\.0\.1/.test(url + siteOrigin)) add('warn', 'A localhost URL was given', 'Pass the real production URLs.');
+
+  const sameSite = siteOf(url) === siteOf(siteOrigin);
+  if (sameSite) add('ok', `The site and the API are on the same site (${siteOf(siteOrigin)}), so the login cookie works with the default settings`);
+  else
+    add(
+      'fail',
+      `The site (${siteOf(siteOrigin)}) and the API (${siteOf(url)}) are different sites`,
+      'The editor login cookie becomes a third-party cookie, which Safari and other browsers block: saving fails even after logging in. Put the API on a subdomain of the site (api.example.com) or behind the same domain (example.com/api/ through a reverse proxy).'
+    );
+
+  let res: Awaited<ReturnType<Fetch>>;
+  try {
+    res = await fetchFn(`${url}/csrf`, { headers: { Origin: siteOrigin } });
+  } catch {
+    add('fail', `Cannot reach the API at ${url}`, 'Check the URL, DNS, and that Django is running.');
+    return checks;
+  }
+  if (res.status !== 200) {
+    add('fail', `${url}/csrf returned ${res.status}`, res.status === 404 ? 'Add path("api/cms/", include("visual_cms.urls")) to the production urls.py.' : 'Check ALLOWED_HOSTS and the Django logs.');
+    return checks;
+  }
+  add('ok', 'The production API is reachable');
+
+  if (api.origin !== new URL(siteOrigin).origin) {
+    const allow = res.headers.get('access-control-allow-origin');
+    if (allow !== siteOrigin && allow !== '*') add('fail', `Django does not allow ${siteOrigin} (CORS)`, `Add "${siteOrigin}" to CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS.`);
+    else if (res.headers.get('access-control-allow-credentials') !== 'true') add('fail', 'CORS does not allow credentials', 'Set CORS_ALLOW_CREDENTIALS = True.');
+    else add('ok', `CORS allows ${siteOrigin} with credentials`);
+  }
+
+  const cookie = (res.headers.get('set-cookie') ?? '').split(/,(?=\s*\w+=)/).find((c) => /^\s*csrftoken=/.test(c)) ?? '';
+  if (cookie) {
+    if (/;\s*secure/i.test(cookie)) add('ok', 'Cookies are marked Secure');
+    else add('fail', 'Cookies are not marked Secure', 'Set CSRF_COOKIE_SECURE = True and SESSION_COOKIE_SECURE = True.');
+    if (!sameSite && !/samesite=none/i.test(cookie)) add('fail', 'Cookies use SameSite=Lax across different sites', 'If you cannot share a domain: CSRF_COOKIE_SAMESITE = "None" and SESSION_COOKIE_SAMESITE = "None" (with Secure). Some browsers still block it.');
+  }
+
+  try {
+    const probe = await fetchFn(`${api.origin}/visual-cms-doctor-missing-page/`);
+    const body = probe.text ? await probe.text() : '';
+    if (/DEBUG\s*=\s*True/.test(body)) add('fail', 'Django runs with DEBUG = True', 'Set DEBUG = False in production (it shows settings and code to anyone).');
+    else add('ok', 'Django does not show debug pages');
+  } catch {
+    /* already reported */
+  }
+  return checks;
+}
 
 /** Checks against a running Django API. `fetchFn` is injectable for tests. */
 export async function checkDjango(baseUrl: string, frontendOrigin: string, fetchFn: Fetch = fetch as unknown as Fetch): Promise<Check[]> {

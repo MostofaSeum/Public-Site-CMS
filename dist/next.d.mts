@@ -74,6 +74,15 @@ declare function getPageContent<T = Record<string, unknown>>(config: Pick<CmsCon
     storage: CmsStorageAdapter;
     includeDrafts?: boolean;
 }): Promise<T>;
+/**
+ * Load the published content of every page in the config, keyed by page key, ready
+ * for `<CmsProvider initialContent={...}>`. With it, the server-rendered HTML already
+ * contains the edited text (good for SEO, no flash of default content). Pages whose
+ * storage cannot be reached fall back to their defaults.
+ */
+declare function getAllPageContent(config: Pick<CmsConfig, 'pages'>, options: {
+    storage: CmsStorageAdapter;
+}): Promise<Record<string, Record<string, unknown>>>;
 /** Build Next.js metadata from a page's editable "seo" section, on top of a fallback. */
 declare function buildPageMetadata(content: {
     seo?: PageSeoConfig;
@@ -101,4 +110,4 @@ declare function isCmsPreviewRequest(request: {
     studioPath?: string;
 }): boolean;
 
-export { type CmsRouteHandlerOptions, type FileStorageOptions, type PageSeoConfig, buildPageMetadata, createCmsRouteHandler, fileStorage, getPageContent, getPageMetadata, isCmsPreviewRequest };
+export { type CmsRouteHandlerOptions, type FileStorageOptions, type PageSeoConfig, buildPageMetadata, createCmsRouteHandler, fileStorage, getAllPageContent, getPageContent, getPageMetadata, isCmsPreviewRequest };

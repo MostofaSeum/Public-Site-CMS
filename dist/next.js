@@ -33,6 +33,7 @@ __export(next_exports, {
   buildPageMetadata: () => buildPageMetadata,
   createCmsRouteHandler: () => createCmsRouteHandler,
   fileStorage: () => fileStorage,
+  getAllPageContent: () => getAllPageContent,
   getPageContent: () => getPageContent,
   getPageMetadata: () => getPageMetadata,
   isCmsPreviewRequest: () => isCmsPreviewRequest
@@ -297,6 +298,12 @@ async function getPageContent(config, pageKey, options) {
     return mergePageContent(page, []);
   }
 }
+async function getAllPageContent(config, options) {
+  const entries = await Promise.all(
+    config.pages.map(async (page) => [page.key, await getPageContent(config, page.key, options)])
+  );
+  return Object.fromEntries(entries);
+}
 function buildPageMetadata(content, fallback = {}) {
   const seo = content.seo;
   if (!seo || typeof seo !== "object") return fallback;
@@ -370,6 +377,7 @@ function isCmsPreviewRequest(request, options = {}) {
   buildPageMetadata,
   createCmsRouteHandler,
   fileStorage,
+  getAllPageContent,
   getPageContent,
   getPageMetadata,
   isCmsPreviewRequest
