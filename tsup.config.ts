@@ -21,6 +21,7 @@ export default defineConfig([
       index: 'src/index.ts',
       adapters: 'src/adapters/index.ts',
       next: 'src/next/index.ts',
+      icons: 'src/icons/index.ts',
     },
   },
   // React UI (public-site hooks and admin studio): every output is a client module.

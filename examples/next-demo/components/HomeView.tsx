@@ -1,6 +1,7 @@
 'use client';
 
-import { CmsSection, getDynamicIcon, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { getDynamicIcon } from '@brainicon/visual-cms/icons';
 import type homeDefaults from '@/content/home.json';
 
 type HomeContent = typeof homeDefaults;

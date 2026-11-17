@@ -391,7 +391,7 @@ Tips:
 
 - `CmsSection` adds nothing for visitors. The outline and pencil only appear inside the CMS preview.
 - Each `sectionKey` must match a `key` in that page's `sections`.
-- Give list items an `id`. Name image fields like `image`, `logo`, `avatar` or `src` to get the image picker, and icon fields like `icon` to get the icon picker (render with `getDynamicIcon(name)`).
+- Give list items an `id`. Name image fields like `image`, `logo`, `avatar` or `src` to get the image picker, and icon fields like `icon` to get the icon picker. To draw the chosen icon on the page, either map the names you offer to icons you import yourself (small bundle, recommended: `const ICONS = { Zap, Server }` then `ICONS[item.icon] ?? Zap`), or use `getDynamicIcon(name)` from `@brainicon/visual-cms/icons`, which can draw any icon but adds the whole lucide icon set (about 0.9 MB) to your public bundle.
 - For sticky headers or banners, use `<CmsSection buttonPlacement="fixed">` so the pencil is not hidden.
 - To let editors control the page's SEO, add a `seo` section (`title`, `description`, `keywords`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `twitterCard`, `robots`) and use `getPageMetadata(cms, 'home', { storage })` in `generateMetadata`.
 - With the Django backend, use `import { storage } from '@/lib/cms-storage'` the same way; `init` already generates it for Django.
@@ -621,7 +621,7 @@ There is no schema to write. The editor reads the section's content and picks a 
 | `<CmsProvider config>` | `/site` | wrap the site once (root layout) |
 | `usePageContent(pageKey, { initialData? })` | `/site` | read a page's content, with live preview in the CMS |
 | `<CmsSection sectionKey title activeOnPath? buttonPlacement?>` | `/site` | make a block editable |
-| `getDynamicIcon(name)` | `/site` | render an icon chosen in the icon picker |
+| `getDynamicIcon(name)` | `/icons` | draw any icon chosen in the icon picker (adds the whole lucide icon set to your bundle) |
 | `getPageContent(config, pageKey, { storage })` | `/next` | load a page's content on the server |
 | `getPageMetadata(config, pageKey, { storage, fallback? })` | `/next` | build Next.js metadata from the `seo` section |
 | `createCmsRouteHandler({ storage, authorize, … })` | `/next` | the API route |

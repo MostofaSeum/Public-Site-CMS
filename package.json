@@ -34,6 +34,11 @@
       "import": "./dist/next.mjs",
       "require": "./dist/next.js"
     },
+    "./icons": {
+      "types": "./dist/icons.d.ts",
+      "import": "./dist/icons.mjs",
+      "require": "./dist/icons.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
