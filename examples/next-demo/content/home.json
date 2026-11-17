@@ -1,0 +1,31 @@
+{
+  "hero": {
+    "badge": "New for 2026",
+    "title": "Build your website in an afternoon",
+    "subtitle": "Edit every word and image on this page from the CMS. Changes appear here as you type.",
+    "primaryText": "Get started",
+    "primaryHref": "/pricing",
+    "heroImage": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200"
+  },
+  "features": {
+    "title": "Everything you need",
+    "items": [
+      { "id": "f1", "icon": "Zap", "title": "Fast", "text": "Pages load in under a second." },
+      { "id": "f2", "icon": "ShieldCheck", "title": "Secure", "text": "Only editors can change content." },
+      { "id": "f3", "icon": "Smartphone", "title": "Responsive", "text": "Looks right on every screen." }
+    ]
+  },
+  "faq": {
+    "title": "Questions",
+    "items": [
+      { "question": "Can I undo a change?", "answer": "Yes. Reset a section to go back to its default content." },
+      { "question": "Do visitors see drafts?", "answer": "No. Only published content is shown on the live site." }
+    ]
+  },
+  "seo": {
+    "title": "Demo site | Visual CMS",
+    "description": "A demo page edited with @brainicon/visual-cms.",
+    "keywords": "cms, demo",
+    "robots": "index, follow"
+  }
+}

@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Let Tailwind see the class names used by the CMS components. */
+@source "../node_modules/@brainicon/visual-cms/dist";
+
+body {
+  background: #ffffff;
+  color: #0f172a;
+}

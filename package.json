@@ -1,0 +1,82 @@
+{
+  "name": "@brainicon/visual-cms",
+  "version": "0.1.0",
+  "description": "Visual headless CMS for React and Next.js: live preview canvas, hover-to-edit sections and a JSON-driven form editor, with pluggable storage.",
+  "license": "MIT",
+  "author": "Brainicon Technology",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./site": {
+      "types": "./dist/site.d.ts",
+      "import": "./dist/site.mjs",
+      "require": "./dist/site.js"
+    },
+    "./admin": {
+      "types": "./dist/admin.d.ts",
+      "import": "./dist/admin.mjs",
+      "require": "./dist/admin.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters.d.ts",
+      "import": "./dist/adapters.mjs",
+      "require": "./dist/adapters.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.mjs",
+      "require": "./dist/next.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=0.400.0",
+    "next": ">=14.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "react-hot-toast": ">=2.4.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "lucide-react": "^0.554.0",
+    "next": "15.1.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hot-toast": "^2.6.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "visual-editor",
+    "live-preview",
+    "react",
+    "nextjs"
+  ]
+}

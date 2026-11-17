@@ -1,0 +1,16 @@
+{
+  "hero": {
+    "title": "Simple pricing",
+    "subtitle": "One plan per need. Cancel anytime."
+  },
+  "plans": {
+    "items": [
+      { "id": "starter", "name": "Starter", "price": "$9", "period": "/month", "highlighted": false },
+      { "id": "pro", "name": "Pro", "price": "$29", "period": "/month", "highlighted": true }
+    ]
+  },
+  "seo": {
+    "title": "Pricing | Visual CMS demo",
+    "description": "Plans and prices."
+  }
+}
