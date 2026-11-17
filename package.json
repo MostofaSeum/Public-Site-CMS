@@ -1,6 +1,6 @@
 {
   "name": "@brainicon/visual-cms",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Visual headless CMS for React and Next.js: live preview canvas, hover-to-edit sections and a JSON-driven form editor, with pluggable storage.",
   "license": "MIT",
   "author": "Brainicon Technology",
@@ -54,8 +54,7 @@
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "prepack": "npm run build"
+    "test": "vitest run"
   },
   "peerDependencies": {
     "lucide-react": ">=0.400.0",
@@ -92,5 +91,13 @@
   ],
   "bin": {
     "visual-cms": "./dist/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MostofaSeum/Public-Site-CMS.git"
+  },
+  "homepage": "https://github.com/MostofaSeum/Public-Site-CMS#readme",
+  "bugs": {
+    "url": "https://github.com/MostofaSeum/Public-Site-CMS/issues"
   }
 }

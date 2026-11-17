@@ -5,13 +5,24 @@ import { CliError, runInit, type Action, type InitOptions, type InitReport } fro
 import { askMissingOptions } from './prompts';
 import { runAddPage } from './addPage';
 import { checkDjango, checkProject, summarize, type Check } from './doctor';
+import { runScan } from './scan';
 
 const HELP = `visual-cms: set up @brainicon/visual-cms in a Next.js project
 
 Usage
   visual-cms init [options]           Set up the library in this project
   visual-cms add-page <key> [options] Create a new editable page (content, view, route, config entry)
+  visual-cms scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
+                                      wraps its sections in <CmsSection>, registers it (backs up the file)
   visual-cms doctor [options]         Check the setup and say what to fix
+
+scan options
+  --page <key>              Page key (default: from the route; "/" is "home")
+  --route <path>            Public URL (default: from the file's place under app/)
+  --title <text>            Page name shown in the CMS
+  --component <Name>        Component to convert (default: the default export)
+  --add-use-client          Add "use client" to a page that has no server-only code
+  --dry-run                 Show the texts it would move, change nothing
 
 add-page options
   --title <text>            Page title shown in the CMS (default: made from the key)
@@ -53,7 +64,7 @@ function parseArgs(argv: string[]): Parsed {
   const flags = new Map<string, string | true>();
   let command: string | null = null;
   const positionals: string[] = [];
-  const valueFlags = new Set(['backend', 'api-url', 'admin-path', 'cwd', 'django-dir', 'frontend-origin', 'title', 'route', 'sections']);
+  const valueFlags = new Set(['backend', 'api-url', 'admin-path', 'cwd', 'django-dir', 'frontend-origin', 'title', 'route', 'sections', 'page', 'component']);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '-y') flags.set('yes', true);
@@ -222,6 +233,42 @@ export async function main(argv: string[]): Promise<number> {
       console.log(`  1. Open ${report.route} to see the page, or the CMS screen to edit it.`);
       console.log(`  2. Replace the placeholder markup in components/*View.tsx with your own, keeping the <CmsSection> wrappers.`);
       console.log(`  3. Edit content/${report.key}.json to set the default text.\n`);
+      return 0;
+    }
+
+    if (command === 'scan') {
+      if (positionals.length !== 1) throw new CliError('Usage: visual-cms scan <file>   (for example: visual-cms scan src/app/page.tsx)');
+      const dryRun = flags.has('dry-run');
+      const report = runScan({
+        cwd,
+        file: positionals[0],
+        page: flags.get('page') as string | undefined,
+        route: flags.get('route') as string | undefined,
+        title: flags.get('title') as string | undefined,
+        component: flags.get('component') as string | undefined,
+        addUseClient: flags.has('add-use-client'),
+        dryRun,
+      });
+      console.log('');
+      console.log(bold(`Page "${report.page}" (${report.route}): ${report.fields.length} texts in ${report.sections.length} sections`));
+      for (const s of report.sections) {
+        console.log(`  ${green(s.key)} ${dim(`(${s.fields} fields)`)}`);
+        for (const f of report.fields.filter((x) => x.section === s.key)) {
+          const v = f.value.length > 70 ? `${f.value.slice(0, 67)}...` : f.value;
+          console.log(dim(`      ${f.field}: `) + v);
+        }
+      }
+      printReport(
+        { actions: report.actions, warnings: report.warnings, manual: [], installed: [], installCommand: null, adminUrl: '', exampleUrl: null, packageManager: 'npm', backend: 'files' },
+        dryRun,
+        false
+      );
+      if (!dryRun) {
+        console.log(bold('Next'));
+        console.log(`  1. Review the change:  git diff   (original saved as ${report.backup})`);
+        console.log('  2. Run your type check or build, then open the CMS and edit the page.');
+        console.log('  3. Lists that were written out by hand (for example 4 copied cards) became separate fields; turn them into an array + .map() by hand if you want editors to add or remove items.\n');
+      }
       return 0;
     }
 

@@ -15,11 +15,15 @@ Supports Django 4.2, 5.x and 6.x (tested on 4.2, 5.2 and 6.0).
 
 ## Install
 
-This is a local library, so install it from its folder (`<LIB>` is the folder that contains the main README):
+**Fastest:** from your Next.js project, `npx visual-cms init --django-dir <folder with manage.py>` installs this package and does all the setup below for you (settings, urls, CORS, migration). See the main README.
+
+To install it yourself, from GitHub (the package lives in the `django-visual-cms` folder of the repository):
 
 ```bash
-pip install "<LIB>/django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"
 ```
+
+Then `python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000` makes the settings and urls changes below automatically (add `--dry-run` to preview them), or follow the steps by hand.
 
 Use your project's virtual environment. No build step is needed. Check it worked:
 

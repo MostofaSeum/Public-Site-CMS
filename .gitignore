@@ -1,5 +1,4 @@
 node_modules
-dist
 *.tgz
 
 # Python (django-visual-cms)

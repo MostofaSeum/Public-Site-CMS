@@ -1,6 +1,6 @@
 # @brainicon/visual-cms
 
-A visual CMS for React and Next.js sites. Add one page to your admin panel and your editors get:
+A visual CMS for Next.js sites (with an optional Django backend). Add one page to your admin panel and your editors get:
 
 - a list of every page of the site,
 - a **live preview** of the real page, at desktop, tablet or mobile size,
@@ -8,9 +8,44 @@ A visual CMS for React and Next.js sites. Add one page to your admin panel and y
 - a **form editor** for that section, built automatically from the section's content,
 - changes shown in the preview **as they type**, then saved, published, or reset to the default.
 
-Content is stored through a small adapter, so it works with a JSON file, a database, Django, or your own API.
+Content is stored through a small adapter, so it works with a JSON file, Django, a database, or your own API. Editors never see JSON: they use forms.
 
-> **This is a local library.** You install it from this folder, not from npm. Everything below is written for that. Replace `<LIB>` in the commands with the absolute path of the folder that contains this README, and `<PROJECT>` with your website's folder.
+## Let your AI agent do it
+
+Click the **copy** button at the top right of the box below, paste it into your AI coding agent (Claude Code, Cursor, Copilot, Codex…) inside your project, and it will install the library, connect it to your admin panel, and make your pages editable, step by step, without breaking your code.
+
+```text
+Install and set up the visual CMS library @brainicon/visual-cms in this project, then make the website's pages editable from the admin panel.
+
+Library: https://github.com/MostofaSeum/Public-Site-CMS
+Full instructions: read the README in that repository (after installing it is also at node_modules/@brainicon/visual-cms/README.md), especially section "3. Install with an AI agent". Follow it exactly.
+
+Safety rules (most important):
+1. Before changing anything run `git status`. If there are uncommitted changes, ask me whether to commit them first. Then create a new branch named "visual-cms-setup" and do all work there.
+2. Never delete, rename or rewrite code you were not asked to change. Visitors must see exactly the same website after the setup as before.
+3. Run every visual-cms command with --dry-run first, read what it will change, then run it for real.
+4. After every step run the project's type check (npx tsc --noEmit) or build. If it fails, fix the cause or undo that step (git checkout -- <file>, or restore the *.visual-cms.bak copy) before continuing.
+5. Do not edit anything inside node_modules. Do not commit .cms/ or public/cms-uploads/.
+6. Ask me only for things you cannot find out yourself.
+
+Steps:
+1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py).
+2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.2.0   then check: npx visual-cms --version
+3. Set it up with `npx visual-cms init --yes`:
+   - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
+   - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
+   - if next.config has cacheComponents: true, add --no-example.
+   Do every task listed under "Warnings" and "Still to do by hand" in its output.
+4. Add a link to the CMS screen in the admin panel's menu, in the same style as the other menu items.
+5. Make the pages editable, one page at a time, starting with the homepage:
+   - npx visual-cms scan <page file> --dry-run   then review the list of texts it will move, then run it without --dry-run.
+   - If scan says the file is a Server Component: if the page has no server-only code (not async, no metadata export, no database/fs/server imports) re-run with --add-use-client; otherwise move the page's JSX into a new client component file (components/<Name>View.tsx with 'use client'), render it from the page, and scan that file with --page <key> --route <url>.
+   - Review the change with git diff and run the type check. The page must render exactly as before.
+   - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
+6. Run npx visual-cms doctor and fix every FAIL.
+7. Start the dev server and open the CMS screen. With Django, log in first at http://localhost:8000/admin/ as a staff user (use localhost, not 127.0.0.1). Hover a section, click the pencil, change a text, Save & Publish, and check the public page shows it. Then reset it.
+8. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, and anything I still have to do (for example the real login check for saving, or a production database).
+```
 
 ## Contents
 
@@ -22,48 +57,35 @@ Content is stored through a small adapter, so it works with a JSON file, a datab
 6. [Backends: files, Django, your own](#6-backends-files-django-your-own)
 7. [Troubleshooting](#7-troubleshooting)
 8. [Reference](#8-reference)
-9. [Updating the local library](#9-updating-the-local-library)
+9. [Updating](#9-updating)
 
 ---
 
 ## 1. Install
 
-**Your project needs:** Next.js (App Router, version 14 or newer; tested on 15), TypeScript, Tailwind CSS v4, Node.js 18.18 or newer. For anything else, see [Other setups](#other-setups-manual).
+**Your project needs:** Next.js (App Router, version 14 or newer; tested on 15 and 16), TypeScript, Tailwind CSS v4, Node.js 18.18 or newer, and `git` (npm uses it to download the library from GitHub). For anything else, see [Other setups](#other-setups-manual).
 
-### Step 1. Pack the library (once per library version)
+### Step 1. Install the library from GitHub
 
-```bash
-cd <LIB>
-npm install
-npm pack
-```
-
-This creates `<LIB>/brainicon-visual-cms-0.1.0.tgz`. The version in the file name comes from `package.json`. `npm pack` builds the library for you.
-
-### Step 2. Install it into your project
+In your Next.js project:
 
 ```bash
-cd <PROJECT>
-npm install "<LIB>/brainicon-visual-cms-0.1.0.tgz"
+npm install github:MostofaSeum/Public-Site-CMS#v0.2.0
 ```
 
-Windows example: `npm install "D:\Libraries\Public-Site-CMS\brainicon-visual-cms-0.1.0.tgz"`
-
-> **Install the `.tgz`, not the folder.** `npm install <LIB>` links the folder instead of copying it, which can load a second copy of React and break the editor.
-
-Check that it worked:
+`#v0.2.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
 
 ```bash
-npx visual-cms --version     # prints 0.1.0
+npx visual-cms --version     # prints 0.2.0
 ```
 
-### Step 3. Run the setup command
+### Step 2. Run the setup command
 
 ```bash
 npx visual-cms init
 ```
 
-It asks up to four questions (where content is stored, the Django URL if you choose Django, the route of the CMS screen, and whether to create an example page). To skip the questions and accept the defaults: `npx visual-cms init --yes`. To see what it would do without changing anything: add `--dry-run`.
+It asks up to five questions (where content is stored, the Django URL and folder if you choose Django, the route of the CMS screen, and whether to create an example page). To skip the questions and accept the defaults: `npx visual-cms init --yes`. To see what it would do without changing anything: add `--dry-run`.
 
 What it does for you:
 
@@ -86,20 +108,33 @@ It also installs `lucide-react` and `react-hot-toast` if they are missing, using
 
 It is safe to run again. It never overwrites a file you already have (use `--force` to replace), and a second run changes nothing. Under `src/`, files go under `src/`.
 
+> **Next.js 16 with `cacheComponents: true`:** add `--no-example`. The example page uses `export const dynamic`, which that mode does not allow.
+
 **Using Django as the backend?** One command sets up both sides. Point it at the folder that contains `manage.py`:
 
 ```bash
 npx visual-cms init --django-dir ../backend --frontend-origin http://localhost:3000
 ```
 
-Besides the Next.js files above, this installs `django-visual-cms` into your Django project's virtual environment (found as `venv`, `.venv` or `env` next to or inside that folder, otherwise the `python` on your PATH), then edits `settings.py` and `urls.py` and runs the migration. Details are in [section 6](#using-django). Add `--dry-run` first to see everything it would change.
+Besides the Next.js files above, this installs `django-visual-cms` (shipped inside the package) into your Django project's virtual environment (found as `venv`, `.venv` or `env` next to or inside that folder, otherwise the `python` on your PATH), then edits `settings.py` and `urls.py`, sets up CORS and runs the migration. Details are in [section 6](#using-django). Add `--dry-run` first to see everything it would change.
 
-**Add pages later** with one command, and check your setup at any time:
+### Step 3. Make your pages editable
+
+Convert an existing page in one command. It moves the page's texts into `content/<page>.json`, wraps each section in `<CmsSection>`, and registers the page. The page looks exactly the same afterwards:
+
+```bash
+npx visual-cms scan src/app/page.tsx --dry-run     # see which texts it would move
+npx visual-cms scan src/app/page.tsx               # do it (the original is saved as page.tsx.visual-cms.bak)
+```
+
+Or create a brand-new editable page, and check your setup at any time:
 
 ```bash
 npx visual-cms add-page about          # content/about.json, a view, app/about/page.tsx, and the config entry
 npx visual-cms doctor                  # checks Tailwind, the config, the provider, and the Django API (CORS included)
 ```
+
+Details: [section 4](#4-make-your-own-pages-editable).
 
 ### Step 4. Open the CMS
 
@@ -107,7 +142,7 @@ npx visual-cms doctor                  # checks Tailwind, the config, the provid
 npm run dev
 ```
 
-Open `http://localhost:3000/admin/cms`. Hover a section of the example page in the preview, click the pencil, change the text, and watch the preview update. **Save & Publish** puts it on the site. The reset button (circular arrow) goes back to the default.
+Open `http://localhost:3000/admin/cms`. Hover a section in the preview, click the pencil, change the text, and watch the preview update. **Save & Publish** puts it on the site. The reset button (circular arrow) goes back to the default. With Django, log in at `http://localhost:8000/admin/` first as a staff user.
 
 ### Step 5. Connect your admin panel
 
@@ -118,9 +153,8 @@ If you already have an admin panel, continue with [section 2](#2-connect-it-to-y
 The repository includes a complete working app:
 
 ```bash
-cd <LIB>
-npm install && npm pack
-cd examples/next-demo
+git clone https://github.com/MostofaSeum/Public-Site-CMS.git
+cd Public-Site-CMS/examples/next-demo
 npm install
 npm run dev          # open http://localhost:3000/admin/cms
 ```
@@ -210,43 +244,30 @@ authorize: async () => {
 
 ## 3. Install with an AI agent
 
-You can hand this to an AI coding agent (Claude Code, Cursor, Copilot, Codex, and similar). After the library is installed, this README is also at `node_modules/@brainicon/visual-cms/README.md`.
-
-### Prompt to give your agent
-
-```text
-Install and connect the visual CMS library in this project.
-
-Library folder: <LIB>
-Read <LIB>/README.md, section "3. Install with an AI agent", and follow it exactly.
-
-Backend: files            (or: django, API URL https://...)
-Admin panel: find it      (or: it is at app/dashboard, or: none yet)
-```
-
-The short version also works: "Install the visual CMS from `<LIB>` and connect it to my admin panel."
+Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into your AI coding agent. The rest of this section is the detailed procedure the agent follows. After the library is installed, this README is also at `node_modules/@brainicon/visual-cms/README.md`.
 
 ### Instructions for the agent
 
 **Rules**
 
-1. Run `npx visual-cms init`. Do not hand-write the files it generates.
-2. Always pass `--yes` (no interactive questions), and run `--dry-run` once first.
-3. Install the library from the packed `.tgz`, never from the folder path (see [Step 2](#step-2-install-it-into-your-project)).
-4. Do not edit anything inside `node_modules`.
-5. Never leave editing open to everyone. The generated `authorize()` only allows editing under `next dev`. Replace it with the project's real login check. If you cannot work out the project's login, leave the generated check as it is and tell the developer.
-6. Do not commit `.cms/` or `public/cms-uploads/` (init already adds them to `.gitignore`).
-7. Check the result of every step before the next one. If a check fails, use [Troubleshooting](#7-troubleshooting). Do not guess.
-8. Ask the developer only for inputs you cannot find yourself.
+1. Work on a new git branch. If the working tree has uncommitted changes, ask the developer before continuing.
+2. Use the commands (`init`, `scan`, `add-page`, `doctor`). Do not hand-write the files they generate.
+3. Always pass `--yes` to `init` (no interactive questions), and run every command with `--dry-run` once first.
+4. Visitors must see the same website as before. After every step run `npx tsc --noEmit` (or the build). If it fails, fix it or undo that step before continuing.
+5. Do not edit anything inside `node_modules`.
+6. Never leave editing open to everyone. With the file backend the generated `authorize()` only allows editing under `next dev`: replace it with the project's real login check. If you cannot work out the project's login, leave the generated check as it is and tell the developer. With Django, Django's staff login decides.
+7. Do not commit `.cms/` or `public/cms-uploads/` (init already adds them to `.gitignore`).
+8. Check the result of every step before the next one. If a check fails, use [Troubleshooting](#7-troubleshooting) and `npx visual-cms doctor`. Do not guess.
+9. Ask the developer only for inputs you cannot find yourself.
 
 **Inputs**
 
 | Name | Meaning | How to get it |
 |---|---|---|
-| `LIB` | absolute path of the library folder | the developer gave it; it contains this README and `package.json` named `@brainicon/visual-cms` |
 | `PROJECT` | the website's root folder | the folder with the `package.json` that lists `next` |
-| `BACKEND` | `files` (default) or `django` | ask if the project has a Django API for content; otherwise `files` |
-| `API_URL` | Django API base URL, `django` only | ask; default `http://localhost:8000/api/cms` |
+| `BACKEND` | `files` (default) or `django` | `django` when the repository has a Django project (a folder with `manage.py`) that should hold the content; otherwise `files` |
+| `DJANGO_DIR` | the folder with `manage.py`, `django` only | search the repository |
+| `API_URL` / `FRONTEND_ORIGIN` | where Django and the site run, `django` only | defaults `http://localhost:8000/api/cms` and `http://localhost:3000`; check the project's config and scripts |
 | `ADMIN_AREA` | the admin folder under `app/`, route groups included, e.g. `dashboard` or `(dashboard)/dashboard` | Step 2 |
 | `ADMIN_URL` | the URL of the CMS screen `init` will create, e.g. `/dashboard/cms` (the admin folder without route groups, plus `/cms`) | Step 2 |
 | `MENU_FILE` | file that renders the admin menu | Step 2 |
@@ -260,7 +281,8 @@ The short version also works: "Install the visual CMS from `<LIB>` and connect i
 | `node -e "const p=require('./package.json');const d={...p.dependencies,...p.devDependencies};console.log(d.next,d.tailwindcss)"` | prints a Next.js version and a Tailwind version starting with 4 (`^4`, `4.1.0`…) | not Next.js: use [Other setups](#other-setups-manual) or stop. Tailwind below 4 or missing: tell the developer, since the CMS screens need v4 |
 | `app/` or `src/app/` exists | yes | Pages Router only: not supported by `init`; tell the developer |
 | `tsconfig.json` exists | yes | JavaScript-only: not supported by `init`; tell the developer |
-| `git status` | tells you what is uncommitted | note it. `init` makes small edits, so it is fine to continue, but mention it |
+| `next.config.*` contains `cacheComponents: true` | note it | pass `--no-example` to `init` |
+| `git status` | clean, or the developer agreed | create the branch `visual-cms-setup` |
 
 **Step 2. Find the admin panel.** Decide which case applies:
 
@@ -269,70 +291,94 @@ The short version also works: "Install the visual CMS from `<LIB>` and connect i
 - Result: **NO_ADMIN** (nothing found: [Case A](#case-a-no-admin-panel-yet)), **NEXT_ADMIN** (found in this app: [Case B](#case-b-your-admin-panel-is-part-of-this-nextjs-app)), or **EXTERNAL_ADMIN** (the admin is another app: [Case C](#case-c-your-admin-panel-is-a-different-app)).
 - If you are unsure which case applies, ask the developer one question: "Where is your admin panel?"
 
-**Step 3. Pack and install the library.**
+**Step 3. Install the library.**
 
 ```bash
-cd <LIB> && npm install && npm pack
-cd <PROJECT> && npm install "<LIB>/brainicon-visual-cms-<version>.tgz"
+npm install github:MostofaSeum/Public-Site-CMS#v0.2.0
 npx visual-cms --version
 ```
 
-Use the real `.tgz` file name that `npm pack` printed. Pass when the last command prints a version. If `<LIB>/brainicon-visual-cms-<version>.tgz` already exists and the library has not changed, skip the first line.
+Pass when the last command prints a version.
 
 **Step 4. Run `init`.** Build the command from the inputs, run it with `--dry-run` first, read the plan, then run it for real:
 
 | Situation | Command |
 |---|---|
 | NO_ADMIN or EXTERNAL_ADMIN, files backend | `npx visual-cms init --yes` |
-| NEXT_ADMIN, files backend | `npx visual-cms init --yes --admin-path "<ADMIN_AREA>/cms"` |
-| Django backend | add `--backend django --api-url <API_URL>` |
-| Developer does not want the example page | add `--no-example` |
+| NEXT_ADMIN | add `--admin-path "<ADMIN_AREA>/cms"` |
+| Django backend | add `--django-dir <DJANGO_DIR>`, plus `--api-url <API_URL> --frontend-origin <FRONTEND_ORIGIN>` when they differ from the defaults |
+| `cacheComponents: true`, or the developer does not want the example page | add `--no-example` |
 | Package install must be skipped | add `--no-install` and install `lucide-react react-hot-toast` yourself |
 
-Pass when the command exits with code 0 and lists created and modified files. **Every line under "Warnings" and "Still to do by hand" in its output is a task for you:** do it, or report it to the developer.
+Pass when the command exits with code 0 and lists created and modified files. **Every line under "Warnings" and "Still to do by hand" in its output is a task for you:** do it, or report it to the developer. Then run `npx tsc --noEmit`.
 
 **Step 5. Connect the admin panel.**
 
 - **NO_ADMIN:** nothing to do.
-- **NEXT_ADMIN:** do [Case B](#case-b-your-admin-panel-is-part-of-this-nextjs-app) steps 3 and 4: add the link to `MENU_FILE` in the menu's own style, and replace `authorize` using `AUTH_FN`.
-- **EXTERNAL_ADMIN:** do [Case C](#case-c-your-admin-panel-is-a-different-app): add a link to the CMS page in the other admin, and replace `authorize` with a check the site can perform.
-- **Django backend:** also do the Django-side steps that `init` printed ([section 6](#using-django)).
+- **NEXT_ADMIN:** do [Case B](#case-b-your-admin-panel-is-part-of-this-nextjs-app) steps 3 and 4: add the link to `MENU_FILE` in the menu's own style, and (file backend) replace `authorize` using `AUTH_FN`.
+- **EXTERNAL_ADMIN:** do [Case C](#case-c-your-admin-panel-is-a-different-app): add a link to the CMS page in the other admin, and (file backend) replace `authorize` with a check the site can perform.
 
-**Step 6. Verify.** Pass only when all of these hold (the dev server uses port 3000 unless the project says otherwise; `<ADMIN_URL>` is the CMS screen's URL, `/admin/cms` by default):
+**Step 6. Make the pages editable.** One page at a time, homepage first:
+
+1. `npx visual-cms scan <page file> --dry-run`. Read the list of texts. It moves only static text and `placeholder`/`alt` attributes; code, state and API data stay as they are.
+2. If it reports a Server Component: when the page has no server-only code (not `async`, no `metadata`/`generateMetadata` export, no database, `fs` or server-only imports), re-run with `--add-use-client`. Otherwise create `components/<Name>View.tsx` with `'use client'`, move the page's JSX into it (keep the server code in the page and pass data as props), render `<NameView />` from the page, and scan the new file with `--page <key> --route <url>`.
+3. Run it without `--dry-run`, then `git diff` and `npx tsc --noEmit`. The page must render the same as before. If anything is wrong, restore the file from `<file>.visual-cms.bak`, remove the page entry from `cms.config.ts` and delete `content/<key>.json`.
+4. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
+
+**Step 7. Verify.** Pass only when all of these hold (the dev server uses port 3000 unless the project says otherwise):
 
 ```bash
 npx tsc --noEmit                      # exit code 0 (or: npm run build)
+npx visual-cms doctor                 # no FAIL lines
 npm run dev                           # start it in the background, wait until it is ready
-curl -s "http://localhost:3000/api/cms/records?page=example"      # prints []  (files backend)
-curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/cms-example"     # 200
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000<ADMIN_URL>"   # 200, or a redirect to the login page when the admin is protected. Not 404.
+curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/"             # 200
 ```
 
-If `authorize` is still the generated dev-only check, also prove that saving works, then clean up:
+If you have a browser tool: open the CMS URL (with Django, log in first at `http://localhost:8000/admin/` as a staff user, using `localhost`), confirm the preview loads, hover a section, click the pencil, change a text, **Save & Publish**, check the public page, then reset it. Stop the dev server you started.
 
-```bash
-curl -s -X PUT http://localhost:3000/api/cms/records/example/hero -H "Content-Type: application/json" -d "{\"content\":{\"title\":\"test\",\"subtitle\":\"s\",\"image\":\"\"},\"isPublished\":true}"
-curl -s -X DELETE http://localhost:3000/api/cms/records/example/hero -o /dev/null -w "%{http_code}"     # 204
-```
-
-If you have a browser tool: open the CMS URL (log in first if required), confirm the preview loads, hover the "Features" block of the example page, and confirm the pencil button appears. Stop the dev server you started.
-
-**Step 7. Report to the developer.** Say what was created and edited (the file list from `init`), the CMS URL, where the menu link was added, and what is still theirs to do: replace the dev-only `authorize()` if you could not, and use a database-backed storage before deploying to a serverless host ([Before you go live](#5-before-you-go-live)). Offer to make their real pages editable ([section 4](#4-make-your-own-pages-editable)).
+**Step 8. Report to the developer.** Say what was created and edited, the CMS URL, where the menu link was added, which pages are editable, and what is still theirs to do: the real login check for the file backend if you could not add it, a staff user for Django, and a database-backed storage before deploying to a serverless host ([Before you go live](#5-before-you-go-live)).
 
 **Common mistakes to avoid**
 
-- Installing from the folder (`npm install <LIB>`) instead of the `.tgz`.
 - Running `init` without `--yes` (it can wait for input that never comes).
 - Running `init` with the default `--admin-path` when the real admin is elsewhere, which puts the CMS page outside the login guard.
 - Forgetting that `--admin-path` must be quoted when it contains parentheses.
 - Removing `authorize` or making it always return `true`.
-- Wrapping a section in `<CmsSection sectionKey="x">` without adding `x` to that page's `sections` in `cms.config.ts`.
+- Adding `'use client'` to a page that is `async`, exports `metadata`, or reads a database.
+- Wrapping a section in `<CmsSection sectionKey="x">` without adding `x` to that page's `sections` in `cms.config.ts` (`scan` and `add-page` do this for you).
+- Logging in to Django at `127.0.0.1` while the site calls `localhost` (the login cookie is not shared, so saving fails with 401).
 
 ---
 
 ## 4. Make your own pages editable
 
-`init` sets up the CMS. Making *your* pages editable is the part you do for each page, using the generated example as the pattern. Three steps.
+`init` sets up the CMS. Then make each page editable.
+
+**The quick way: `scan`.** For an existing page:
+
+```bash
+npx visual-cms scan src/app/page.tsx --dry-run
+npx visual-cms scan src/app/page.tsx
+```
+
+It reads the file with your project's TypeScript compiler, finds its sections (`<header>`, `<section>`, `<footer>`, `<nav>`…, or the top-level blocks when there are none), and:
+
+- moves every static text, and every `placeholder` and `alt` attribute, into `content/<page>.json` (one object per section),
+- replaces each of them with the matching value from `usePageContent()`,
+- wraps each section in `<CmsSection>` (no wrapper is rendered for visitors),
+- registers the page and its sections in `cms.config.ts`.
+
+It leaves code alone: state, props, API data, string literals inside expressions, `<code>`/`<pre>` blocks and anything inside an element marked `data-cms-ignore`. The page renders the same HTML as before (this is what the tests check). The original file is saved as `<file>.visual-cms.bak`, and the rewritten file is checked for syntax errors before anything is written.
+
+Things to know:
+
+- The page must be a client component, because the content is read with a hook. For a Server Component it stops and explains: pass `--add-use-client` when the page has no server-only code, or move the JSX into a client component and scan that file with `--page` and `--route`.
+- The page key and route come from the file's place under `app/` (`app/page.tsx` is `home` at `/`). Pass `--page` and `--route` for files elsewhere.
+- Blocks written out several times by hand (four copied cards) become separate fields. Turn them into an array plus `.map()` by hand if editors should add or remove items.
+- Images that use `src={...}` and texts built in code are not moved. Edit them by hand if needed.
+
+**By hand.** Three steps, using the generated example as the pattern.
 
 **1. Put the page's text and images in a content object.** One top-level key per editable block:
 
@@ -459,7 +505,7 @@ A copy of each edited file is saved next to it as `*.visual-cms.bak`. Running th
 You can also run the Django part on its own, without the Next.js part:
 
 ```bash
-pip install "<LIB>/django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"
 python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
@@ -467,7 +513,7 @@ Then create the editor login: any Django user with **staff** status can edit (`p
 
 #### By hand
 
-Install the package (`pip install "<LIB>/django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -511,8 +557,8 @@ interface CmsStorageAdapter {
 |---|---|---|
 | anything does not work | many possible causes | run `npx visual-cms doctor`: it checks the common ones and says what to fix |
 | Django: "Failed to save section changes" | you are not logged in to Django as a **staff** user (401), or the CSRF origin is missing (403) | log in at the Django admin (same host name as the site, for example `localhost` not `127.0.0.1`); check `CSRF_TRUSTED_ORIGINS` contains your site's origin |
-| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install "<LIB>/brainicon-visual-cms-<version>.tgz"` in the project root, then retry |
-| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from installing the folder instead of the `.tgz` | remove `node_modules/@brainicon`, install the `.tgz` ([section 9](#9-updating-the-local-library)) |
+| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.2.0` in the project root, then retry |
+| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.2.0` |
 | the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/visual-cms/dist";` below `@import "tailwindcss";` |
 | the preview shows "Loading…" forever, or is blank | the page's `route` in `cms.config.ts` is wrong, the page throws an error, a redirect catches the preview, or the site blocks being framed | open the route in a normal tab; check `middleware.ts` ([below](#redirects-and-the-preview-iframe)); remove `X-Frame-Options: DENY` |
 | hovering shows no pencil | the block is not wrapped in `<CmsSection>`, `CmsProviders` is missing from the root layout, or Edit Mode is off | wrap the block; check `app/layout.tsx`; turn Edit Mode on in the toolbar |
@@ -522,10 +568,10 @@ interface CmsStorageAdapter {
 | saved edits do not show on the site | the page is cached, or it was saved as a draft | add `export const dynamic = 'force-dynamic'`; use **Save & Publish** |
 | edits vanish after a deploy | file storage on a host with a temporary disk | use Django or a database adapter ([section 5](#5-before-you-go-live)) |
 | TypeScript error importing a `.json` file | `resolveJsonModule` is off | set `"resolveJsonModule": true` in `tsconfig.json` |
-| `Module not found: @brainicon/visual-cms/...` | the library is not installed, or the install is stale | reinstall the `.tgz`, delete `.next`, restart |
+| `Module not found: @brainicon/visual-cms/...` | the library is not installed, or the install is stale | reinstall it ([section 9](#9-updating)), delete `.next`, restart |
 | `init` says "not a Next.js project", "Pages Router only" or "needs a TypeScript project" | unsupported project type | follow [Other setups](#other-setups-manual) |
 | Django: 403 on save | missing or stale CSRF token | use `djangoAdapter` (not `restAdapter`) and see the CORS/CSRF settings in the Django README |
-| `.tgz` not found | `npm pack` was not run, or the version changed | run `npm pack` in `<LIB>` and use the file name it prints |
+| `npm install github:...` fails | `git` is not installed, or no access to github.com | install git and check the network; the repository is public |
 
 ---
 
@@ -547,6 +593,10 @@ interface CmsStorageAdapter {
 | `-y, --yes` | accept defaults, ask nothing |
 | `--cwd <dir>` | project folder (default: current folder) |
 | `-h, --help`, `-v, --version` | help, version |
+
+### `visual-cms scan <file>`
+
+Makes an existing page editable ([section 4](#4-make-your-own-pages-editable)). Options: `--page <key>`, `--route <path>`, `--title <text>`, `--component <Name>` (default: the default export), `--add-use-client`, `--dry-run`. It refuses files that already use `usePageContent`, dynamic routes without `--route`, and page keys or content files that already exist.
 
 ### `visual-cms add-page <key>`
 
@@ -705,31 +755,29 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 
 ---
 
-## 9. Updating the local library
+## 9. Updating
 
-After you change the library's code, pack it again and reinstall it in each project:
+Install a newer release by its tag, then restart the dev server:
 
 ```bash
-cd <LIB>
-npm pack
-
-cd <PROJECT>
-rm -rf node_modules/@brainicon                  # PowerShell: Remove-Item -Recurse -Force node_modules\@brainicon
-npm install "<LIB>/brainicon-visual-cms-<version>.tgz"
-rm -rf .next                                    # then restart the dev server
+npm install github:MostofaSeum/Public-Site-CMS#v0.2.0     # use the new tag
+rm -rf .next                                               # PowerShell: Remove-Item -Recurse -Force .next
 ```
 
-Delete `node_modules/@brainicon` first: npm keeps the old copy when the version number has not changed. Bumping `version` in `<LIB>/package.json` also works.
+With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.2.0#subdirectory=django-visual-cms"`.
 
 ### Development
 
 ```bash
-cd <LIB>
+git clone https://github.com/MostofaSeum/Public-Site-CMS.git
+cd Public-Site-CMS
 npm install
 npm run typecheck
 npm test
 npm run build
 ```
+
+`dist/` is committed, because installing from GitHub uses it directly (there is no build step on the user's machine). **Run `npm run build` and commit `dist/` together with every source change.** To release: bump `version` in `package.json`, `django-visual-cms/pyproject.toml` and `django-visual-cms/visual_cms/__init__.py`, build, commit, then tag and push: `git tag vX.Y.Z && git push origin main --tags`.
 
 The Django package has its own tests: `cd django-visual-cms && python -m django test tests --settings=tests.settings` (set `PYTHONPATH=.` first).
 
