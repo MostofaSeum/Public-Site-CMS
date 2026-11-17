@@ -14,7 +14,8 @@ Options
                               files   a JSON file inside this Next.js app
                               django  a Django API running django-visual-cms
   --api-url <url>           Django API base URL (default: http://localhost:8000/api/cms)
-  --admin-path <path>       Route of the CMS screen (default: admin/cms)
+  --admin-path <path>       Folder of the CMS screen under app/ (default: admin/cms)
+                              route groups are allowed: "(admin)/dashboard/cms"
   --no-example              Do not create the example page at /cms-example
   --no-install              Do not install missing dependencies
   --dry-run                 Show what would happen without changing anything
@@ -134,8 +135,13 @@ function version(): string {
 
 function normalizeAdminPath(value: string): string {
   const cleaned = value.replace(/\\/g, '/').split('/').filter(Boolean).join('/');
-  if (!cleaned || !cleaned.split('/').every((s) => /^[A-Za-z0-9_-]+$/.test(s))) {
-    throw new CliError(`Invalid --admin-path "${value}". Use letters, digits, "-" and "_", separated by "/" (for example admin/cms).`);
+  const segments = cleaned.split('/');
+  // A segment is a folder name, or a route group in parentheses such as "(dashboard)".
+  const valid = segments.every((s) => /^[A-Za-z0-9_-]+$/.test(s) || /^\([A-Za-z0-9_-]+\)$/.test(s));
+  if (!cleaned || !valid) {
+    throw new CliError(
+      `Invalid --admin-path "${value}". Use folder names (letters, digits, "-", "_") or route groups like "(admin)", separated by "/" (for example admin/cms or "(admin)/dashboard/cms").`
+    );
   }
   return cleaned;
 }

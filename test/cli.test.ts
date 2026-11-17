@@ -275,6 +275,26 @@ describe('runInit', () => {
     expect(report.manual.join('\n')).toContain('<CmsNavButton href="/admin/cms"');
   });
 
+  it('supports route groups in the admin path (the group is a folder, not part of the URL)', () => {
+    const appDir = makeProject(dir);
+    fs.mkdirSync(path.join(appDir, '(dashboard)', 'dashboard'), { recursive: true });
+    fs.writeFileSync(path.join(appDir, '(dashboard)', 'layout.tsx'), '// guard\n');
+    const report = runInit(options({ adminPath: '(dashboard)/dashboard/cms' }));
+
+    expect(fs.existsSync(path.join(appDir, '(dashboard)', 'dashboard', 'cms', 'page.tsx'))).toBe(true);
+    // The existing layout in the group is untouched and no stray layout is created.
+    expect(fs.readFileSync(path.join(appDir, '(dashboard)', 'layout.tsx'), 'utf8')).toBe('// guard\n');
+    expect(fs.existsSync(path.join(appDir, '(dashboard)', 'dashboard', 'layout.tsx'))).toBe(false);
+    expect(report.adminUrl).toBe('/dashboard/cms');
+    expect(report.manual.join(' ')).toContain('href="/dashboard/cms"');
+    expect(report.manual.join(' ')).not.toContain('(dashboard)/dashboard/cms"');
+  });
+
+  it('rejects an admin path that has no URL part', () => {
+    makeProject(dir);
+    expect(() => runInit(options({ adminPath: '(dashboard)' }))).toThrow(/no URL part/);
+  });
+
   it('supports a custom admin path', () => {
     makeProject(dir);
     const report = runInit(options({ adminPath: 'dashboard/site' }));

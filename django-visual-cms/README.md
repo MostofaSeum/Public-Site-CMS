@@ -1,6 +1,6 @@
 # django-visual-cms
 
-Django backend for [`@brainicon/visual-cms`](../README.md). It stores the content editors change in the visual CMS and serves the REST API the CMS talks to.
+Django backend for [`@brainicon/visual-cms`](../README.md) (the main README has the full install guide, including the React side and the `npx visual-cms init --backend django` shortcut). It stores the content editors change in the visual CMS and serves the REST API the CMS talks to.
 
 Use it when your site's frontend is React or Next.js and your backend is Django. Django keeps the content in its own database and decides who may edit, through your existing Django logins.
 
@@ -15,14 +15,16 @@ Supports Django 4.2, 5.x and 6.x (tested on 4.2, 5.2 and 6.0).
 
 ## Install
 
+This is a local library, so install it from its folder (`<LIB>` is the folder that contains the main README):
+
 ```bash
-pip install django-visual-cms
+pip install "<LIB>/django-visual-cms"
 ```
 
-Until it's published on PyPI, install it from the repository folder:
+Use your project's virtual environment. No build step is needed. Check it worked:
 
 ```bash
-pip install "path/to/Public-Site-CMS/django-visual-cms"
+python -c "import visual_cms; print(visual_cms.__version__)"
 ```
 
 ## Set up Django

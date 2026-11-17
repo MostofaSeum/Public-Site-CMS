@@ -146,7 +146,13 @@ export function runInit(options: InitOptions): InitReport {
   const nextMajor = Number(deps.next.match(/\d+/)?.[0] ?? 0);
   if (nextMajor && nextMajor < 14) warnings.push(`Next.js ${deps.next} found. The library supports Next.js 14 and newer.`);
 
+  // Folder segments of the CMS screen. Route groups, like "(dashboard)", are folders but not part of the URL.
   const adminSegments = options.adminPath.split('/').filter(Boolean);
+  const adminUrlSegments = adminSegments.filter((segment) => !/^\(.+\)$/.test(segment));
+  if (adminUrlSegments.length === 0) {
+    throw new CliError(`The admin path "${options.adminPath}" has no URL part. Add a normal folder, for example "${options.adminPath}/cms".`);
+  }
+  const adminUrl = `/${adminUrlSegments.join('/')}`;
   const adminRoot = path.join(appDir, adminSegments[0]);
   const adminRootExisted = exists(adminRoot);
 
@@ -217,7 +223,7 @@ export function runInit(options: InitOptions): InitReport {
   writeNew(files.adminPage, t.adminPage(imp(files.adminPage, files.config)));
 
   // The small admin shell is only ours to manage when this tool made it (or the area is new).
-  const adminLayoutSource = t.adminLayout({ href: `/${adminSegments.join('/')}` });
+  const adminLayoutSource = t.adminLayout({ href: adminUrl });
   const adminLayoutIsOurs = exists(files.adminLayout) && read(files.adminLayout) === adminLayoutSource;
   if (!adminRootExisted || adminLayoutIsOurs) {
     writeNew(files.adminLayout, adminLayoutSource);
@@ -284,7 +290,7 @@ export function runInit(options: InitOptions): InitReport {
   if (middleware) {
     manual.push(
       `${rel(middleware)} exists. If it redirects visitors (login wall, locale), let the CMS preview through: ` +
-        `import { isCmsPreviewRequest } from '${LIB}/next' and skip the redirect when isCmsPreviewRequest(request, { studioPath: '/${adminSegments.join('/')}' }).`
+        `import { isCmsPreviewRequest } from '${LIB}/next' and skip the redirect when isCmsPreviewRequest(request, { studioPath: '${adminUrl}' }).`
     );
   }
 
@@ -318,7 +324,7 @@ export function runInit(options: InitOptions): InitReport {
   }
   if (adminRootExisted && !adminLayoutIsOurs) {
     manual.push(
-      `Add the CMS button to your admin menu:  <CmsNavButton href="/${adminSegments.join('/')}" />  (from '${LIB}/admin'; pass as={Link} for client-side navigation), or any plain link.`
+      `Add the CMS button to your admin menu:  <CmsNavButton href="${adminUrl}" />  (from '${LIB}/admin'; pass as={Link} for client-side navigation), or any plain link.`
     );
   }
   if (!options.example) {
@@ -331,7 +337,7 @@ export function runInit(options: InitOptions): InitReport {
     manual,
     installed,
     installCommand,
-    adminUrl: `/${adminSegments.join('/')}`,
+    adminUrl,
     exampleUrl: options.example ? '/cms-example' : null,
     packageManager,
     backend: options.backend,
