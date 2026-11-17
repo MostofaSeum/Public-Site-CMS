@@ -86,6 +86,21 @@ It also installs `lucide-react` and `react-hot-toast` if they are missing, using
 
 It is safe to run again. It never overwrites a file you already have (use `--force` to replace), and a second run changes nothing. Under `src/`, files go under `src/`.
 
+**Using Django as the backend?** One command sets up both sides. Point it at the folder that contains `manage.py`:
+
+```bash
+npx visual-cms init --django-dir ../backend --frontend-origin http://localhost:3000
+```
+
+Besides the Next.js files above, this installs `django-visual-cms` into your Django project's virtual environment (found as `venv`, `.venv` or `env` next to or inside that folder, otherwise the `python` on your PATH), then edits `settings.py` and `urls.py` and runs the migration. Details are in [section 6](#using-django). Add `--dry-run` first to see everything it would change.
+
+**Add pages later** with one command, and check your setup at any time:
+
+```bash
+npx visual-cms add-page about          # content/about.json, a view, app/about/page.tsx, and the config entry
+npx visual-cms doctor                  # checks Tailwind, the config, the provider, and the Django API (CORS included)
+```
+
 ### Step 4. Open the CMS
 
 ```bash
@@ -420,23 +435,39 @@ Storage keeps only **overrides**: a section nobody edited is not stored and show
 
 ### Using Django
 
-Django keeps the content in its database and uses your Django logins. Two parts:
+Django keeps the content in its database and uses your Django logins.
 
-**1. The Django package** (from the library folder):
+#### The one-command way (recommended)
+
+```bash
+npx visual-cms init --django-dir <folder with manage.py> --frontend-origin http://localhost:3000
+```
+
+Use `--api-url` if Django is not at `http://localhost:8000/api/cms`. For the Django side the command does exactly this, and prints each step:
+
+| Step | File |
+|---|---|
+| installs `django-visual-cms` (from the copy inside the library package) and `django-cors-headers` | your Django virtual environment |
+| adds `"visual_cms"` and `"corsheaders"` to `INSTALLED_APPS` | `settings.py` |
+| adds `"corsheaders.middleware.CorsMiddleware"` as the first `MIDDLEWARE` entry | `settings.py` |
+| adds your frontend origin to `CSRF_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS`, sets `CORS_ALLOW_CREDENTIALS = True` | `settings.py` |
+| adds `path("api/cms/", include("visual_cms.urls"))` (and imports `include`) | root `urls.py` |
+| runs `python manage.py migrate visual_cms` | database |
+
+A copy of each edited file is saved next to it as `*.visual-cms.bak`. Running the command again changes nothing. If a file has an unusual shape (for example `INSTALLED_APPS` built by code), that step is skipped and the exact lines to add are printed under "Still to do by hand". `django-cors-headers` is needed because the Next.js site and Django run on different ports; if the frontend reaches Django through the same origin (a reverse proxy or a Next.js rewrite), pass `--no-cors` to the Django helper (see below) to skip it.
+
+You can also run the Django part on its own, without the Next.js part:
 
 ```bash
 pip install "<LIB>/django-visual-cms"
+python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
-In `settings.py` add `"visual_cms"` to `INSTALLED_APPS`. In the root `urls.py` add `path("api/cms/", include("visual_cms.urls"))`. Then run `python manage.py migrate`. By default any logged-in staff user can edit. Details, settings and CORS: [django-visual-cms/README.md](django-visual-cms/README.md).
+Then create the editor login: any Django user with **staff** status can edit (`python manage.py createsuperuser` makes one). Editors log in at your Django admin first; the CMS uses that session.
 
-**2. The frontend:**
+#### By hand
 
-```bash
-npx visual-cms init --backend django --api-url https://api.example.com/api/cms
-```
-
-This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "<LIB>/django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -478,6 +509,8 @@ interface CmsStorageAdapter {
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| anything does not work | many possible causes | run `npx visual-cms doctor`: it checks the common ones and says what to fix |
+| Django: "Failed to save section changes" | you are not logged in to Django as a **staff** user (401), or the CSRF origin is missing (403) | log in at the Django admin (same host name as the site, for example `localhost` not `127.0.0.1`); check `CSRF_TRUSTED_ORIGINS` contains your site's origin |
 | `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install "<LIB>/brainicon-visual-cms-<version>.tgz"` in the project root, then retry |
 | "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from installing the folder instead of the `.tgz` | remove `node_modules/@brainicon`, install the `.tgz` ([section 9](#9-updating-the-local-library)) |
 | the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/visual-cms/dist";` below `@import "tailwindcss";` |
@@ -504,6 +537,8 @@ interface CmsStorageAdapter {
 |---|---|
 | `--backend files\|django` | where content is stored (default `files`) |
 | `--api-url <url>` | Django API base URL (default `http://localhost:8000/api/cms`) |
+| `--django-dir <path>` | your Django project (folder with `manage.py`, or the folder above it). Also sets up Django: package, settings, urls, CORS, migration. Implies `--backend django` |
+| `--frontend-origin <url>` | where this Next.js site runs, allowed by Django (default `http://localhost:3000`) |
 | `--admin-path <path>` | folder of the CMS screen under `app/` (default `admin/cms`). Route groups are allowed: `"(admin)/dashboard/cms"` |
 | `--no-example` | skip the example page |
 | `--no-install` | do not install dependencies |
@@ -512,6 +547,23 @@ interface CmsStorageAdapter {
 | `-y, --yes` | accept defaults, ask nothing |
 | `--cwd <dir>` | project folder (default: current folder) |
 | `-h, --help`, `-v, --version` | help, version |
+
+### `visual-cms add-page <key>`
+
+Creates an editable page in one step: `content/<key>.json` (default text, one object per section), `components/<Name>View.tsx` (with a `<CmsSection>` per section), `app/<route>/page.tsx` (server page that loads saved content), and registers the page in `cms.config.ts`. It refuses to overwrite existing files.
+
+| Option | Meaning |
+|---|---|
+| `--title <text>` | name shown in the CMS (default: made from the key) |
+| `--route <path>` | public URL (default `/<key>`; nested routes like `/company/team` work) |
+| `--sections <a,b,c>` | section keys (default `hero,content`) |
+| `--dry-run` | show what would be created |
+
+Afterwards, replace the placeholder markup in the generated view with your own design (keep the `<CmsSection>` wrappers), and put real default text in the JSON file.
+
+### `visual-cms doctor`
+
+Checks the setup and says exactly what to fix: Next.js and the packages, Tailwind v4 and the `@source` line, `cms.config.ts`, the provider, the CMS screen, and (for Django) whether the API answers, whether Django allows your origin with cookies (CORS), and whether saving is allowed by the preflight. It exits with an error code when something is wrong, so it also works in CI. Options: `--api-url <url>` (check another Django URL), `--frontend-origin <url>`. It cannot tell whether you are logged in to Django; if saving still fails with "Failed to save", log in at the Django admin as a staff user.
 
 `init` supports the Next.js App Router with TypeScript and Tailwind v4. It stops with a clear message for the Pages Router and JavaScript-only projects, and leaves a manual step for Tailwind v3. It was tested with npm; pnpm, yarn and bun are detected from the lockfile but were not tested.
 

@@ -156,7 +156,7 @@ def patch_middleware(text: str, entry: str = "corsheaders.middleware.CorsMiddlew
 
 
 def _pip_install(package: str) -> bool:
-    result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", package], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", package], capture_output=True, text=True)
     return result.returncode == 0
 
 

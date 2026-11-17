@@ -85,7 +85,7 @@ export function runDjangoSetup(opts: { djangoDir: string; frontendOrigin: string
   if (opts.dryRun) {
     env = { ...process.env, PYTHONPATH: [pkgDir, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter) };
   } else {
-    const install = run(['-m', 'pip', 'install', '--quiet', pkgDir]);
+    const install = run(['-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', pkgDir]);
     if (install.status !== 0) {
       return { ok: false, python: command, venv, problem: `pip could not install django-visual-cms from ${pkgDir}.` };
     }
