@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { findDjangoProject } from './django';
 import type { InitOptions } from './init';
 
 /** Asks one question and returns the typed answer (empty string for just pressing Enter). */
@@ -21,6 +23,13 @@ export async function askMissingOptions(options: InitOptions, given: Set<string>
   if (next.backend === 'django' && !given.has('api-url')) {
     const answer = (await ask(`Django API URL [${next.apiUrl}] `)).trim();
     if (answer) next.apiUrl = answer;
+  }
+  if (next.backend === 'django' && !given.has('django-dir')) {
+    const detected = findDjangoProject(path.dirname(path.resolve(next.cwd)))?.dir ?? null;
+    const hint = detected ? `[${detected}]` : '[skip]';
+    const answer = (await ask(`Django project folder (has manage.py). The CMS can set Django up for you ${hint} `)).trim();
+    if (answer && !['skip', 'n', 'no'].includes(answer.toLowerCase())) next.djangoDir = answer;
+    else if (!answer && detected) next.djangoDir = detected;
   }
   if (!given.has('admin-path')) {
     const answer = (await ask(`Route for the CMS screen [${next.adminPath}] `)).trim();

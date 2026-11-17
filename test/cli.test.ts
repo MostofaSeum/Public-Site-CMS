@@ -10,6 +10,7 @@ import {
   importSpecifier,
   wrapLayoutWithProviders,
 } from '../src/cli/edit';
+import { findDjangoProject, findPython } from '../src/cli/django';
 import { CliError, runInit, type InitOptions } from '../src/cli/init';
 import { askMissingOptions } from '../src/cli/prompts';
 
@@ -265,6 +266,14 @@ describe('runInit', () => {
     expect(report.exampleUrl).toBeNull();
   });
 
+  it('rejects --django-dir without the Django backend or without a manage.py, before writing anything', () => {
+    makeProject(dir);
+    const before = snapshot();
+    expect(() => runInit(options({ backend: 'files', djangoDir: dir }))).toThrow(/--backend django/);
+    expect(() => runInit(options({ backend: 'django', djangoDir: path.join(dir, 'nope') }))).toThrow(/No Django project found/);
+    expect(snapshot()).toEqual(before);
+  });
+
   it('keeps an existing admin area and tells the developer to add the button', () => {
     const appDir = makeProject(dir);
     fs.mkdirSync(path.join(appDir, 'admin'));
@@ -347,6 +356,45 @@ describe('runInit', () => {
   });
 });
 
+describe('findDjangoProject / findPython', () => {
+  let root: string;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-dj-'));
+  });
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('finds manage.py in the folder itself or one folder down, ignoring venv and node_modules', () => {
+    fs.mkdirSync(path.join(root, 'backend'));
+    fs.writeFileSync(path.join(root, 'backend', 'manage.py'), '');
+    fs.mkdirSync(path.join(root, 'venv', 'Lib', 'site-packages', 'x'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'venv', 'Lib', 'site-packages', 'x', 'manage.py'), '');
+    expect(findDjangoProject(root)?.dir).toBe(path.join(root, 'backend'));
+    expect(findDjangoProject(path.join(root, 'backend'))?.dir).toBe(path.join(root, 'backend'));
+  });
+
+  it('refuses to guess when several projects or none are found', () => {
+    expect(findDjangoProject(root)).toBeNull();
+    for (const name of ['a', 'b']) {
+      fs.mkdirSync(path.join(root, name));
+      fs.writeFileSync(path.join(root, name, 'manage.py'), '');
+    }
+    expect(findDjangoProject(root)).toBeNull();
+  });
+
+  it('prefers the virtual environment next to the project', () => {
+    fs.mkdirSync(path.join(root, 'backend'));
+    const bin = process.platform === 'win32' ? path.join('Scripts', 'python.exe') : path.join('bin', 'python');
+    fs.mkdirSync(path.join(root, 'venv', path.dirname(bin)), { recursive: true });
+    fs.writeFileSync(path.join(root, 'venv', bin), '');
+    const found = findPython(path.join(root, 'backend'));
+    expect(found.venv).toBe(true);
+    expect(found.command).toBe(path.join(root, 'venv', bin));
+    expect(findPython(fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-none-'))).venv).toBe(false);
+  });
+});
+
 describe('askMissingOptions', () => {
   const base: InitOptions = {
     cwd: '.',
@@ -374,7 +422,7 @@ describe('askMissingOptions', () => {
   });
 
   it('asks for the Django URL only after choosing Django, and applies every answer', async () => {
-    const { ask, asked } = scripted(['2', 'https://api.example.com/api/cms', 'dashboard/site', 'n']);
+    const { ask, asked } = scripted(['2', 'https://api.example.com/api/cms', 'skip', 'dashboard/site', 'n']);
     const result = await askMissingOptions(base, new Set(), ask);
     expect(result).toMatchObject({
       backend: 'django',
@@ -382,12 +430,19 @@ describe('askMissingOptions', () => {
       adminPath: 'dashboard/site',
       example: false,
     });
-    expect(asked).toHaveLength(4);
+    expect(result.djangoDir).toBeUndefined();
+    expect(asked).toHaveLength(5);
+  });
+
+  it('takes the Django folder the user types', async () => {
+    const { ask } = scripted(['2', '', '../backend', '', '']);
+    const result = await askMissingOptions(base, new Set(), ask);
+    expect(result.djangoDir).toBe('../backend');
   });
 
   it('never asks about options that were passed as flags', async () => {
     const { ask, asked } = scripted([]);
-    const given = new Set(['backend', 'api-url', 'admin-path', 'no-example']);
+    const given = new Set(['backend', 'api-url', 'django-dir', 'admin-path', 'no-example']);
     const flagged = { ...base, backend: 'django' as const, example: false };
     expect(await askMissingOptions(flagged, given, ask)).toEqual(flagged);
     expect(asked).toEqual([]);

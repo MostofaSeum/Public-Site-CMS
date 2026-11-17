@@ -9,6 +9,7 @@ import {
   wrapLayoutWithProviders,
   type AliasInfo,
 } from './edit';
+import { findDjangoProject, runDjangoSetup } from './django';
 import * as t from './templates';
 import type { Backend } from './templates';
 
@@ -27,6 +28,10 @@ export interface InitOptions {
   dryRun: boolean;
   /** Overwrite existing files that differ. */
   force: boolean;
+  /** Django project folder (the one with manage.py). When set, the Django side is set up too. */
+  djangoDir?: string | null;
+  /** Origin the Next.js site runs on, allowed by Django (default http://localhost:3000). */
+  frontendOrigin?: string;
 }
 
 export type ActionKind = 'created' | 'modified' | 'overwritten' | 'unchanged' | 'skipped';
@@ -142,6 +147,19 @@ export function runInit(options: InitOptions): InitReport {
   const twVersion = deps.tailwindcss?.match(/\d+/)?.[0];
   if (!twVersion) warnings.push('Tailwind CSS is not installed. The CMS screens are styled with Tailwind v4.');
   else if (Number(twVersion) < 4) warnings.push(`Tailwind CSS v${twVersion} found. The CMS screens need Tailwind v4.`);
+
+  // Validate the Django folder before anything is written.
+  let djangoDir: string | null = null;
+  if (options.djangoDir) {
+    if (options.backend !== 'django') throw new CliError('--django-dir only makes sense with --backend django.');
+    const project = findDjangoProject(path.resolve(root, options.djangoDir));
+    if (!project) {
+      throw new CliError(
+        `No Django project found at "${options.djangoDir}". Point --django-dir at the folder that contains manage.py (or the folder above it).`
+      );
+    }
+    djangoDir = project.dir;
+  }
 
   const nextMajor = Number(deps.next.match(/\d+/)?.[0] ?? 0);
   if (nextMajor && nextMajor < 14) warnings.push(`Next.js ${deps.next} found. The library supports Next.js 14 and newer.`);
@@ -319,6 +337,15 @@ export function runInit(options: InitOptions): InitReport {
     warnings.push(
       `${rel(files.apiRoute)} only allows editing while running \`next dev\`. Replace its authorize() with a check of your own login before deploying.`
     );
+  } else if (djangoDir) {
+    console.log(`\nSetting up Django in ${djangoDir} ...`);
+    const result = runDjangoSetup({ djangoDir, frontendOrigin: options.frontendOrigin ?? 'http://localhost:3000', dryRun: options.dryRun });
+    if (!result.ok) {
+      warnings.push(`Django setup did not finish: ${result.problem} Do it by hand: see the steps below.`);
+      manual.push(...djangoSteps());
+    } else if (!result.venv && !options.dryRun) {
+      warnings.push(`No virtual environment found next to the Django project, so "${result.python}" from your PATH was used. Check that this is the Python your Django project runs on.`);
+    }
   } else {
     manual.push(...djangoSteps());
   }
@@ -357,7 +384,8 @@ function findGlobalCss(appDir: string, layoutFile: string | null, alias: AliasIn
 
 function djangoSteps(): string[] {
   return [
-    'Set up the Django side (see django-visual-cms/README.md): pip install django-visual-cms, add "visual_cms" to INSTALLED_APPS, ' +
+    'Set up the Django side: run   npx visual-cms init --backend django --django-dir <folder with manage.py>   again, ' +
+      'or by hand (see django-visual-cms/README.md): pip install django-visual-cms, add "visual_cms" to INSTALLED_APPS, ' +
       'add path("api/cms/", include("visual_cms.urls")) to urls.py, then run python manage.py migrate.',
     'If the site and Django run on different domains, configure django-cors-headers and CSRF_TRUSTED_ORIGINS (see django-visual-cms/README.md).',
   ];
