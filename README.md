@@ -16,7 +16,61 @@ Content is stored through a small adapter, so it works with any backend: a JSON 
 - Tailwind CSS v4 in the host app (the components are styled with Tailwind classes)
 - Peer dependencies: `lucide-react`, `react-hot-toast` (and `next` if you use the `/next` helpers)
 
-## Quickstart (Next.js App Router)
+## Quickstart: automatic setup (Next.js App Router, TypeScript)
+
+```bash
+npm install @brainicon/visual-cms
+npx visual-cms init
+```
+
+`init` asks a few questions, then does the one-time library setup for you:
+
+| It creates | |
+|---|---|
+| `cms.config.ts` | the list of editable pages |
+| `lib/cms-storage.ts` and `app/api/cms/[...path]/route.ts` | where edits are saved, and the API the CMS uses (file backend) |
+| `components/CmsProviders.tsx` | the provider |
+| `app/admin/cms/page.tsx` | the CMS screen (plus a small `app/admin/layout.tsx` with the CMS button, only if you have no admin area yet) |
+| `app/cms-example/page.tsx`, `components/CmsExampleView.tsx`, `content/cms-example.json` | an example page that shows how a page becomes editable |
+
+| It edits (small, reviewable changes) | |
+|---|---|
+| `app/layout.tsx` | wraps `{children}` with `<CmsProviders>` |
+| global CSS | adds the Tailwind `@source` line |
+| `.gitignore` | ignores `.cms` and `public/cms-uploads` (file backend) |
+
+It also installs `lucide-react` and `react-hot-toast` if they are missing, using your package manager (npm, pnpm, yarn or bun, detected from your lockfile).
+
+Then run your app and open `/admin/cms`. The "Example page" shows the pencil buttons.
+
+Good to know:
+
+- **Safe to re-run.** It never overwrites a file you already have (use `--force` to replace), and a second run changes nothing.
+- **Preview first:** `npx visual-cms init --dry-run` lists what would happen and writes nothing.
+- **Editing is limited to `next dev` until you add your own login check.** The generated API route's `authorize()` returns true only in development, so nobody can edit a deployed site by accident. Replace it with a check of your own session before deploying.
+- **It does not touch your existing pages.** Making your own pages editable is the part you do yourself (see "Make your pages editable" below), using the example as a pattern.
+- **Your existing admin panel:** if you already have an admin area, `init` leaves your layout alone and tells you to add `<CmsNavButton href="/admin/cms" />` to your menu.
+- **Middleware:** if you have a `middleware.ts` that redirects visitors, it tells you how to let the preview through (see "Redirects and the preview iframe").
+
+Options:
+
+| Option | Meaning |
+|---|---|
+| `--backend files\|django` | Where content is stored (default `files`). `django` uses [`django-visual-cms`](django-visual-cms/README.md) and prints the Django-side steps. |
+| `--api-url <url>` | Django API base URL (default `http://localhost:8000/api/cms`) |
+| `--admin-path <path>` | Route of the CMS screen (default `admin/cms`) |
+| `--no-example` | Skip the example page |
+| `--no-install` | Do not install dependencies |
+| `--dry-run` | Show what would happen, change nothing |
+| `--force` | Overwrite existing files that differ |
+| `-y, --yes` | Accept defaults and ask nothing |
+| `--cwd <dir>` | Project folder (default: current folder) |
+
+Not supported yet: the Pages Router, JavaScript-only projects (no `tsconfig.json`) and Tailwind v3. `init` stops with a clear message, or leaves a manual step, in those cases.
+
+## Quickstart: manual setup (Next.js App Router)
+
+Everything `init` does, step by step. Use this if you prefer to do it by hand, or for a project `init` doesn't support.
 
 ### 1. Install
 
@@ -267,6 +321,7 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 | `@brainicon/visual-cms/admin` | `CmsStudio`, `CmsNavButton` |
 | `@brainicon/visual-cms/adapters` | `restAdapter`, `djangoAdapter`, `memoryAdapter` |
 | `@brainicon/visual-cms/next` | `createCmsRouteHandler`, `fileStorage`, `getPageContent`, `getPageMetadata`, `isCmsPreviewRequest` |
+| `visual-cms` (command) | `visual-cms init`: automatic project setup |
 
 ## Development
 
@@ -275,7 +330,7 @@ npm install
 npm run typecheck
 npm test
 npm run build
-npm pack   # then install the .tgz into examples/next-demo
+npm pack   # then install the .tgz into a Next.js app and run: npx visual-cms init
 ```
 
 ## License

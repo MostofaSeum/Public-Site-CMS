@@ -33,4 +33,14 @@ export default defineConfig([
     },
     banner: { js: '"use client";' },
   },
+  // `visual-cms` command line tool (Node only, no React).
+  {
+    format: ['cjs'],
+    platform: 'node',
+    target: 'node18',
+    clean: false,
+    dts: false,
+    entry: { cli: 'src/cli/index.ts' },
+    banner: { js: '#!/usr/bin/env node' },
+  },
 ]);

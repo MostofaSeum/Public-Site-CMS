@@ -216,8 +216,11 @@ export function runInit(options: InitOptions): InitReport {
   writeNew(files.providers, t.providers(imp(files.providers, files.config)));
   writeNew(files.adminPage, t.adminPage(imp(files.adminPage, files.config)));
 
-  if (!adminRootExisted) {
-    writeNew(files.adminLayout, t.adminLayout({ href: `/${adminSegments.join('/')}` }));
+  // The small admin shell is only ours to manage when this tool made it (or the area is new).
+  const adminLayoutSource = t.adminLayout({ href: `/${adminSegments.join('/')}` });
+  const adminLayoutIsOurs = exists(files.adminLayout) && read(files.adminLayout) === adminLayoutSource;
+  if (!adminRootExisted || adminLayoutIsOurs) {
+    writeNew(files.adminLayout, adminLayoutSource);
   }
 
   if (options.example) {
@@ -313,7 +316,7 @@ export function runInit(options: InitOptions): InitReport {
   } else {
     manual.push(...djangoSteps());
   }
-  if (adminRootExisted) {
+  if (adminRootExisted && !adminLayoutIsOurs) {
     manual.push(
       `Add the CMS button to your admin menu:  <CmsNavButton href="/${adminSegments.join('/')}" />  (from '${LIB}/admin'; pass as={Link} for client-side navigation), or any plain link.`
     );
