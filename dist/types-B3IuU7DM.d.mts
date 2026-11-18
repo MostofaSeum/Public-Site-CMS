@@ -130,7 +130,7 @@ interface CmsConfig {
     imagePresetCategories?: ImagePresetCategory[];
     widgets?: CmsWidgets;
 }
-/** Section metadata listed by the form studio. */
+/** Metadata about a section that has a saved record (see listManagedSections). */
 interface SectionMetadata {
     page: string;
     sectionKey: string;

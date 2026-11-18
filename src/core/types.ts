@@ -143,7 +143,7 @@ export interface CmsConfig {
   widgets?: CmsWidgets;
 }
 
-/** Section metadata listed by the form studio. */
+/** Metadata about a section that has a saved record (see listManagedSections). */
 export interface SectionMetadata {
   page: string;
   sectionKey: string;

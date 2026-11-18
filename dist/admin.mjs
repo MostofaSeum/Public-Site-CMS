@@ -5,17 +5,16 @@ import {
   PREVIEW_PARAM,
   findPage,
   getSectionDetail,
-  listManagedSections,
   listenForCmsMessages,
   originOf,
   postCmsMessage,
   trustedOrigins
-} from "./chunk-PRSFT74C.mjs";
+} from "./chunk-7UG44WXN.mjs";
 
 // src/admin/CmsStudio.tsx
-import { useState as useState9, useEffect as useEffect8 } from "react";
+import { useState as useState8, useEffect as useEffect7 } from "react";
 import { Toaster } from "react-hot-toast";
-import { Globe, Eye as Eye3, Wand2, Sliders } from "lucide-react";
+import { Globe, Eye as Eye3 } from "lucide-react";
 
 // src/admin/StudioContext.tsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
@@ -2057,266 +2056,45 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   ] });
 };
 
-// src/admin/FormStudio.tsx
-import { useState as useState8, useEffect as useEffect7, useCallback as useCallback2, useMemo as useMemo4 } from "react";
-import { Search as Search3, Layers as Layers2, CheckCircle2 as CheckCircle23, Database } from "lucide-react";
-import toast5 from "react-hot-toast";
-import { jsx as jsx8, jsxs as jsxs7 } from "react/jsx-runtime";
-var FormStudio = ({ activePage, onPageChange }) => {
-  const { config } = useStudio();
-  const adapter = config.adapter;
-  const [sections, setSections] = useState8([]);
-  const [selectedSectionKey, setSelectedSectionKey] = useState8("");
-  const [currentSectionDetail, setCurrentSectionDetail] = useState8(null);
-  const [loadingSections, setLoadingSections] = useState8(true);
-  const [loadingDetail, setLoadingDetail] = useState8(false);
-  const [searchQuery, setSearchQuery] = useState8("");
-  const loadSections = useCallback2(async () => {
-    setLoadingSections(true);
-    try {
-      const records = await adapter.listRecords(void 0, { includeDrafts: true });
-      setSections(listManagedSections(config.pages, records));
-    } catch (err) {
-      console.error(err);
-      toast5.error("Failed to load sections");
-    } finally {
-      setLoadingSections(false);
-    }
-  }, [adapter, config.pages]);
-  useEffect7(() => {
-    loadSections();
-  }, [loadSections]);
-  const pageSections = useMemo4(
-    () => sections.filter((s) => s.page === activePage),
-    [sections, activePage]
-  );
-  const selectedSectionExistsOnPage = pageSections.some((s) => s.sectionKey === selectedSectionKey);
-  useEffect7(() => {
-    if (pageSections.length === 0) return;
-    if (!selectedSectionExistsOnPage) {
-      setSelectedSectionKey(pageSections[0].sectionKey);
-    }
-  }, [pageSections, selectedSectionExistsOnPage]);
-  const loadSectionDetail = useCallback2(
-    async (page, sectionKey) => {
-      const pageDef2 = findPage(config, page);
-      if (!pageDef2 || !sectionKey) return;
-      setLoadingDetail(true);
-      try {
-        const record = await adapter.getRecord(page, sectionKey, { includeDrafts: true });
-        setCurrentSectionDetail(getSectionDetail(pageDef2, sectionKey, record));
-      } catch (err) {
-        console.error(err);
-        toast5.error(`Failed to load content for '${sectionKey}'`);
-      } finally {
-        setLoadingDetail(false);
-      }
-    },
-    [adapter, config]
-  );
-  useEffect7(() => {
-    if (!selectedSectionKey || !selectedSectionExistsOnPage) return;
-    loadSectionDetail(activePage, selectedSectionKey);
-  }, [activePage, selectedSectionKey, selectedSectionExistsOnPage, loadSectionDetail]);
-  const handleSaveSection = async (content, isPublished) => {
-    await adapter.saveRecord({ page: activePage, sectionKey: selectedSectionKey, content, isPublished });
-    await loadSections();
-    await loadSectionDetail(activePage, selectedSectionKey);
-  };
-  const handleResetSection = async () => {
-    await adapter.deleteRecord(activePage, selectedSectionKey);
-    await loadSections();
-    await loadSectionDetail(activePage, selectedSectionKey);
-  };
-  const pageDef = findPage(config, activePage);
-  const labelFor = (key) => pageDef?.sections.find((s) => s.key === key)?.label || key.replace(/([A-Z])/g, " $1");
-  const filteredSections = pageSections.filter((s) => {
-    const q = searchQuery.toLowerCase();
-    return s.sectionKey.toLowerCase().includes(q) || labelFor(s.sectionKey).toLowerCase().includes(q);
-  });
-  const totalSectionsCount = sections.length;
-  const customOverridesCount = sections.filter((s) => s.hasCustomOverride).length;
-  const selectedSectionDef = pageDef?.sections.find((s) => s.key === selectedSectionKey);
-  return /* @__PURE__ */ jsxs7("div", { className: "space-y-6", children: [
-    /* @__PURE__ */ jsxs7("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4", children: [
-      /* @__PURE__ */ jsxs7("div", { className: "p-4 rounded-2xl bg-slate-900/70 border border-purple-500/20 flex items-center gap-4", children: [
-        /* @__PURE__ */ jsx8("div", { className: "p-3 rounded-xl bg-purple-500/10 text-purple-400", children: /* @__PURE__ */ jsx8(Layers2, { className: "w-5 h-5" }) }),
-        /* @__PURE__ */ jsxs7("div", { children: [
-          /* @__PURE__ */ jsx8("div", { className: "text-2xl font-black", children: totalSectionsCount }),
-          /* @__PURE__ */ jsx8("div", { className: "text-xs text-slate-400", children: "Total Editable Sections" })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs7("div", { className: "p-4 rounded-2xl bg-slate-900/70 border border-purple-500/20 flex items-center gap-4", children: [
-        /* @__PURE__ */ jsx8("div", { className: "p-3 rounded-xl bg-emerald-500/10 text-emerald-400", children: /* @__PURE__ */ jsx8(CheckCircle23, { className: "w-5 h-5" }) }),
-        /* @__PURE__ */ jsxs7("div", { children: [
-          /* @__PURE__ */ jsx8("div", { className: "text-2xl font-black text-emerald-400", children: customOverridesCount }),
-          /* @__PURE__ */ jsx8("div", { className: "text-xs text-slate-400", children: "Custom Overrides" })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs7("div", { className: "p-4 rounded-2xl bg-slate-900/70 border border-purple-500/20 flex items-center gap-4", children: [
-        /* @__PURE__ */ jsx8("div", { className: "p-3 rounded-xl bg-blue-500/10 text-blue-400", children: /* @__PURE__ */ jsx8(Database, { className: "w-5 h-5" }) }),
-        /* @__PURE__ */ jsxs7("div", { children: [
-          /* @__PURE__ */ jsx8("div", { className: "text-2xl font-black text-blue-300", children: totalSectionsCount - customOverridesCount }),
-          /* @__PURE__ */ jsx8("div", { className: "text-xs text-slate-400", children: "Using Defaults" })
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx8("div", { className: "flex items-center gap-2 border-b border-purple-500/20 pb-2 overflow-x-auto", children: config.pages.map(({ key, title, route, icon: Icon }) => {
-      const isActive = activePage === key;
-      const count = sections.filter((s) => s.page === key).length;
-      return /* @__PURE__ */ jsxs7(
-        "button",
-        {
-          type: "button",
-          onClick: () => onPageChange(key),
-          className: `flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap transition-all ${isActive ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30" : "text-slate-400 hover:text-white hover:bg-slate-800/80"}`,
-          children: [
-            Icon && /* @__PURE__ */ jsx8(Icon, { className: "w-4 h-4" }),
-            /* @__PURE__ */ jsx8("span", { children: title }),
-            /* @__PURE__ */ jsx8("span", { className: "text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/30 text-purple-200", children: route }),
-            /* @__PURE__ */ jsx8("span", { className: `text-[10px] px-1.5 py-0.5 rounded-full font-mono ${isActive ? "bg-purple-700 text-white" : "bg-slate-800 text-slate-400"}`, children: count })
-          ]
-        },
-        key
-      );
-    }) }),
-    /* @__PURE__ */ jsxs7("div", { className: "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start", children: [
-      /* @__PURE__ */ jsxs7("div", { className: "lg:col-span-4 bg-slate-900/70 border border-purple-500/20 rounded-2xl p-4 backdrop-blur-sm space-y-4", children: [
-        /* @__PURE__ */ jsxs7("div", { className: "relative", children: [
-          /* @__PURE__ */ jsx8(Search3, { className: "w-4 h-4 absolute left-3 top-3 text-slate-400" }),
-          /* @__PURE__ */ jsx8(
-            "input",
-            {
-              type: "text",
-              placeholder: "Search sections...",
-              value: searchQuery,
-              onChange: (e) => setSearchQuery(e.target.value),
-              className: "w-full text-xs pl-9 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsx8("div", { className: "space-y-1.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1.5 custom-scrollbar", children: loadingSections ? /* @__PURE__ */ jsx8("div", { className: "p-4 text-center text-xs text-slate-500", children: "Loading sections..." }) : filteredSections.length === 0 ? /* @__PURE__ */ jsx8("div", { className: "p-4 text-center text-xs text-slate-500", children: "No matching sections found." }) : filteredSections.map((sec) => {
-          const isSelected = sec.sectionKey === selectedSectionKey;
-          return /* @__PURE__ */ jsxs7(
-            "button",
-            {
-              type: "button",
-              onClick: () => setSelectedSectionKey(sec.sectionKey),
-              className: `w-full flex items-center justify-between p-3 rounded-xl text-left transition-all ${isSelected ? "bg-purple-600/30 border border-purple-500 text-white shadow-sm" : "bg-slate-950/40 hover:bg-slate-800/60 border border-slate-800/60 text-slate-300"}`,
-              children: [
-                /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-2.5", children: [
-                  /* @__PURE__ */ jsx8(
-                    "span",
-                    {
-                      className: `w-2 h-2 rounded-full shrink-0 ${sec.hasCustomOverride ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-slate-600"}`
-                    }
-                  ),
-                  /* @__PURE__ */ jsxs7("div", { children: [
-                    /* @__PURE__ */ jsx8("div", { className: "text-xs font-semibold capitalize", children: labelFor(sec.sectionKey) }),
-                    /* @__PURE__ */ jsxs7("div", { className: "text-[10px] text-slate-500 font-mono", children: [
-                      "key: ",
-                      sec.sectionKey
-                    ] })
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsx8("div", { children: sec.hasCustomOverride ? /* @__PURE__ */ jsx8("span", { className: "text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-medium", children: "Custom" }) : /* @__PURE__ */ jsx8("span", { className: "text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400", children: "Default" }) })
-              ]
-            },
-            sec.sectionKey
-          );
-        }) })
-      ] }),
-      /* @__PURE__ */ jsx8("div", { className: "lg:col-span-8", children: loadingDetail ? /* @__PURE__ */ jsx8("div", { className: "p-12 text-center text-sm text-slate-400 bg-slate-900/60 rounded-2xl border border-purple-500/20", children: "Loading section data..." }) : currentSectionDetail ? /* @__PURE__ */ jsx8(
-        SectionEditorForm,
-        {
-          page: activePage,
-          sectionKey: selectedSectionKey,
-          sectionLabel: selectedSectionDef?.label,
-          pagePath: pageDef?.route || "/",
-          transform: selectedSectionDef?.transform,
-          initialData: currentSectionDetail.content,
-          hasCustomOverride: currentSectionDetail.hasCustomOverride,
-          isPublished: currentSectionDetail.isPublished,
-          updatedAt: currentSectionDetail.updatedAt,
-          updatedBy: currentSectionDetail.updatedBy,
-          onSave: handleSaveSection,
-          onReset: handleResetSection
-        },
-        `${activePage}-${selectedSectionKey}`
-      ) : /* @__PURE__ */ jsx8("div", { className: "p-12 text-center text-sm text-slate-400 bg-slate-900/60 rounded-2xl border border-purple-500/20", children: "Select a section from the list to begin editing." }) })
-    ] })
-  ] });
-};
-
 // src/admin/CmsStudio.tsx
-import { jsx as jsx9, jsxs as jsxs8 } from "react/jsx-runtime";
-function StudioContent({ config, initialPage, onPageChange, defaultMode = "canvas" }) {
+import { jsx as jsx8, jsxs as jsxs7 } from "react/jsx-runtime";
+function StudioContent({ config, initialPage, onPageChange }) {
   const firstPage = config.pages[0]?.key ?? "";
-  const [activePage, setActivePage] = useState9(
+  const [activePage, setActivePage] = useState8(
     initialPage && findPage(config, initialPage) ? initialPage : firstPage
   );
-  const [isGlobalPreviewOpen, setIsGlobalPreviewOpen] = useState9(false);
-  const [editorMode, setEditorMode] = useState9(defaultMode);
-  useEffect8(() => {
+  const [isGlobalPreviewOpen, setIsGlobalPreviewOpen] = useState8(false);
+  useEffect7(() => {
     if (initialPage && findPage(config, initialPage)) setActivePage(initialPage);
   }, [initialPage, config]);
   const changePage = (page) => {
     setActivePage(page);
     if (onPageChange) onPageChange(page);
   };
-  return /* @__PURE__ */ jsxs8("div", { className: `p-4 sm:p-6 lg:p-8 space-y-6 text-white mx-auto ${editorMode === "canvas" ? "max-w-[1920px]" : "max-w-7xl"}`, children: [
-    /* @__PURE__ */ jsxs8("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center gap-4", children: [
-      /* @__PURE__ */ jsxs8("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ jsx9("div", { className: "p-2.5 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-400", children: /* @__PURE__ */ jsx9(Globe, { className: "w-6 h-6" }) }),
-        /* @__PURE__ */ jsxs8("div", { children: [
-          /* @__PURE__ */ jsx9("h1", { className: "text-2xl sm:text-3xl font-extrabold tracking-tight text-white", children: config.title || "Site CMS" }),
-          /* @__PURE__ */ jsx9("p", { className: "text-xs sm:text-sm text-slate-400 mt-1", children: "Live content editor for your public pages." })
+  return /* @__PURE__ */ jsxs7("div", { className: "p-4 sm:p-6 lg:p-8 space-y-6 text-white mx-auto max-w-[1920px]", children: [
+    /* @__PURE__ */ jsxs7("div", { className: "flex flex-col md:flex-row justify-between items-start md:items-center gap-4", children: [
+      /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ jsx8("div", { className: "p-2.5 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-400", children: /* @__PURE__ */ jsx8(Globe, { className: "w-6 h-6" }) }),
+        /* @__PURE__ */ jsxs7("div", { children: [
+          /* @__PURE__ */ jsx8("h1", { className: "text-2xl sm:text-3xl font-extrabold tracking-tight text-white", children: config.title || "Site CMS" }),
+          /* @__PURE__ */ jsx8("p", { className: "text-xs sm:text-sm text-slate-400 mt-1", children: "Hover over any section in the live preview, or select one from the editor panel." })
         ] })
       ] }),
-      /* @__PURE__ */ jsx9("div", { className: "flex items-center gap-3", children: /* @__PURE__ */ jsxs8(
+      /* @__PURE__ */ jsx8("div", { className: "flex items-center gap-3", children: /* @__PURE__ */ jsxs7(
         "button",
         {
           type: "button",
           onClick: () => setIsGlobalPreviewOpen(true),
           className: "flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/30 transition-all",
           children: [
-            /* @__PURE__ */ jsx9(Eye3, { className: "w-4 h-4" }),
-            /* @__PURE__ */ jsx9("span", { children: "Launch Live Preview" })
+            /* @__PURE__ */ jsx8(Eye3, { className: "w-4 h-4" }),
+            /* @__PURE__ */ jsx8("span", { children: "Launch Live Preview" })
           ]
         }
       ) })
     ] }),
-    /* @__PURE__ */ jsxs8("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 bg-slate-900/90 border border-purple-500/25 rounded-2xl shadow-xl", children: [
-      /* @__PURE__ */ jsxs8("div", { className: "flex items-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-xl", children: [
-        /* @__PURE__ */ jsxs8(
-          "button",
-          {
-            type: "button",
-            onClick: () => setEditorMode("canvas"),
-            className: `flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${editorMode === "canvas" ? "bg-purple-600 text-white shadow-md shadow-purple-900/50" : "text-slate-400 hover:text-white"}`,
-            children: [
-              /* @__PURE__ */ jsx9(Wand2, { className: "w-4 h-4 text-purple-300" }),
-              /* @__PURE__ */ jsx9("span", { children: "Visual Interactive Canvas" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxs8(
-          "button",
-          {
-            type: "button",
-            onClick: () => setEditorMode("form"),
-            className: `flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${editorMode === "form" ? "bg-purple-600 text-white shadow-md shadow-purple-900/50" : "text-slate-400 hover:text-white"}`,
-            children: [
-              /* @__PURE__ */ jsx9(Sliders, { className: "w-4 h-4 text-purple-300" }),
-              /* @__PURE__ */ jsx9("span", { children: "Form Studio" })
-            ]
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsx9("p", { className: "text-xs text-slate-400 px-2 hidden md:block", children: editorMode === "canvas" ? "Hover over any section in the live preview or select from the editor panel." : "Pick a section from the list and edit its fields." })
-    ] }),
-    editorMode === "canvas" ? /* @__PURE__ */ jsx9(CanvasEditor, { initialPage: activePage, onPageChange: changePage }) : /* @__PURE__ */ jsx9(FormStudio, { activePage, onPageChange: changePage }),
-    /* @__PURE__ */ jsx9(
+    /* @__PURE__ */ jsx8(CanvasEditor, { initialPage: activePage, onPageChange: changePage }),
+    /* @__PURE__ */ jsx8(
       LivePreviewModal,
       {
         isOpen: isGlobalPreviewOpen,
@@ -2328,15 +2106,15 @@ function StudioContent({ config, initialPage, onPageChange, defaultMode = "canva
 }
 var CmsStudio = (props) => {
   const { config, toaster = true } = props;
-  return /* @__PURE__ */ jsxs8(StudioProvider, { config, children: [
-    /* @__PURE__ */ jsx9("div", { className: "min-h-full bg-slate-950", children: /* @__PURE__ */ jsx9(StudioContent, { ...props }) }),
-    toaster && /* @__PURE__ */ jsx9(Toaster, { position: "top-right" })
+  return /* @__PURE__ */ jsxs7(StudioProvider, { config, children: [
+    /* @__PURE__ */ jsx8("div", { className: "min-h-full bg-slate-950", children: /* @__PURE__ */ jsx8(StudioContent, { ...props }) }),
+    toaster && /* @__PURE__ */ jsx8(Toaster, { position: "top-right" })
   ] });
 };
 
 // src/admin/CmsNavButton.tsx
 import { Globe as Globe2 } from "lucide-react";
-import { jsx as jsx10, jsxs as jsxs9 } from "react/jsx-runtime";
+import { jsx as jsx9, jsxs as jsxs8 } from "react/jsx-runtime";
 var CmsNavButton = ({
   href,
   active = false,
@@ -2344,7 +2122,7 @@ var CmsNavButton = ({
   as: Component = "a",
   className,
   ...rest
-}) => /* @__PURE__ */ jsxs9(
+}) => /* @__PURE__ */ jsxs8(
   Component,
   {
     href,
@@ -2352,24 +2130,24 @@ var CmsNavButton = ({
     className: className ?? `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${active ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30" : "text-slate-400 hover:text-white hover:bg-slate-800/80"}`,
     ...rest,
     children: [
-      /* @__PURE__ */ jsx10(Globe2, { className: "w-5 h-5" }),
-      /* @__PURE__ */ jsx10("span", { children: label })
+      /* @__PURE__ */ jsx9(Globe2, { className: "w-5 h-5" }),
+      /* @__PURE__ */ jsx9("span", { children: label })
     ]
   }
 );
 
 // src/admin/CmsAuth.tsx
-import { useCallback as useCallback3, useEffect as useEffect9, useState as useState10 } from "react";
+import { useCallback as useCallback2, useEffect as useEffect8, useState as useState9 } from "react";
 import { Loader2 as Loader23, Lock as Lock2, LogOut } from "lucide-react";
-import { Fragment as Fragment4, jsx as jsx11, jsxs as jsxs10 } from "react/jsx-runtime";
+import { Fragment as Fragment4, jsx as jsx10, jsxs as jsxs9 } from "react/jsx-runtime";
 function safeNext(value) {
   return value && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\") ? value : null;
 }
 var CmsLogin = ({ auth, title = "Sign in to edit your site", onSuccess, redirectTo = "/" }) => {
-  const [username, setUsername] = useState10("");
-  const [password, setPassword] = useState10("");
-  const [error, setError] = useState10("");
-  const [busy, setBusy] = useState10(false);
+  const [username, setUsername] = useState9("");
+  const [password, setPassword] = useState9("");
+  const [error, setError] = useState9("");
+  const [busy, setBusy] = useState9(false);
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
@@ -2386,29 +2164,29 @@ var CmsLogin = ({ auth, title = "Sign in to edit your site", onSuccess, redirect
     }
   };
   const field = "w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30";
-  return /* @__PURE__ */ jsx11("div", { className: "flex min-h-[70vh] items-center justify-center px-4 py-10 text-white", children: /* @__PURE__ */ jsxs10("form", { onSubmit: submit, className: "w-full max-w-sm space-y-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-2xl", children: [
-    /* @__PURE__ */ jsxs10("div", { className: "flex flex-col items-center gap-3 text-center", children: [
-      /* @__PURE__ */ jsx11("div", { className: "rounded-xl border border-purple-500/30 bg-purple-600/20 p-3 text-purple-400", children: /* @__PURE__ */ jsx11(Lock2, { className: "h-6 w-6" }) }),
-      /* @__PURE__ */ jsx11("h1", { className: "text-xl font-bold", children: title }),
-      /* @__PURE__ */ jsx11("p", { className: "text-xs text-slate-400", children: "Use your staff username and password." })
+  return /* @__PURE__ */ jsx10("div", { className: "flex min-h-[70vh] items-center justify-center px-4 py-10 text-white", children: /* @__PURE__ */ jsxs9("form", { onSubmit: submit, className: "w-full max-w-sm space-y-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-2xl", children: [
+    /* @__PURE__ */ jsxs9("div", { className: "flex flex-col items-center gap-3 text-center", children: [
+      /* @__PURE__ */ jsx10("div", { className: "rounded-xl border border-purple-500/30 bg-purple-600/20 p-3 text-purple-400", children: /* @__PURE__ */ jsx10(Lock2, { className: "h-6 w-6" }) }),
+      /* @__PURE__ */ jsx10("h1", { className: "text-xl font-bold", children: title }),
+      /* @__PURE__ */ jsx10("p", { className: "text-xs text-slate-400", children: "Use your staff username and password." })
     ] }),
-    /* @__PURE__ */ jsxs10("label", { className: "block space-y-1.5 text-xs font-semibold text-slate-300", children: [
+    /* @__PURE__ */ jsxs9("label", { className: "block space-y-1.5 text-xs font-semibold text-slate-300", children: [
       "Username",
-      /* @__PURE__ */ jsx11("input", { className: field, value: username, onChange: (e) => setUsername(e.target.value), autoComplete: "username", autoFocus: true, required: true })
+      /* @__PURE__ */ jsx10("input", { className: field, value: username, onChange: (e) => setUsername(e.target.value), autoComplete: "username", autoFocus: true, required: true })
     ] }),
-    /* @__PURE__ */ jsxs10("label", { className: "block space-y-1.5 text-xs font-semibold text-slate-300", children: [
+    /* @__PURE__ */ jsxs9("label", { className: "block space-y-1.5 text-xs font-semibold text-slate-300", children: [
       "Password",
-      /* @__PURE__ */ jsx11("input", { className: field, type: "password", value: password, onChange: (e) => setPassword(e.target.value), autoComplete: "current-password", required: true })
+      /* @__PURE__ */ jsx10("input", { className: field, type: "password", value: password, onChange: (e) => setPassword(e.target.value), autoComplete: "current-password", required: true })
     ] }),
-    error && /* @__PURE__ */ jsx11("p", { role: "alert", className: "rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300", children: error }),
-    /* @__PURE__ */ jsxs10(
+    error && /* @__PURE__ */ jsx10("p", { role: "alert", className: "rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300", children: error }),
+    /* @__PURE__ */ jsxs9(
       "button",
       {
         type: "submit",
         disabled: busy,
         className: "flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-500 disabled:opacity-60",
         children: [
-          busy && /* @__PURE__ */ jsx11(Loader23, { className: "h-4 w-4 animate-spin" }),
+          busy && /* @__PURE__ */ jsx10(Loader23, { className: "h-4 w-4 animate-spin" }),
           busy ? "Signing in..." : "Sign in"
         ]
       }
@@ -2416,9 +2194,9 @@ var CmsLogin = ({ auth, title = "Sign in to edit your site", onSuccess, redirect
   ] }) });
 };
 var CmsAuthGate = ({ auth, loginPath, title, children }) => {
-  const [state, setState] = useState10("checking");
-  const [message, setMessage] = useState10("");
-  const verify = useCallback3(async () => {
+  const [state, setState] = useState9("checking");
+  const [message, setMessage] = useState9("");
+  const verify = useCallback2(async () => {
     if (loginPath && window.location.pathname === loginPath) {
       setState("login-page");
       return;
@@ -2438,20 +2216,20 @@ var CmsAuthGate = ({ auth, loginPath, title, children }) => {
       setState("error");
     }
   }, [auth, loginPath]);
-  useEffect9(() => {
+  useEffect8(() => {
     void verify();
   }, [verify]);
-  if (state === "in" || state === "login-page") return /* @__PURE__ */ jsx11(Fragment4, { children });
-  if (state === "out") return /* @__PURE__ */ jsx11(CmsLogin, { auth, title, onSuccess: () => void verify() });
+  if (state === "in" || state === "login-page") return /* @__PURE__ */ jsx10(Fragment4, { children });
+  if (state === "out") return /* @__PURE__ */ jsx10(CmsLogin, { auth, title, onSuccess: () => void verify() });
   if (state === "error") {
-    return /* @__PURE__ */ jsxs10("div", { className: "flex min-h-[40vh] flex-col items-center justify-center gap-3 px-4 text-center text-white", children: [
-      /* @__PURE__ */ jsx11("p", { className: "text-sm text-slate-300", children: message }),
-      /* @__PURE__ */ jsx11("button", { type: "button", onClick: () => void verify(), className: "rounded-xl bg-purple-600 px-4 py-2 text-sm font-bold hover:bg-purple-500", children: "Try again" })
+    return /* @__PURE__ */ jsxs9("div", { className: "flex min-h-[40vh] flex-col items-center justify-center gap-3 px-4 text-center text-white", children: [
+      /* @__PURE__ */ jsx10("p", { className: "text-sm text-slate-300", children: message }),
+      /* @__PURE__ */ jsx10("button", { type: "button", onClick: () => void verify(), className: "rounded-xl bg-purple-600 px-4 py-2 text-sm font-bold hover:bg-purple-500", children: "Try again" })
     ] });
   }
-  return /* @__PURE__ */ jsx11("div", { className: "flex min-h-[40vh] items-center justify-center text-slate-400", role: "status", "aria-label": "Checking your sign-in", children: /* @__PURE__ */ jsx11(Loader23, { className: "h-6 w-6 animate-spin" }) });
+  return /* @__PURE__ */ jsx10("div", { className: "flex min-h-[40vh] items-center justify-center text-slate-400", role: "status", "aria-label": "Checking your sign-in", children: /* @__PURE__ */ jsx10(Loader23, { className: "h-6 w-6 animate-spin" }) });
 };
-var CmsLogoutButton = ({ auth, redirectTo = "/", className, children }) => /* @__PURE__ */ jsx11(
+var CmsLogoutButton = ({ auth, redirectTo = "/", className, children }) => /* @__PURE__ */ jsx10(
   "button",
   {
     type: "button",
@@ -2460,8 +2238,8 @@ var CmsLogoutButton = ({ auth, redirectTo = "/", className, children }) => /* @_
       auth.logout();
       window.location.assign(redirectTo);
     },
-    children: children ?? /* @__PURE__ */ jsxs10(Fragment4, { children: [
-      /* @__PURE__ */ jsx11(LogOut, { className: "h-3.5 w-3.5" }),
+    children: children ?? /* @__PURE__ */ jsxs9(Fragment4, { children: [
+      /* @__PURE__ */ jsx10(LogOut, { className: "h-3.5 w-3.5" }),
       " Sign out"
     ] })
   }

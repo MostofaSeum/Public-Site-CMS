@@ -8,7 +8,7 @@ import {
   mergePageContent,
   postCmsMessage,
   trustedOrigins
-} from "./chunk-PRSFT74C.mjs";
+} from "./chunk-7UG44WXN.mjs";
 
 // src/site/CmsProvider.tsx
 import { createContext, useContext, useEffect as useEffect2, useMemo, useState as useState2 } from "react";

@@ -7,8 +7,6 @@ interface CmsStudioProps {
     initialPage?: string;
     /** Called when the editor switches page (e.g. to sync a ?page= query string). */
     onPageChange?: (page: string) => void;
-    /** Editor opened first. Defaults to the visual canvas. */
-    defaultMode?: 'canvas' | 'form';
     /** Render the toast container. Set to false if your app already renders react-hot-toast's <Toaster />. */
     toaster?: boolean;
 }

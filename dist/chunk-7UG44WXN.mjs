@@ -21,32 +21,6 @@ function mergePageContent(page, records, options = {}) {
   }
   return result;
 }
-function getSectionKeys(page) {
-  const keys = Object.keys(page.defaults);
-  for (const section of page.sections) {
-    if (!keys.includes(section.key)) keys.push(section.key);
-  }
-  return keys;
-}
-function listManagedSections(pages, records) {
-  const byKey = /* @__PURE__ */ new Map();
-  for (const record of records) byKey.set(`${record.page}\0${record.sectionKey}`, record);
-  const list = [];
-  for (const page of pages) {
-    for (const sectionKey of getSectionKeys(page)) {
-      const record = byKey.get(`${page.key}\0${sectionKey}`);
-      list.push({
-        page: page.key,
-        sectionKey,
-        hasCustomOverride: Boolean(record),
-        isPublished: record ? record.isPublished : true,
-        updatedAt: record ? record.updatedAt : null,
-        updatedBy: record?.updatedBy ?? null
-      });
-    }
-  }
-  return list;
-}
 function getSectionDetail(page, sectionKey, record) {
   const hasDefault = Object.prototype.hasOwnProperty.call(page.defaults, sectionKey);
   const declared = page.sections.some((s) => s.key === sectionKey);
@@ -127,7 +101,6 @@ function listenForCmsMessages(handler, options) {
 export {
   findPage,
   mergePageContent,
-  listManagedSections,
   getSectionDetail,
   CMS_MESSAGE,
   PREVIEW_PARAM,

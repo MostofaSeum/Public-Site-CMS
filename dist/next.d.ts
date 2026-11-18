@@ -1,4 +1,4 @@
-import { C as CmsStorageAdapter, a as CmsConfig } from './types-B7p5QrQp.js';
+import { C as CmsStorageAdapter, a as CmsConfig } from './types-B3IuU7DM.js';
 import { Metadata } from 'next';
 import 'react';
 
