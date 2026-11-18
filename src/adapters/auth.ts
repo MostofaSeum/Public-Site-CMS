@@ -19,8 +19,14 @@ export interface CmsAuthOptions {
   baseUrl: string;
   /** Key under which the token is stored. Default: "visual-cms-token". */
   storageKey?: string;
-  /** Where to keep the token. Default: localStorage. Pass `null` to keep it in memory only. */
-  storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
+  /**
+   * Where to keep the token:
+   * - "local" (default): stays until it expires or the editor signs out, even after the browser closes
+   * - "session": forgotten when the tab or browser closes (the editor signs in again next time)
+   * - "memory" (or `null`): forgotten on every page reload
+   * or your own object with getItem/setItem/removeItem.
+   */
+  storage?: 'local' | 'session' | 'memory' | Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
   fetch?: typeof fetch;
 }
 
@@ -32,9 +38,9 @@ export interface CmsAuth {
   /** The stored token, or null when there is none or it has expired. */
   getToken(): string | null;
   /**
-   * Ask the server whether the current credentials (token, or a Django staff session) may edit.
-   * Returns the user, or null when not signed in (a rejected token is forgotten).
-   * Throws when the server cannot be reached.
+   * Ask the server whether the stored token may edit. Returns the user, or null when there is
+   * no token or the server rejects it (a rejected token is forgotten). A Django session cookie
+   * never counts here: editors must sign in through the form. Throws when the server cannot be reached.
    */
   check(): Promise<CmsUser | null>;
   /** Headers to send with every CMS request: pass this to djangoAdapter({ headers }). */
@@ -62,9 +68,12 @@ export function cmsAuth(options: CmsAuthOptions): CmsAuth {
 
   let memory: Stored | null = null;
   const storage = (() => {
-    if (options.storage !== undefined) return options.storage;
+    const wanted = options.storage;
+    if (wanted === null || wanted === 'memory') return null;
+    if (wanted && typeof wanted === 'object') return wanted;
     try {
-      return typeof window === 'undefined' ? null : window.localStorage;
+      if (typeof window === 'undefined') return null; // server rendering: no browser storage
+      return wanted === 'session' ? window.sessionStorage : window.localStorage;
     } catch {
       return null; // blocked storage (private mode): fall back to memory
     }
@@ -147,8 +156,11 @@ export function cmsAuth(options: CmsAuthOptions): CmsAuth {
     },
 
     async check() {
+      // Only a token from the sign-in form counts. A leftover Django admin session
+      // cookie must not let anyone past the sign-in page, so cookies are never sent here.
+      if (!read()) return null;
       const res = await doFetch(`${base}/auth/me`, {
-        credentials: 'include',
+        credentials: 'omit',
         headers: { Accept: 'application/json', ...headers() },
         cache: 'no-store',
       });

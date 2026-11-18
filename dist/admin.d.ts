@@ -72,9 +72,9 @@ interface CmsAuth {
     /** The stored token, or null when there is none or it has expired. */
     getToken(): string | null;
     /**
-     * Ask the server whether the current credentials (token, or a Django staff session) may edit.
-     * Returns the user, or null when not signed in (a rejected token is forgotten).
-     * Throws when the server cannot be reached.
+     * Ask the server whether the stored token may edit. Returns the user, or null when there is
+     * no token or the server rejects it (a rejected token is forgotten). A Django session cookie
+     * never counts here: editors must sign in through the form. Throws when the server cannot be reached.
      */
     check(): Promise<CmsUser | null>;
     /** Headers to send with every CMS request: pass this to djangoAdapter({ headers }). */

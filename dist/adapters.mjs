@@ -133,9 +133,12 @@ function cmsAuth(options) {
   const doFetch = options.fetch ?? ((...args) => fetch(...args));
   let memory = null;
   const storage = (() => {
-    if (options.storage !== void 0) return options.storage;
+    const wanted = options.storage;
+    if (wanted === null || wanted === "memory") return null;
+    if (wanted && typeof wanted === "object") return wanted;
     try {
-      return typeof window === "undefined" ? null : window.localStorage;
+      if (typeof window === "undefined") return null;
+      return wanted === "session" ? window.sessionStorage : window.localStorage;
     } catch {
       return null;
     }
@@ -207,8 +210,9 @@ function cmsAuth(options) {
       return body.user;
     },
     async check() {
+      if (!read()) return null;
       const res = await doFetch(`${base}/auth/me`, {
-        credentials: "include",
+        credentials: "omit",
         headers: { Accept: "application/json", ...headers() },
         cache: "no-store"
       });

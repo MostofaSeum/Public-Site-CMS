@@ -107,14 +107,21 @@ describe('cmsAuth', () => {
   });
 
   describe('check()', () => {
-    it('returns the user and sends the token with cookies', async () => {
+    it('returns the user and sends only the token, never cookies', async () => {
       const fetchFn = vi.fn(async () => json(200, { user: { username: 'editor', name: 'Eda Tor' } }));
       const auth = cmsAuth({ baseUrl: BASE, storage: memoryStorage({ 'visual-cms-token': JSON.stringify({ token: 'tk', expiresAt: Date.now() + 60_000 }) }), fetch: fetchFn as unknown as typeof fetch });
       expect(await auth.check()).toEqual({ username: 'editor', name: 'Eda Tor' });
       const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toBe(`${BASE}/auth/me`);
-      expect(init.credentials).toBe('include');
+      expect(init.credentials).toBe('omit');
       expect((init.headers as Record<string, string>).Authorization).toBe('Bearer tk');
+    });
+
+    it('is not signed in without a token, and does not even ask the server (a Django session cookie must not count)', async () => {
+      const fetchFn = vi.fn(async () => json(200, { user: { username: 'admin', name: 'admin' } })); // what a staff session would get
+      const auth = cmsAuth({ baseUrl: BASE, storage: memoryStorage(), fetch: fetchFn as unknown as typeof fetch });
+      expect(await auth.check()).toBeNull();
+      expect(fetchFn).not.toHaveBeenCalled();
     });
 
     it('returns null and forgets a rejected token', async () => {
@@ -139,6 +146,30 @@ describe('cmsAuth', () => {
       await expect(offline.check()).rejects.toThrow();
       expect(offline.getToken()).toBe('tk');
     });
+  });
+
+  it('storage shortcuts: "session" and "local" use the browser storages, "memory" keeps nothing', async () => {
+    const local = memoryStorage();
+    const session = memoryStorage();
+    const g = globalThis as unknown as { window?: unknown };
+    const hadWindow = 'window' in g;
+    const previous = g.window;
+    g.window = { localStorage: local, sessionStorage: session };
+    try {
+      const ok = (async () => json(200, LOGIN_OK)) as unknown as typeof fetch;
+      await cmsAuth({ baseUrl: BASE, storage: 'session', fetch: ok }).login('a', 'b');
+      expect(session.data['visual-cms-token']).toBeDefined();
+      expect(local.data['visual-cms-token']).toBeUndefined();
+      await cmsAuth({ baseUrl: BASE, fetch: ok }).login('a', 'b'); // default: local
+      expect(local.data['visual-cms-token']).toBeDefined();
+      const local2 = memoryStorage();
+      g.window = { localStorage: local2, sessionStorage: memoryStorage() };
+      await cmsAuth({ baseUrl: BASE, storage: 'memory', fetch: ok }).login('a', 'b');
+      expect(local2.data['visual-cms-token']).toBeUndefined();
+    } finally {
+      if (hadWindow) g.window = previous;
+      else delete g.window;
+    }
   });
 
   it('plugs into djangoAdapter: every request carries the token, even the CSRF fetch', async () => {
