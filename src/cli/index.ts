@@ -4,7 +4,7 @@ import readline from 'node:readline/promises';
 import { CliError, runInit, type Action, type InitOptions, type InitReport } from './init';
 import { askMissingOptions } from './prompts';
 import { runAddPage } from './addPage';
-import { checkDjango, checkProductionApi, checkProductionFiles, checkProject, summarize, type Check } from './doctor';
+import { checkDjango, checkProductionApi, checkProductionFiles, checkProject, summarize, usesTokenAuth, type Check } from './doctor';
 import { runScan } from './scan';
 
 const HELP = `visual-cms: set up @brainicon/visual-cms in a Next.js project
@@ -45,6 +45,9 @@ init options
                             installs django-visual-cms, edits settings.py and urls.py (with
                             backups), and runs the migration. Needs --backend django
   --frontend-origin <url>   Where this Next.js site runs, allowed by Django (default: http://localhost:3000)
+  --auth <token|session>    How editors sign in (django backend, default: token)
+                              token    a sign-in form in your React admin; works across domains
+                              session  Django's own login page (same domain only)
   --admin-path <path>       Folder of the CMS screen under app/ (default: admin/cms)
                               route groups are allowed: "(admin)/dashboard/cms"
   --no-example              Do not create the example page at /cms-example
@@ -67,7 +70,7 @@ function parseArgs(argv: string[]): Parsed {
   const flags = new Map<string, string | true>();
   let command: string | null = null;
   const positionals: string[] = [];
-  const valueFlags = new Set(['backend', 'api-url', 'admin-path', 'cwd', 'django-dir', 'frontend-origin', 'title', 'route', 'sections', 'page', 'component']);
+  const valueFlags = new Set(['backend', 'api-url', 'admin-path', 'cwd', 'django-dir', 'frontend-origin', 'title', 'route', 'sections', 'page', 'component', 'auth']);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '-y') flags.set('yes', true);
@@ -116,6 +119,7 @@ const LABEL: Record<Action['kind'], string> = {
 
 async function runDoctor(cwd: string, flags: Map<string, string | true>): Promise<number> {
   const production = flags.has('production');
+  const tokenAuth = usesTokenAuth(path.resolve(cwd));
   const givenOrigin = flags.get('frontend-origin') as string | undefined;
   const origin = givenOrigin ?? 'http://localhost:3000';
   const local = checkProject(path.resolve(cwd));
@@ -126,11 +130,11 @@ async function runDoctor(cwd: string, flags: Map<string, string | true>): Promis
     if (!givenOrigin) checks.push({ level: 'fail', title: 'No site URL given', fix: 'Pass --frontend-origin https://your-site.com (the public URL of the site).' });
     if (local.djangoBaseUrl !== null || apiUrl) {
       if (!apiUrl) checks.push({ level: 'fail', title: 'No production API URL given', fix: 'Pass --api-url https://api.your-site.com/api/cms, or set NEXT_PUBLIC_CMS_API_URL.' });
-      else if (givenOrigin) checks.push(...(await checkProductionApi(apiUrl, givenOrigin)));
+      else if (givenOrigin) checks.push(...(await checkProductionApi(apiUrl, givenOrigin, undefined, { tokenAuth })));
     }
   } else {
     const apiUrl = (flags.get('api-url') as string | undefined) ?? local.djangoBaseUrl;
-    if (apiUrl) checks.push(...(await checkDjango(apiUrl, origin)));
+    if (apiUrl) checks.push(...(await checkDjango(apiUrl, origin, undefined, { tokenAuth })));
   }
 
   const icon = { ok: green('  ok  '), warn: yellow(' warn '), fail: red(' FAIL ') };
@@ -142,7 +146,15 @@ async function runDoctor(cwd: string, flags: Map<string, string | true>): Promis
   const { ok, warn, fail } = summarize(checks);
   console.log('');
   console.log(`${ok} ok, ${warn} warning${warn === 1 ? '' : 's'}, ${fail} problem${fail === 1 ? '' : 's'}.`);
-  if (local.djangoBaseUrl) console.log(dim('Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'));
+  if (local.djangoBaseUrl) {
+    console.log(
+      dim(
+        tokenAuth
+          ? 'Not checked: your username and password. If the sign-in form says "Invalid username or password", use a Django staff account (python manage.py createsuperuser).'
+          : 'Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'
+      )
+    );
+  }
   console.log('');
   return fail > 0 ? 1 : 0;
 }
@@ -297,6 +309,11 @@ export async function main(argv: string[]): Promise<number> {
       throw new CliError('--backend must be "files" or "django".');
     }
 
+    const authFlag = flags.get('auth');
+    if (authFlag !== undefined && authFlag !== 'token' && authFlag !== 'session') {
+      throw new CliError('--auth must be "token" or "session".');
+    }
+
     const given = new Set(flags.keys());
     let options: InitOptions = {
       cwd: typeof flags.get('cwd') === 'string' ? (flags.get('cwd') as string) : process.cwd(),
@@ -309,6 +326,7 @@ export async function main(argv: string[]): Promise<number> {
       force: flags.has('force'),
       djangoDir: (flags.get('django-dir') as string | undefined) ?? null,
       frontendOrigin: (flags.get('frontend-origin') as string | undefined) ?? 'http://localhost:3000',
+      auth: (authFlag as 'token' | 'session' | undefined) ?? 'token',
     };
     // Passing --django-dir implies the Django backend.
     if (options.djangoDir && backendFlag === undefined) options.backend = 'django';

@@ -19,4 +19,6 @@ urlpatterns = [
     re_path(rf"^records/(?P<page>{KEY})/(?P<section>{KEY})/?$", views.record, name="record"),
     re_path(r"^media/?$", views.media, name="media"),
     re_path(r"^csrf/?$", views.csrf, name="csrf"),
+    re_path(r"^auth/login/?$", views.auth_login, name="auth-login"),
+    re_path(r"^auth/me/?$", views.auth_me, name="auth-me"),
 ]

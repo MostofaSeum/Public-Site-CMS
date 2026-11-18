@@ -257,7 +257,8 @@ describe('runInit', () => {
     makeProject(dir);
     const report = runInit(options({ backend: 'django', apiUrl: 'https://api.example.com/api/cms', example: false }));
     const files = snapshot();
-    expect(files['cms.config.ts']).toContain("baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? 'https://api.example.com/api/cms',");
+    expect(files['cms.config.ts']).toContain("const API_URL = process.env.NEXT_PUBLIC_CMS_API_URL ?? 'https://api.example.com/api/cms';");
+    expect(files['cms.config.ts']).toContain('djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers })');
     expect(files['cms.config.ts']).not.toContain('cms-example');
     expect(files['lib/cms-storage.ts']).toContain('cms.adapter');
     expect(files).not.toHaveProperty(['app/api/cms/[...path]/route.ts']);

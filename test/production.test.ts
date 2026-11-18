@@ -89,7 +89,7 @@ describe('server rendering of CMS content', () => {
   it('reads the API URL from NEXT_PUBLIC_CMS_API_URL with the dev URL as fallback', () => {
     makeProject(dir);
     runInit(options());
-    expect(read('cms.config.ts')).toContain("baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? 'http://localhost:8000/api/cms',");
+    expect(read('cms.config.ts')).toContain("const API_URL = process.env.NEXT_PUBLIC_CMS_API_URL ?? 'http://localhost:8000/api/cms';");
   });
 
   it('getAllPageContent merges published records for every page and falls back to defaults', async () => {

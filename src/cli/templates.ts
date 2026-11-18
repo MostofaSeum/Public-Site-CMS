@@ -2,15 +2,37 @@
 
 export type Backend = 'files' | 'django';
 
-export function cmsConfig(opts: { backend: Backend; apiUrl: string; example: boolean; exampleJsonImport: string }): string {
+/** How editors sign in with the Django backend. */
+export type AuthMode = 'token' | 'session';
+
+export function cmsConfig(opts: { backend: Backend; apiUrl: string; example: boolean; exampleJsonImport: string; auth?: AuthMode }): string {
+  const token = opts.backend === 'django' && (opts.auth ?? 'token') === 'token';
   const adapterImport =
     opts.backend === 'django'
-      ? "import { djangoAdapter } from '@brainicon/visual-cms/adapters';"
+      ? token
+        ? "import { cmsAuth, djangoAdapter } from '@brainicon/visual-cms/adapters';"
+        : "import { djangoAdapter } from '@brainicon/visual-cms/adapters';"
       : "import { restAdapter } from '@brainicon/visual-cms/adapters';";
   const adapter =
     opts.backend === 'django'
-      ? `djangoAdapter({\n    // Set NEXT_PUBLIC_CMS_API_URL in production, e.g. https://api.example.com/api/cms\n    baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '${opts.apiUrl}',\n  }),`
+      ? token
+        ? 'djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers }),'
+        : 'djangoAdapter({ baseUrl: API_URL }),'
       : "restAdapter({ baseUrl: '/api/cms' }),";
+  const apiSetup =
+    opts.backend !== 'django'
+      ? ''
+      : `
+// Set NEXT_PUBLIC_CMS_API_URL in production, e.g. https://api.example.com/api/cms
+const API_URL = process.env.NEXT_PUBLIC_CMS_API_URL ?? '${opts.apiUrl}';
+${
+  token
+    ? `
+// Editors sign in with their Django staff username and password (<CmsAuthGate> shows the form).
+export const cmsLogin = cmsAuth({ baseUrl: API_URL });
+`
+    : ''
+}`;
 
   const examplePage = `    {
       key: 'example',
@@ -36,7 +58,7 @@ export function cmsConfig(opts: { backend: Backend; apiUrl: string; example: boo
 
   return `import { defineCms } from '@brainicon/visual-cms';
 ${adapterImport}
-${opts.example ? `import example from '${opts.exampleJsonImport}';\n` : ''}
+${opts.example ? `import example from '${opts.exampleJsonImport}';\n` : ''}${apiSetup}
 export const cms = defineCms({
   title: 'Site CMS',
   adapter: ${adapter}
@@ -181,7 +203,23 @@ export function CmsClientProviders({
 `;
 }
 
-export function adminPage(configImport: string): string {
+export function adminPage(configImport: string, auth?: { mode: AuthMode; backend: Backend }): string {
+  if (auth && auth.backend === 'django' && auth.mode === 'token') {
+    return `'use client';
+
+import { CmsAuthGate, CmsStudio } from '@brainicon/visual-cms/admin';
+import { cms, cmsLogin } from '${configImport}';
+
+// Editors must sign in (Django staff username and password) before the CMS screen shows.
+export default function CmsPage() {
+  return (
+    <CmsAuthGate auth={cmsLogin}>
+      <CmsStudio config={cms} />
+    </CmsAuthGate>
+  );
+}
+`;
+  }
   return `'use client';
 
 import { CmsStudio } from '@brainicon/visual-cms/admin';

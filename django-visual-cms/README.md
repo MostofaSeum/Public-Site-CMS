@@ -20,7 +20,7 @@ Supports Django 4.2, 5.x and 6.x (tested on 4.2, 5.2 and 6.0).
 To install it yourself, from GitHub (the package lives in the `django-visual-cms` folder of the repository):
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.4.0#subdirectory=django-visual-cms"
 ```
 
 Then `python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000` makes the settings and urls changes below automatically (add `--dry-run` to preview them), or follow the steps by hand.
@@ -99,7 +99,20 @@ const content = await getPageContent(cms, 'home', { storage });
 
 ### Logging in
 
-Editors log in to Django the usual way (Django admin login, your own login page, allauth…), and the CMS uses that session. If the frontend and Django are on different domains, the session cookie must be allowed to travel with cross-site requests. See the next section.
+Editors can sign in in two ways, and the API accepts both.
+
+**1. Token login (recommended, what `npx visual-cms init` sets up).** The React site posts the editor's staff username and password to `POST api/cms/auth/login` and gets back a signed token that expires after 12 hours. The CMS sends it as `Authorization: Bearer <token>`. It needs no cookie and no CSRF token, so it also works when the site and Django are on different domains. The token is not stored in the database, and it stops working when it expires or when the user's password changes or the account is deactivated. Wrong passwords are rate limited (5 per username and IP address, then a 5 minute lockout, tracked in Django's cache).
+
+```
+POST api/cms/auth/login   {"username": "...", "password": "..."}  ->  {"token": "...", "expiresIn": 43200, "user": {...}}
+GET  api/cms/auth/me      (Authorization: Bearer ...)             ->  {"user": {...}}, or 401
+```
+
+Who may sign in is decided by `AUTHORIZE` (staff users by default), so a non-staff account with the right password gets `403`.
+
+**2. Django session.** Editors log in to Django the usual way (Django admin login, your own login page, allauth…), and the CMS uses that session. If the frontend and Django are on different domains, the session cookie must be allowed to travel with cross-site requests. See the next section.
+
+If your site has its own login (JWT, SSO…), write an `AUTHORIZE` function for it (see Settings): it receives the normal `request`.
 
 ## Frontend and Django on different domains
 
@@ -138,6 +151,10 @@ VISUAL_CMS = {
     "MAX_UPLOAD_BYTES": 5_242_880,  # largest image upload (5 MB)
     "UPLOAD_DIR": "cms-uploads",    # folder inside your media storage
     "ALLOW_SVG": False,             # SVG files can contain scripts; enable only if you trust editors
+    "TOKEN_LOGIN": True,            # POST auth/login (editors sign in from a React admin); False removes it
+    "TOKEN_MAX_AGE": 43_200,        # seconds a sign-in lasts (12 hours)
+    "LOGIN_MAX_ATTEMPTS": 5,        # wrong passwords per username+IP before a lockout
+    "LOGIN_LOCKOUT_SECONDS": 300,   # how long the lockout lasts
 }
 ```
 
@@ -174,13 +191,17 @@ All responses are JSON. Every path works with or without a trailing slash.
 | GET | `media` | editors | uploaded images |
 | POST | `media` | editors | multipart `files` → `{"items": [...]}` |
 | GET | `csrf` | anyone | `{"csrfToken": "..."}` and sets the CSRF cookie |
+| POST | `auth/login` | anyone | body `{"username", "password"}` → `{"token", "expiresIn", "user"}` (`401` wrong password, `403` not an editor, `429` locked out) |
+| GET | `auth/me` | editors | `{"user": {...}}`, or `401` |
 
-Writes need an editor (`401` otherwise) and a valid `X-CSRFToken` header (`403` otherwise). Page and section keys may only contain letters, digits, `_` and `-`.
+Writes need an editor (`401` otherwise). A request that relies on a session cookie also needs a valid `X-CSRFToken` header (`403` otherwise); a request with a valid `Authorization: Bearer` token does not, because it uses no cookie. Page and section keys may only contain letters, digits, `_` and `-`.
 
 ## Security notes
 
 - Visitors only ever get published content. Drafts need `drafts=1` **and** an editor.
-- CSRF protection stays on for every write, with errors returned as JSON.
+- CSRF protection stays on for every cookie-based write, with errors returned as JSON.
+- Tokens are signed with your `SECRET_KEY` (`django.core.signing`): keep it secret, and rotating it signs every editor out. Behind a proxy make sure `REMOTE_ADDR` is the real client address (for example with your proxy's trusted-IP middleware), or the lockout counts everyone as one address.
+- Serve the API over HTTPS in production, so passwords and tokens are not readable on the network.
 - Uploads are limited to image types (no SVG by default) and a size cap. They are stored under random names, never the client's file name.
 
 ## Development

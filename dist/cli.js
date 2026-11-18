@@ -203,11 +203,16 @@ function runDjangoSetup(opts) {
 
 // src/cli/templates.ts
 function cmsConfig(opts) {
-  const adapterImport = opts.backend === "django" ? "import { djangoAdapter } from '@brainicon/visual-cms/adapters';" : "import { restAdapter } from '@brainicon/visual-cms/adapters';";
-  const adapter = opts.backend === "django" ? `djangoAdapter({
-    // Set NEXT_PUBLIC_CMS_API_URL in production, e.g. https://api.example.com/api/cms
-    baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '${opts.apiUrl}',
-  }),` : "restAdapter({ baseUrl: '/api/cms' }),";
+  const token = opts.backend === "django" && (opts.auth ?? "token") === "token";
+  const adapterImport = opts.backend === "django" ? token ? "import { cmsAuth, djangoAdapter } from '@brainicon/visual-cms/adapters';" : "import { djangoAdapter } from '@brainicon/visual-cms/adapters';" : "import { restAdapter } from '@brainicon/visual-cms/adapters';";
+  const adapter = opts.backend === "django" ? token ? "djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers })," : "djangoAdapter({ baseUrl: API_URL })," : "restAdapter({ baseUrl: '/api/cms' }),";
+  const apiSetup = opts.backend !== "django" ? "" : `
+// Set NEXT_PUBLIC_CMS_API_URL in production, e.g. https://api.example.com/api/cms
+const API_URL = process.env.NEXT_PUBLIC_CMS_API_URL ?? '${opts.apiUrl}';
+${token ? `
+// Editors sign in with their Django staff username and password (<CmsAuthGate> shows the form).
+export const cmsLogin = cmsAuth({ baseUrl: API_URL });
+` : ""}`;
   const examplePage2 = `    {
       key: 'example',
       title: 'Example page',
@@ -231,7 +236,7 @@ function cmsConfig(opts) {
   return `import { defineCms } from '@brainicon/visual-cms';
 ${adapterImport}
 ${opts.example ? `import example from '${opts.exampleJsonImport}';
-` : ""}
+` : ""}${apiSetup}
 export const cms = defineCms({
   title: 'Site CMS',
   adapter: ${adapter}
@@ -354,7 +359,23 @@ export function CmsClientProviders({
 }
 `;
 }
-function adminPage(configImport) {
+function adminPage(configImport, auth) {
+  if (auth && auth.backend === "django" && auth.mode === "token") {
+    return `'use client';
+
+import { CmsAuthGate, CmsStudio } from '@brainicon/visual-cms/admin';
+import { cms, cmsLogin } from '${configImport}';
+
+// Editors must sign in (Django staff username and password) before the CMS screen shows.
+export default function CmsPage() {
+  return (
+    <CmsAuthGate auth={cmsLogin}>
+      <CmsStudio config={cms} />
+    </CmsAuthGate>
+  );
+}
+`;
+  }
   return `'use client';
 
 import { CmsStudio } from '@brainicon/visual-cms/admin';
@@ -584,7 +605,8 @@ function runInit(options) {
       backend: options.backend,
       apiUrl: options.apiUrl,
       example: options.example,
-      exampleJsonImport: jsonSpec(files.config)
+      exampleJsonImport: jsonSpec(files.config),
+      auth: options.auth
     }),
     "already exists. Make sure it lists your pages and uses the adapter you want."
   );
@@ -610,7 +632,7 @@ function runInit(options) {
   } else {
     writeNew(files.providers, providersSource);
   }
-  writeNew(files.adminPage, adminPage(imp(files.adminPage, files.config)));
+  writeNew(files.adminPage, adminPage(imp(files.adminPage, files.config), { mode: options.auth ?? "token", backend: options.backend }));
   const adminLayoutSource = adminLayout({ href: adminUrl });
   const adminLayoutIsOurs = exists(files.adminLayout) && read(files.adminLayout) === adminLayoutSource;
   if (!adminRootExisted || adminLayoutIsOurs) {
@@ -997,7 +1019,8 @@ function checkProject(root) {
   else {
     add("ok", `Config found (${import_node_path6.default.relative(root, config).split(import_node_path6.default.sep).join("/")})`);
     const text = read3(config);
-    djangoBaseUrl = text.match(/djangoAdapter\(\s*\{[\s\S]*?baseUrl:\s*(?:process\.env\.\w+\s*\?\?\s*)?['"`]([^'"`]+)['"`]/)?.[1] ?? null;
+    djangoBaseUrl = /djangoAdapter\(/.test(text) ? text.match(/(?:baseUrl:|\bAPI_URL\s*=)\s*(?:process\.env\.\w+\s*\?\?\s*)?['"`]([^'"`]+)['"`]/)?.[1] ?? null : null;
+    if (/\bcmsAuth\(/.test(text)) add("ok", "Editors sign in with the token login (cmsAuth)");
     if (!/\bkey:\s*['"]/.test(text)) add("warn", "No pages are listed in cms.config.ts yet", "Add one with:  npx visual-cms add-page <name>");
   }
   const sources = walk(appDir, (f) => /\.(tsx|jsx|ts|js)$/.test(f)).concat(walk(import_node_path6.default.join(base, "components"), (f) => /\.(tsx|jsx)$/.test(f)));
@@ -1013,6 +1036,12 @@ function siteOf(url) {
   if (/^[\d.]+$/.test(host) || host === "localhost") return host;
   return host.split(".").slice(-2).join(".");
 }
+function usesTokenAuth(root) {
+  const srcApp = import_node_path6.default.join(root, "src", "app");
+  const base = exists3(srcApp) ? import_node_path6.default.join(root, "src") : root;
+  const config = [import_node_path6.default.join(base, "cms.config.ts"), import_node_path6.default.join(root, "cms.config.ts")].find(exists3);
+  return config ? /cmsAuth\(/.test(read3(config)) : false;
+}
 function checkProductionFiles(root) {
   const checks = [];
   const add = (level, title, fix) => checks.push({ level, title, fix });
@@ -1022,8 +1051,9 @@ function checkProductionFiles(root) {
   const config = [import_node_path6.default.join(base, "cms.config.ts"), import_node_path6.default.join(root, "cms.config.ts")].find(exists3);
   const configText = config ? read3(config) : "";
   if (/djangoAdapter\(/.test(configText)) {
-    const literal = configText.match(/baseUrl:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? "";
-    if (/process\.env\./.test(configText.match(/baseUrl:[^\n]+/)?.[0] ?? "")) add("ok", "The API URL comes from an environment variable");
+    const expression = configText.match(/\bAPI_URL\s*=\s*[^\n]+/)?.[0] ?? configText.match(/baseUrl:[^\n]+/)?.[0] ?? "";
+    const literal = expression.match(/['"`]([^'"`]+)['"`]/)?.[1] ?? "";
+    if (/process\.env\./.test(expression)) add("ok", "The API URL comes from an environment variable");
     else if (/localhost|127\.0\.0\.1/.test(literal)) add("fail", `The API URL is hardcoded to ${literal}`, "Use baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? '<dev URL>' in cms.config.ts and set the variable in production.");
     else add("ok", `The API URL is ${literal}`);
   }
@@ -1040,7 +1070,7 @@ function checkProductionFiles(root) {
   else add("warn", "Content is only loaded in the browser, so search engines index the default text", "Run  npx visual-cms init  again: it upgrades components/CmsProviders.tsx to load content on the server.");
   return checks;
 }
-async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch) {
+async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch, options = {}) {
   const checks = [];
   const add = (level, title, fix) => checks.push({ level, title, fix });
   const url = apiUrl.replace(/\/+$/, "");
@@ -1057,6 +1087,7 @@ async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch) {
   if (/localhost|127\.0\.0\.1/.test(url + siteOrigin)) add("warn", "A localhost URL was given", "Pass the real production URLs.");
   const sameSite = siteOf(url) === siteOf(siteOrigin);
   if (sameSite) add("ok", `The site and the API are on the same site (${siteOf(siteOrigin)}), so the login cookie works with the default settings`);
+  else if (options.tokenAuth) add("ok", `The site (${siteOf(siteOrigin)}) and the API (${siteOf(url)}) are different sites, which is fine: editors sign in with a token, not a cookie`);
   else
     add(
       "fail",
@@ -1085,7 +1116,7 @@ async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch) {
   if (cookie) {
     if (/;\s*secure/i.test(cookie)) add("ok", "Cookies are marked Secure");
     else add("fail", "Cookies are not marked Secure", "Set CSRF_COOKIE_SECURE = True and SESSION_COOKIE_SECURE = True.");
-    if (!sameSite && !/samesite=none/i.test(cookie)) add("fail", "Cookies use SameSite=Lax across different sites", 'If you cannot share a domain: CSRF_COOKIE_SAMESITE = "None" and SESSION_COOKIE_SAMESITE = "None" (with Secure). Some browsers still block it.');
+    if (!sameSite && !options.tokenAuth && !/samesite=none/i.test(cookie)) add("fail", "Cookies use SameSite=Lax across different sites", 'If you cannot share a domain: CSRF_COOKIE_SAMESITE = "None" and SESSION_COOKIE_SAMESITE = "None" (with Secure). Some browsers still block it.');
   }
   try {
     const probe = await fetchFn(`${api.origin}/visual-cms-doctor-missing-page/`);
@@ -1096,7 +1127,7 @@ async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch) {
   }
   return checks;
 }
-async function checkDjango(baseUrl, frontendOrigin, fetchFn = fetch) {
+async function checkDjango(baseUrl, frontendOrigin, fetchFn = fetch, options = {}) {
   const checks = [];
   const add = (level, title, fix) => checks.push({ level, title, fix });
   const url = baseUrl.replace(/\/+$/, "");
@@ -1125,13 +1156,28 @@ async function checkDjango(baseUrl, frontendOrigin, fetchFn = fetch) {
   try {
     const pre = await fetchFn(`${url}/records/home/hero`, {
       method: "OPTIONS",
-      headers: { Origin: frontendOrigin, "Access-Control-Request-Method": "PUT", "Access-Control-Request-Headers": "content-type,x-csrftoken" }
+      headers: {
+        Origin: frontendOrigin,
+        "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": options.tokenAuth ? "content-type,x-csrftoken,authorization" : "content-type,x-csrftoken"
+      }
     });
     const methods = pre.headers.get("access-control-allow-methods") ?? "";
     const headers = (pre.headers.get("access-control-allow-headers") ?? "").toLowerCase();
-    if (pre.status < 300 && /PUT/i.test(methods) && headers.includes("x-csrftoken")) add("ok", "Saving is allowed by CORS (PUT + X-CSRFToken)");
+    if (pre.status < 300 && /PUT/i.test(methods) && headers.includes("x-csrftoken") && options.tokenAuth && !headers.includes("authorization")) {
+      add("fail", "CORS does not allow the Authorization header, so the token login cannot save", 'Add "authorization" to CORS_ALLOW_HEADERS (django-cors-headers allows it by default: remove any custom CORS_ALLOW_HEADERS that leaves it out).');
+    } else if (pre.status < 300 && /PUT/i.test(methods) && headers.includes("x-csrftoken")) add("ok", options.tokenAuth ? "Saving is allowed by CORS (PUT + X-CSRFToken + Authorization)" : "Saving is allowed by CORS (PUT + X-CSRFToken)");
     else if (allow) add("warn", "CORS preflight for saving was not approved", 'Make sure corsheaders is the first MIDDLEWARE entry and CORS_ALLOW_HEADERS includes "x-csrftoken" (the default does).');
   } catch {
+  }
+  if (options.tokenAuth) {
+    try {
+      const me = await fetchFn(`${url}/auth/me`, { headers: { Origin: frontendOrigin } });
+      if (me.status === 401) add("ok", "Token login is available on the server");
+      else if (me.status === 404) add("fail", "The server has no token login (django-visual-cms is too old, or TOKEN_LOGIN is False)", 'Upgrade the package: pip install -U "git+https://github.com/MostofaSeum/Public-Site-CMS.git#subdirectory=django-visual-cms" (or run init with --django-dir), and make sure VISUAL_CMS["TOKEN_LOGIN"] is not False.');
+      else add("warn", `${url}/auth/me returned ${me.status}`, "Expected 401 for a visitor who is not signed in.");
+    } catch {
+    }
   }
   return checks;
 }
@@ -1563,6 +1609,9 @@ init options
                             installs django-visual-cms, edits settings.py and urls.py (with
                             backups), and runs the migration. Needs --backend django
   --frontend-origin <url>   Where this Next.js site runs, allowed by Django (default: http://localhost:3000)
+  --auth <token|session>    How editors sign in (django backend, default: token)
+                              token    a sign-in form in your React admin; works across domains
+                              session  Django's own login page (same domain only)
   --admin-path <path>       Folder of the CMS screen under app/ (default: admin/cms)
                               route groups are allowed: "(admin)/dashboard/cms"
   --no-example              Do not create the example page at /cms-example
@@ -1578,7 +1627,7 @@ function parseArgs(argv) {
   const flags = /* @__PURE__ */ new Map();
   let command = null;
   const positionals = [];
-  const valueFlags = /* @__PURE__ */ new Set(["backend", "api-url", "admin-path", "cwd", "django-dir", "frontend-origin", "title", "route", "sections", "page", "component"]);
+  const valueFlags = /* @__PURE__ */ new Set(["backend", "api-url", "admin-path", "cwd", "django-dir", "frontend-origin", "title", "route", "sections", "page", "component", "auth"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "-y") flags.set("yes", true);
@@ -1624,6 +1673,7 @@ var LABEL = {
 };
 async function runDoctor(cwd, flags) {
   const production = flags.has("production");
+  const tokenAuth = usesTokenAuth(import_node_path8.default.resolve(cwd));
   const givenOrigin = flags.get("frontend-origin");
   const origin = givenOrigin ?? "http://localhost:3000";
   const local = checkProject(import_node_path8.default.resolve(cwd));
@@ -1634,11 +1684,11 @@ async function runDoctor(cwd, flags) {
     if (!givenOrigin) checks.push({ level: "fail", title: "No site URL given", fix: "Pass --frontend-origin https://your-site.com (the public URL of the site)." });
     if (local.djangoBaseUrl !== null || apiUrl) {
       if (!apiUrl) checks.push({ level: "fail", title: "No production API URL given", fix: "Pass --api-url https://api.your-site.com/api/cms, or set NEXT_PUBLIC_CMS_API_URL." });
-      else if (givenOrigin) checks.push(...await checkProductionApi(apiUrl, givenOrigin));
+      else if (givenOrigin) checks.push(...await checkProductionApi(apiUrl, givenOrigin, void 0, { tokenAuth }));
     }
   } else {
     const apiUrl = flags.get("api-url") ?? local.djangoBaseUrl;
-    if (apiUrl) checks.push(...await checkDjango(apiUrl, origin));
+    if (apiUrl) checks.push(...await checkDjango(apiUrl, origin, void 0, { tokenAuth }));
   }
   const icon = { ok: green("  ok  "), warn: yellow(" warn "), fail: red(" FAIL ") };
   console.log("");
@@ -1649,7 +1699,13 @@ async function runDoctor(cwd, flags) {
   const { ok, warn, fail } = summarize(checks);
   console.log("");
   console.log(`${ok} ok, ${warn} warning${warn === 1 ? "" : "s"}, ${fail} problem${fail === 1 ? "" : "s"}.`);
-  if (local.djangoBaseUrl) console.log(dim('Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'));
+  if (local.djangoBaseUrl) {
+    console.log(
+      dim(
+        tokenAuth ? 'Not checked: your username and password. If the sign-in form says "Invalid username or password", use a Django staff account (python manage.py createsuperuser).' : 'Not checked: whether you are logged in to Django as a staff user. If saving fails with "Failed to save", log in at your Django admin first.'
+      )
+    );
+  }
   console.log("");
   return fail > 0 ? 1 : 0;
 }
@@ -1791,6 +1847,10 @@ async function main(argv) {
     if (backendFlag !== void 0 && backendFlag !== "files" && backendFlag !== "django") {
       throw new CliError('--backend must be "files" or "django".');
     }
+    const authFlag = flags.get("auth");
+    if (authFlag !== void 0 && authFlag !== "token" && authFlag !== "session") {
+      throw new CliError('--auth must be "token" or "session".');
+    }
     const given = new Set(flags.keys());
     let options = {
       cwd: typeof flags.get("cwd") === "string" ? flags.get("cwd") : process.cwd(),
@@ -1802,7 +1862,8 @@ async function main(argv) {
       dryRun: flags.has("dry-run"),
       force: flags.has("force"),
       djangoDir: flags.get("django-dir") ?? null,
-      frontendOrigin: flags.get("frontend-origin") ?? "http://localhost:3000"
+      frontendOrigin: flags.get("frontend-origin") ?? "http://localhost:3000",
+      auth: authFlag ?? "token"
     };
     if (options.djangoDir && backendFlag === void 0) options.backend = "django";
     const interactive = Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY) && !flags.has("yes");

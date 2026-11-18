@@ -8,6 +8,10 @@ Settings, read from the VISUAL_CMS dict in your Django settings:
         "MAX_UPLOAD_BYTES": 5_242_880,           # largest uploaded image
         "UPLOAD_DIR": "cms-uploads",             # folder inside your media storage
         "ALLOW_SVG": False,                      # SVG can carry scripts; off by default
+        "TOKEN_LOGIN": True,                     # enable POST auth/login (editors sign in from a React admin)
+        "TOKEN_MAX_AGE": 43_200,                 # seconds a login token stays valid (12 hours)
+        "LOGIN_MAX_ATTEMPTS": 5,                 # wrong passwords per username+IP before a lockout
+        "LOGIN_LOCKOUT_SECONDS": 300,            # how long that lockout lasts
     }
 """
 
@@ -24,6 +28,10 @@ DEFAULTS: dict[str, Any] = {
     "MAX_UPLOAD_BYTES": 5 * 1024 * 1024,
     "UPLOAD_DIR": "cms-uploads",
     "ALLOW_SVG": False,
+    "TOKEN_LOGIN": True,
+    "TOKEN_MAX_AGE": 12 * 60 * 60,
+    "LOGIN_MAX_ATTEMPTS": 5,
+    "LOGIN_LOCKOUT_SECONDS": 300,
 }
 
 

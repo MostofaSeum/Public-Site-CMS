@@ -30,7 +30,7 @@ Safety rules (most important):
 
 Steps:
 1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py).
-2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.3.0   then check: npx visual-cms --version
+2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.4.0   then check: npx visual-cms --version
 3. Set it up with `npx visual-cms init --yes`:
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
    - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
@@ -42,7 +42,7 @@ Steps:
    - Review the change with git diff and run the type check. The page must render exactly as before.
    - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
 6. Run npx visual-cms doctor and fix every FAIL.
-7. Start the dev server and open the CMS screen. With Django, log in first at http://localhost:8000/admin/ as a staff user (use localhost, not 127.0.0.1). Hover a section, click the pencil, change a text, Save & Publish, and check the public page shows it. Then reset it.
+7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a section, click the pencil, change a text, Save & Publish, and check the public page shows it. Then reset it.
 8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx visual-cms doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
 9. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
 ```
@@ -70,13 +70,13 @@ Steps:
 In your Next.js project:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.3.0
+npm install github:MostofaSeum/Public-Site-CMS#v0.4.0
 ```
 
-`#v0.3.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
+`#v0.4.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
 
 ```bash
-npx visual-cms --version     # prints 0.3.0
+npx visual-cms --version     # prints 0.4.0
 ```
 
 ### Step 2. Run the setup command
@@ -142,7 +142,7 @@ Details: [section 4](#4-make-your-own-pages-editable).
 npm run dev
 ```
 
-Open `http://localhost:3000/admin/cms`. Hover a section in the preview, click the pencil, change the text, and watch the preview update. **Save & Publish** puts it on the site. The reset button (circular arrow) goes back to the default. With Django, log in at `http://localhost:8000/admin/` first as a staff user.
+Open `http://localhost:3000/admin/cms`. Hover a section in the preview, click the pencil, change the text, and watch the preview update. **Save & Publish** puts it on the site. The reset button (circular arrow) goes back to the default. With Django, the CMS screen first shows a sign-in form: use a Django staff username and password (`python manage.py createsuperuser` makes one).
 
 ### Step 5. Connect your admin panel
 
@@ -293,7 +293,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 **Step 3. Install the library.**
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.3.0
+npm install github:MostofaSeum/Public-Site-CMS#v0.4.0
 npx visual-cms --version
 ```
 
@@ -334,7 +334,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000<ADMIN_URL>"   # 20
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/"             # 200
 ```
 
-If you have a browser tool: open the CMS URL (with Django, log in first at `http://localhost:8000/admin/` as a staff user, using `localhost`), confirm the preview loads, hover a section, click the pencil, change a text, **Save & Publish**, check the public page, then reset it. Stop the dev server you started.
+If you have a browser tool: open the CMS URL (with Django, sign in with a staff account on the form it shows), confirm the preview loads, hover a section, click the pencil, change a text, **Save & Publish**, check the public page, then reset it. Stop the dev server you started.
 
 **Step 8. Report to the developer.** Say what was created and edited, the CMS URL, where the menu link was added, which pages are editable, and what is still theirs to do: the real login check for the file backend if you could not add it, a staff user for Django, and a database-backed storage before deploying to a serverless host ([Before you go live](#5-before-you-go-live)).
 
@@ -346,7 +346,7 @@ If you have a browser tool: open the CMS URL (with Django, log in first at `http
 - Removing `authorize` or making it always return `true`.
 - Adding `'use client'` to a page that is `async`, exports `metadata`, or reads a database.
 - Wrapping a section in `<CmsSection sectionKey="x">` without adding `x` to that page's `sections` in `cms.config.ts` (`scan` and `add-page` do this for you).
-- Logging in to Django at `127.0.0.1` while the site calls `localhost` (the login cookie is not shared, so saving fails with 401).
+- With `--auth session` only: logging in to Django at `127.0.0.1` while the site calls `localhost` (the login cookie is not shared, so saving fails with 401). The default token login has no such problem.
 
 ---
 
@@ -454,13 +454,13 @@ npx visual-cms doctor --production --frontend-origin https://example.com --api-u
 
 It checks HTTPS, Secure cookies, that the site and the API share a site, CORS with credentials, `DEBUG = False`, that the API URL comes from an environment variable, that content is rendered on the server, and the file-backend pitfalls below. It exits with an error code when something is wrong, so you can run it in CI.
 
-**1. Choose the domains (most important).** Editors log in to Django, and the CMS sends that login cookie with every save.
+**1. Choose the domains.** With the default **token login** (`--auth token`), editors sign in on the CMS screen and the browser sends a token, not a cookie, so any domains work as long as CORS allows the site. With `--auth session` the CMS sends Django's login cookie with every save, which limits the domains:
 
 | Setup | Works? |
 |---|---|
 | `example.com` + `api.example.com` | yes, with the default cookie settings |
 | `example.com` with Django behind `example.com/api/` (reverse proxy) | yes, nothing extra |
-| `mysite.vercel.app` + `myapi.herokuapp.com` (two different sites) | **avoid**: the login cookie becomes a third-party cookie, which Safari and other browsers block, so saving fails even after logging in |
+| `mysite.vercel.app` + `myapi.herokuapp.com` (two different sites) | token login: yes. Session login: **avoid**, the cookie becomes a third-party cookie, which Safari and other browsers block, so saving fails even after logging in |
 
 **2. Next.js environment.** `init` generates `baseUrl: process.env.NEXT_PUBLIC_CMS_API_URL ?? 'http://localhost:8000/api/cms'`. Set the variable on your host (Vercel, Docker, …) before building:
 
@@ -484,7 +484,7 @@ Use any database Django supports (PostgreSQL, MySQL…): the CMS is a normal mod
 
 **4. Uploaded images.** With `DEBUG = False` Django does not serve `/media/`. Configure a storage backend such as `django-storages` with S3 (uploads use Django's default storage), or serve `MEDIA_ROOT` with your web server.
 
-**5. Editors.** Create staff users on the production Django (`python manage.py createsuperuser`). Editors log in at the production Django admin first, then use the CMS.
+**5. Editors.** Create staff users on the production Django (`python manage.py createsuperuser`). Editors sign in on the CMS screen with that username and password (with `--auth session`: at the Django admin first).
 
 **6. Caching.** Content is rendered on the server by `<CmsProviders>`: on every request (Next.js 15+), or cached for about a minute with Next.js 16 `cacheComponents`. If you put a CDN in front of the site, do not cache HTML for longer than you want edits to take to appear.
 
@@ -533,15 +533,73 @@ A copy of each edited file is saved next to it as `*.visual-cms.bak`. Running th
 You can also run the Django part on its own, without the Next.js part:
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.4.0#subdirectory=django-visual-cms"
 python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
-Then create the editor login: any Django user with **staff** status can edit (`python manage.py createsuperuser` makes one). Editors log in at your Django admin first; the CMS uses that session.
+Then create an editor: any Django user with **staff** status can edit (`python manage.py createsuperuser` makes one).
+
+#### How editors sign in
+
+Editors never need Django's login page. `init` sets up a **sign-in form on the CMS screen**: the editor types a Django staff username and password, Django returns a signed token that expires after 12 hours, and the CMS sends it with every request. A request with a valid token needs no CSRF token (it uses no cookie), which is also why this works when the site and the API are on different domains.
+
+```ts
+// cms.config.ts (generated)
+export const cmsLogin = cmsAuth({ baseUrl: API_URL });
+adapter: djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers }),
+```
+
+```tsx
+// app/admin/cms/page.tsx (generated): the form shows until the editor is signed in
+<CmsAuthGate auth={cmsLogin}>
+  <CmsStudio config={cms} />
+</CmsAuthGate>
+```
+
+**Your own React admin with a sign-in page.** Put the same gate around your whole admin area and give it a login page, so signed-out visitors are sent to the form and back afterwards:
+
+```tsx
+// app/admin/layout.tsx
+'use client';
+import { CmsAuthGate } from '@brainicon/visual-cms/admin';
+import { cmsLogin } from '@/cms.config';
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <CmsAuthGate auth={cmsLogin} loginPath="/admin/login">{children}</CmsAuthGate>;
+}
+
+// app/admin/login/page.tsx
+'use client';
+import { CmsLogin } from '@brainicon/visual-cms/admin';
+import { cmsLogin } from '@/cms.config';
+
+export default function LoginPage() {
+  return <CmsLogin auth={cmsLogin} title="Admin sign in" redirectTo="/admin" />;
+}
+```
+
+Add `<CmsLogoutButton auth={cmsLogin} redirectTo="/admin/login" />` to your admin header. The gate only hides the *screens*: protect your own admin API on the server too (a guard in the browser cannot protect an endpoint).
+
+**Settings** (`VISUAL_CMS` in Django `settings.py`, all optional):
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `TOKEN_LOGIN` | `True` | `False` removes the sign-in endpoint (use Django sessions only) |
+| `TOKEN_MAX_AGE` | `43200` | seconds a sign-in lasts |
+| `LOGIN_MAX_ATTEMPTS` | `5` | wrong passwords per username and address before a lockout |
+| `LOGIN_LOCKOUT_SECONDS` | `300` | how long the lockout lasts |
+| `AUTHORIZE` | staff users | dotted path of your own `can_edit(request) -> bool`; it also decides who gets a token |
+
+**Other ways to sign in.**
+
+- **Django's own login page** (same domain only): run `init` with `--auth session`, or remove `cmsAuth` from the config. Editors then log in at the Django admin first and the CMS uses that session.
+- **Your own login system (JWT, SSO…)**: write `can_edit(request)` for Django, set it as `VISUAL_CMS["AUTHORIZE"]`, and send your token with `djangoAdapter({ baseUrl, headers: () => ({ Authorization: \`Bearer ${yourToken()}\` }) })`. A request that carries the library's own token is recognised first; anything else reaches your function with the normal `request`.
+
+**Existing project?** Update the package and the npm library ([section 9](#9-updating)), then in `cms.config.ts` add `import { cmsAuth } from '@brainicon/visual-cms/adapters'`, `export const cmsLogin = cmsAuth({ baseUrl: <your API URL> })` and `headers: cmsLogin.headers` in `djangoAdapter(...)`, and wrap the CMS screen in `<CmsAuthGate auth={cmsLogin}>`. `npx visual-cms doctor` checks the result.
 
 #### By hand
 
-Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the Django session cookie and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.4.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -584,9 +642,13 @@ interface CmsStorageAdapter {
 | Symptom | Cause | Fix |
 |---|---|---|
 | anything does not work | many possible causes | run `npx visual-cms doctor`: it checks the common ones and says what to fix |
-| Django: "Failed to save section changes" | you are not logged in to Django as a **staff** user (401), or the CSRF origin is missing (403) | log in at the Django admin (same host name as the site, for example `localhost` not `127.0.0.1`); check `CSRF_TRUSTED_ORIGINS` contains your site's origin |
-| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.3.0` in the project root, then retry |
-| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.3.0` |
+| Django: "Failed to save section changes" | your sign-in expired (tokens last 12 hours), or you are not a **staff** user (401), or with `--auth session` the CSRF origin is missing (403) | reload the CMS screen and sign in again; with `--auth session` log in at the Django admin (same host name as the site, `localhost` not `127.0.0.1`) and check `CSRF_TRUSTED_ORIGINS` |
+| the sign-in form says "Invalid username or password" | wrong credentials, or the account is not active | use a Django **staff** account; `python manage.py createsuperuser` makes one |
+| the sign-in form says "This account is not allowed to edit the site" | the account is not staff (or your `AUTHORIZE` function says no) | set `is_staff` on the user in the Django admin |
+| the sign-in form says "Too many failed attempts" | 5 wrong passwords for that username from this address | wait 5 minutes (`LOGIN_LOCKOUT_SECONDS`) |
+| the sign-in form says "Token login is not available on this server" | `django-visual-cms` is older than 0.4 or `TOKEN_LOGIN` is `False` | upgrade the package ([section 9](#9-updating)); `npx visual-cms doctor` says which |
+| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.4.0` in the project root, then retry |
+| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.4.0` |
 | the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/visual-cms/dist";` below `@import "tailwindcss";` |
 | the preview shows "Loading…" forever, or is blank | the page's `route` in `cms.config.ts` is wrong, the page throws an error, a redirect catches the preview, or the site blocks being framed | open the route in a normal tab; check `middleware.ts` ([below](#redirects-and-the-preview-iframe)); remove `X-Frame-Options: DENY` |
 | hovering shows no pencil | the block is not wrapped in `<CmsSection>`, `CmsProviders` is missing from the root layout, or Edit Mode is off | wrap the block; check `app/layout.tsx`; turn Edit Mode on in the toolbar |
@@ -613,6 +675,7 @@ interface CmsStorageAdapter {
 | `--api-url <url>` | Django API base URL (default `http://localhost:8000/api/cms`) |
 | `--django-dir <path>` | your Django project (folder with `manage.py`, or the folder above it). Also sets up Django: package, settings, urls, CORS, migration. Implies `--backend django` |
 | `--frontend-origin <url>` | where this Next.js site runs, allowed by Django (default `http://localhost:3000`) |
+| `--auth token\|session` | how editors sign in with Django (default `token`): a sign-in form on the CMS screen that works across domains, or Django's own login page (same domain only) |
 | `--admin-path <path>` | folder of the CMS screen under `app/` (default `admin/cms`). Route groups are allowed: `"(admin)/dashboard/cms"` |
 | `--no-example` | skip the example page |
 | `--no-install` | do not install dependencies |
@@ -641,7 +704,7 @@ Afterwards, replace the placeholder markup in the generated view with your own d
 
 ### `visual-cms doctor`
 
-Checks the setup and says exactly what to fix: Next.js and the packages, Tailwind v4 and the `@source` line, `cms.config.ts`, the provider, the CMS screen, and (for Django) whether the API answers, whether Django allows your origin with cookies (CORS), and whether saving is allowed by the preflight. It exits with an error code when something is wrong, so it also works in CI. Options: `--api-url <url>` (check another Django URL), `--frontend-origin <url>`, and `--production` for the deployment checks in [section 5](#deploying-to-production). It cannot tell whether you are logged in to Django; if saving still fails with "Failed to save", log in at the Django admin as a staff user.
+Checks the setup and says exactly what to fix: Next.js and the packages, Tailwind v4 and the `@source` line, `cms.config.ts`, the provider, the CMS screen, and (for Django) whether the API answers, whether Django allows your origin with cookies (CORS), and whether saving is allowed by the preflight. It exits with an error code when something is wrong, so it also works in CI. Options: `--api-url <url>` (check another Django URL), `--frontend-origin <url>`, and `--production` for the deployment checks in [section 5](#deploying-to-production). With the token login it also checks that CORS allows the `Authorization` header and that the server has the sign-in endpoint. It cannot check your username and password: if the sign-in form refuses you, use a Django staff account.
 
 `init` supports the Next.js App Router with TypeScript and Tailwind v4. It stops with a clear message for the Pages Router and JavaScript-only projects, and leaves a manual step for Tailwind v3. It was tested with npm; pnpm, yarn and bun are detected from the lockfile but were not tested.
 
@@ -748,6 +811,9 @@ There is no schema to write. The editor reads the section's content and picks a 
 |---|---|---|
 | `<CmsStudio config initialPage? defaultMode? toaster? />` | `/admin` | the CMS screen |
 | `<CmsNavButton href active? label? as? className? />` | `/admin` | menu button for the CMS |
+| `<CmsAuthGate auth loginPath? title?>` | `/admin` | show its children only to a signed-in editor; otherwise a sign-in form (or redirect to `loginPath`) |
+| `<CmsLogin auth title? onSuccess? redirectTo?>` | `/admin` | the sign-in form (username + password) |
+| `<CmsLogoutButton auth redirectTo? className?>` | `/admin` | sign out |
 | `<CmsProvider config>` | `/site` | wrap the site once (root layout) |
 | `usePageContent(pageKey, { initialData? })` | `/site` | read a page's content, with live preview in the CMS |
 | `<CmsSection sectionKey title activeOnPath? buttonPlacement?>` | `/site` | make a block editable |
@@ -759,13 +825,15 @@ There is no schema to write. The editor reads the section's content and picks a 
 | `fileStorage()` | `/next` | JSON-file storage |
 | `isCmsPreviewRequest(request, { studioPath? })` | `/next` | let the preview through middleware |
 | `restAdapter`, `djangoAdapter`, `memoryAdapter` | `/adapters` | storage adapters for the browser |
+| `cmsAuth({ baseUrl, storageKey?, storage? })` | `/adapters` | token sign-in for the Django backend: `login`, `logout`, `check`, `getToken`, `headers` |
 | `defineCms`, types, merge helpers | `@brainicon/visual-cms` | configuration and types |
 
 All imports are `@brainicon/visual-cms` plus the path shown (for example `@brainicon/visual-cms/admin`).
 
 ### Security
 
-- The library has no login of its own. Protect the CMS page with your admin guard, and implement `authorize` on the API.
+- Who may edit is decided on the server: `authorize` on the API route (files backend) or Django's staff check / your `AUTHORIZE` function (Django backend). `<CmsAuthGate>` only guards the screen, so protect any other API of yours on the server too.
+- The token login is rate limited (5 wrong passwords per username and address, then a 5 minute lockout), tokens expire (12 hours), and they stop working when the user's password changes or the account is deactivated. The token is kept in the browser's `localStorage`, so serve the site over HTTPS and keep it free of third-party scripts you do not trust.
 - Visitors only ever receive published content. Drafts are returned only when `authorize` passes.
 - Page and section keys are validated (`A–Z a–z 0–9 _ -`). Uploads are limited to image types (no SVG by default) and a size cap, and are saved under random names.
 - Preview messages are sent only to the configured origins and are ignored from any other origin or window.
@@ -789,11 +857,11 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 Install a newer release by its tag, then restart the dev server:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.3.0     # use the new tag
+npm install github:MostofaSeum/Public-Site-CMS#v0.4.0     # use the new tag
 rm -rf .next                                               # PowerShell: Remove-Item -Recurse -Force .next
 ```
 
-With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.3.0#subdirectory=django-visual-cms"`.
+With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.4.0#subdirectory=django-visual-cms"`.
 
 ### Development
 

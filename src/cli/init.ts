@@ -32,6 +32,8 @@ export interface InitOptions {
   djangoDir?: string | null;
   /** Origin the Next.js site runs on, allowed by Django (default http://localhost:3000). */
   frontendOrigin?: string;
+  /** How editors sign in with the Django backend: "token" (default: a sign-in form, works from any React admin and across domains) or "session" (Django's own login page). */
+  auth?: t.AuthMode;
 }
 
 export type ActionKind = 'created' | 'modified' | 'overwritten' | 'unchanged' | 'skipped';
@@ -227,6 +229,7 @@ export function runInit(options: InitOptions): InitReport {
       apiUrl: options.apiUrl,
       example: options.example,
       exampleJsonImport: jsonSpec(files.config),
+      auth: options.auth,
     }),
     'already exists. Make sure it lists your pages and uses the adapter you want.'
   );
@@ -258,7 +261,7 @@ export function runInit(options: InitOptions): InitReport {
   } else {
     writeNew(files.providers, providersSource);
   }
-  writeNew(files.adminPage, t.adminPage(imp(files.adminPage, files.config)));
+  writeNew(files.adminPage, t.adminPage(imp(files.adminPage, files.config), { mode: options.auth ?? 'token', backend: options.backend }));
 
   // The small admin shell is only ours to manage when this tool made it (or the area is new).
   const adminLayoutSource = t.adminLayout({ href: adminUrl });

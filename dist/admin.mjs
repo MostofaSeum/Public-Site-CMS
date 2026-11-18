@@ -2357,9 +2357,122 @@ var CmsNavButton = ({
     ]
   }
 );
+
+// src/admin/CmsAuth.tsx
+import { useCallback as useCallback3, useEffect as useEffect9, useState as useState10 } from "react";
+import { Loader2 as Loader23, Lock as Lock2, LogOut } from "lucide-react";
+import { Fragment as Fragment4, jsx as jsx11, jsxs as jsxs10 } from "react/jsx-runtime";
+function safeNext(value) {
+  return value && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\") ? value : null;
+}
+var CmsLogin = ({ auth, title = "Sign in to edit your site", onSuccess, redirectTo = "/" }) => {
+  const [username, setUsername] = useState10("");
+  const [password, setPassword] = useState10("");
+  const [error, setError] = useState10("");
+  const [busy, setBusy] = useState10(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const user = await auth.login(username.trim(), password);
+      if (onSuccess) onSuccess(user);
+      else window.location.assign(safeNext(new URLSearchParams(window.location.search).get("next")) ?? redirectTo);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed.");
+      setPassword("");
+      setBusy(false);
+    }
+  };
+  const field = "w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30";
+  return /* @__PURE__ */ jsx11("div", { className: "flex min-h-[70vh] items-center justify-center px-4 py-10 text-white", children: /* @__PURE__ */ jsxs10("form", { onSubmit: submit, className: "w-full max-w-sm space-y-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-2xl", children: [
+    /* @__PURE__ */ jsxs10("div", { className: "flex flex-col items-center gap-3 text-center", children: [
+      /* @__PURE__ */ jsx11("div", { className: "rounded-xl border border-purple-500/30 bg-purple-600/20 p-3 text-purple-400", children: /* @__PURE__ */ jsx11(Lock2, { className: "h-6 w-6" }) }),
+      /* @__PURE__ */ jsx11("h1", { className: "text-xl font-bold", children: title }),
+      /* @__PURE__ */ jsx11("p", { className: "text-xs text-slate-400", children: "Use your staff username and password." })
+    ] }),
+    /* @__PURE__ */ jsxs10("label", { className: "block space-y-1.5 text-xs font-semibold text-slate-300", children: [
+      "Username",
+      /* @__PURE__ */ jsx11("input", { className: field, value: username, onChange: (e) => setUsername(e.target.value), autoComplete: "username", autoFocus: true, required: true })
+    ] }),
+    /* @__PURE__ */ jsxs10("label", { className: "block space-y-1.5 text-xs font-semibold text-slate-300", children: [
+      "Password",
+      /* @__PURE__ */ jsx11("input", { className: field, type: "password", value: password, onChange: (e) => setPassword(e.target.value), autoComplete: "current-password", required: true })
+    ] }),
+    error && /* @__PURE__ */ jsx11("p", { role: "alert", className: "rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300", children: error }),
+    /* @__PURE__ */ jsxs10(
+      "button",
+      {
+        type: "submit",
+        disabled: busy,
+        className: "flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-500 disabled:opacity-60",
+        children: [
+          busy && /* @__PURE__ */ jsx11(Loader23, { className: "h-4 w-4 animate-spin" }),
+          busy ? "Signing in..." : "Sign in"
+        ]
+      }
+    )
+  ] }) });
+};
+var CmsAuthGate = ({ auth, loginPath, title, children }) => {
+  const [state, setState] = useState10("checking");
+  const [message, setMessage] = useState10("");
+  const verify = useCallback3(async () => {
+    if (loginPath && window.location.pathname === loginPath) {
+      setState("login-page");
+      return;
+    }
+    setState("checking");
+    try {
+      const user = await auth.check();
+      if (user) return setState("in");
+      if (loginPath) {
+        const back = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.replace(`${loginPath}?next=${back}`);
+        return;
+      }
+      setState("out");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not check your sign-in.");
+      setState("error");
+    }
+  }, [auth, loginPath]);
+  useEffect9(() => {
+    void verify();
+  }, [verify]);
+  if (state === "in" || state === "login-page") return /* @__PURE__ */ jsx11(Fragment4, { children });
+  if (state === "out") return /* @__PURE__ */ jsx11(CmsLogin, { auth, title, onSuccess: () => void verify() });
+  if (state === "error") {
+    return /* @__PURE__ */ jsxs10("div", { className: "flex min-h-[40vh] flex-col items-center justify-center gap-3 px-4 text-center text-white", children: [
+      /* @__PURE__ */ jsx11("p", { className: "text-sm text-slate-300", children: message }),
+      /* @__PURE__ */ jsx11("button", { type: "button", onClick: () => void verify(), className: "rounded-xl bg-purple-600 px-4 py-2 text-sm font-bold hover:bg-purple-500", children: "Try again" })
+    ] });
+  }
+  return /* @__PURE__ */ jsx11("div", { className: "flex min-h-[40vh] items-center justify-center text-slate-400", role: "status", "aria-label": "Checking your sign-in", children: /* @__PURE__ */ jsx11(Loader23, { className: "h-6 w-6 animate-spin" }) });
+};
+var CmsLogoutButton = ({ auth, redirectTo = "/", className, children }) => /* @__PURE__ */ jsx11(
+  "button",
+  {
+    type: "button",
+    className: className ?? "inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700",
+    onClick: () => {
+      auth.logout();
+      window.location.assign(redirectTo);
+    },
+    children: children ?? /* @__PURE__ */ jsxs10(Fragment4, { children: [
+      /* @__PURE__ */ jsx11(LogOut, { className: "h-3.5 w-3.5" }),
+      " Sign out"
+    ] })
+  }
+);
 export {
+  CmsAuthGate,
+  CmsLogin,
+  CmsLogoutButton,
   CmsNavButton,
   CmsStudio,
   POPULAR_ICONS,
-  getDynamicIcon
+  getDynamicIcon,
+  safeNext
 };

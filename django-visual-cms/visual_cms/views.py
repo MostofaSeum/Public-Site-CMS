@@ -8,6 +8,10 @@ REST API used by @brainicon/visual-cms (restAdapter / djangoAdapter):
     GET    media                       -> MediaItem[]
     POST   media                       multipart "files" -> {items: MediaItem[]}
     GET    csrf                        -> {csrfToken} (and sets the CSRF cookie)
+    POST   auth/login                  body {username, password} -> {token, expiresIn, user}
+    GET    auth/me                     -> {user}, or 401 when the request may not edit
+
+Editors are recognised by a staff session cookie or by ``Authorization: Bearer <token>``.
 """
 
 import json
@@ -15,12 +19,14 @@ import os
 import re
 import uuid
 
+from django.contrib.auth import authenticate
 from django.core.exceptions import RequestDataTooBig
 from django.core.files.storage import default_storage
 from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import CsrfViewMiddleware, get_token
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 
+from .auth import attach_token_user, clear_failures, is_locked_out, issue_token, record_failure
 from .conf import get_authorize, get_setting
 from .models import CmsRecord
 
@@ -41,6 +47,7 @@ def _json(data, status: int = 200) -> JsonResponse:
 
 
 def _is_editor(request) -> bool:
+    attach_token_user(request)  # a valid Bearer token becomes request.user
     try:
         return bool(get_authorize()(request))
     except Exception:
@@ -75,9 +82,12 @@ def _csrf_failure(request) -> HttpResponse | None:
 
 
 def _guard_write(request) -> JsonResponse | None:
-    failure = _csrf_failure(request)
-    if failure is not None:
-        return failure
+    # CSRF protects requests that rely on cookies. A request with a valid Bearer token
+    # does not, so only cookie-based requests need the CSRF token.
+    if attach_token_user(request) is None:
+        failure = _csrf_failure(request)
+        if failure is not None:
+            return failure
     if not _is_editor(request):
         return _error(401, "Not authorised.")
     return None
@@ -227,3 +237,55 @@ def csrf(request):
     if request.method != "GET":
         return _error(405, "Method not allowed.")
     return _json({"csrfToken": get_token(request)})
+
+
+def _user_info(user) -> dict:
+    if not user or not getattr(user, "is_authenticated", False):
+        return {"username": "", "name": ""}
+    return {"username": user.get_username(), "name": user.get_full_name() or user.get_username()}
+
+
+@csrf_exempt
+def auth_login(request):
+    """Exchange a staff username and password for a signed token (see auth.py)."""
+    if not get_setting("TOKEN_LOGIN"):
+        return _error(404, "Token login is disabled.")
+    if request.method != "POST":
+        return _error(405, "Method not allowed.")
+    try:
+        raw = request.body
+        if len(raw) > 4096:
+            return _error(413, "Request too large.")
+        body = json.loads(raw or b"{}")
+    except (ValueError, RequestDataTooBig):
+        return _error(400, "Body must be JSON.")
+    username, password = (body.get("username") if isinstance(body, dict) else None), (body.get("password") if isinstance(body, dict) else None)
+    if not isinstance(username, str) or not isinstance(password, str) or not username or not password:
+        return _error(400, "Send a username and a password.")
+
+    if is_locked_out(request, username):
+        response = _error(429, "Too many failed attempts. Try again in a few minutes.")
+        response["Retry-After"] = str(get_setting("LOGIN_LOCKOUT_SECONDS"))
+        return response
+
+    user = authenticate(request, username=username, password=password)
+    if user is None or not user.is_active:
+        record_failure(request, username)
+        return _error(401, "Invalid username or password.")
+
+    request.user = user
+    if not _is_editor(request):
+        return _error(403, "This account is not allowed to edit the site.")
+
+    clear_failures(request, username)
+    return _json({"token": issue_token(user), "expiresIn": get_setting("TOKEN_MAX_AGE"), "user": _user_info(user)})
+
+
+@csrf_exempt
+def auth_me(request):
+    """Is the current request (session or token) allowed to edit?"""
+    if request.method != "GET":
+        return _error(405, "Method not allowed.")
+    if not _is_editor(request):
+        return _error(401, "Not authorised.")
+    return _json({"user": _user_info(getattr(request, "user", None))})

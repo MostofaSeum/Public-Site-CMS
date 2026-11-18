@@ -119,6 +119,109 @@ function djangoAdapter(options) {
   });
 }
 
+// src/adapters/auth.ts
+var CmsAuthError = class extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "CmsAuthError";
+    this.status = status;
+  }
+};
+function cmsAuth(options) {
+  const base = options.baseUrl.replace(/\/+$/, "");
+  const key = options.storageKey ?? "visual-cms-token";
+  const doFetch = options.fetch ?? ((...args) => fetch(...args));
+  let memory = null;
+  const storage = (() => {
+    if (options.storage !== void 0) return options.storage;
+    try {
+      return typeof window === "undefined" ? null : window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const read = () => {
+    let stored = memory;
+    if (!stored && storage) {
+      try {
+        const raw = storage.getItem(key);
+        stored = raw ? JSON.parse(raw) : null;
+      } catch {
+        stored = null;
+      }
+    }
+    if (!stored || typeof stored.token !== "string" || typeof stored.expiresAt !== "number" || stored.expiresAt <= Date.now()) {
+      if (stored) clear();
+      return null;
+    }
+    return stored;
+  };
+  const write = (value) => {
+    memory = value;
+    try {
+      storage?.setItem(key, JSON.stringify(value));
+    } catch {
+    }
+  };
+  function clear() {
+    memory = null;
+    try {
+      storage?.removeItem(key);
+    } catch {
+    }
+  }
+  const headers = () => {
+    const stored = read();
+    return stored ? { Authorization: `Bearer ${stored.token}` } : {};
+  };
+  const detail = async (res, fallback) => {
+    try {
+      const body = await res.json();
+      return body.detail || fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  return {
+    headers,
+    getToken: () => read()?.token ?? null,
+    logout: clear,
+    async login(username, password) {
+      let res;
+      try {
+        res = await doFetch(`${base}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ username, password }),
+          cache: "no-store"
+        });
+      } catch {
+        throw new CmsAuthError("Cannot reach the server. Check your connection and try again.", 0);
+      }
+      if (!res.ok) {
+        const fallback = res.status === 404 ? "Token login is not available on this server (update django-visual-cms)." : `Sign in failed (status ${res.status}).`;
+        throw new CmsAuthError(await detail(res, fallback), res.status);
+      }
+      const body = await res.json();
+      write({ token: body.token, expiresAt: Date.now() + Math.max(0, body.expiresIn - 30) * 1e3 });
+      return body.user;
+    },
+    async check() {
+      const res = await doFetch(`${base}/auth/me`, {
+        credentials: "include",
+        headers: { Accept: "application/json", ...headers() },
+        cache: "no-store"
+      });
+      if (res.status === 401 || res.status === 403) {
+        clear();
+        return null;
+      }
+      if (!res.ok) throw new CmsAuthError(`Could not check the sign-in (status ${res.status}).`, res.status);
+      return (await res.json()).user;
+    }
+  };
+}
+
 // src/adapters/memory.ts
 var keyOf = (page, sectionKey) => `${page}\0${sectionKey}`;
 function clone(value) {
@@ -157,7 +260,9 @@ function memoryAdapter(initial = []) {
   };
 }
 export {
+  CmsAuthError,
   CmsRequestError,
+  cmsAuth,
   djangoAdapter,
   memoryAdapter,
   restAdapter
