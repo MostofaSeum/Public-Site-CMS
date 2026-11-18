@@ -66,6 +66,17 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 ```
 
+To open uploaded images during development, also add this to the end of your root `urls.py`. It only serves files while `DEBUG = True`:
+
+```python
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+In production, serve `MEDIA_ROOT` with your web server or use a storage backend such as S3.
+
 Uploads go through Django's default storage, so S3 or any other storage backend you've configured works too.
 
 **That's it.** By default, any logged-in **staff** user can edit.
