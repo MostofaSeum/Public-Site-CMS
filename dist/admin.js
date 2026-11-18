@@ -182,6 +182,7 @@ var import_react_hot_toast3 = __toESM(require("react-hot-toast"));
 
 // src/admin/JsonInspectorModal.tsx
 var import_react2 = require("react");
+var import_react_dom = require("react-dom");
 var import_lucide_react = require("lucide-react");
 var import_react_hot_toast = __toESM(require("react-hot-toast"));
 var import_jsx_runtime2 = require("react/jsx-runtime");
@@ -201,7 +202,7 @@ var JsonInspectorModal = ({
       setError(null);
     }
   }, [jsonData, isOpen]);
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -229,79 +230,83 @@ var JsonInspectorModal = ({
       import_react_hot_toast.default.error("Please fix JSON syntax errors before applying");
     }
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden text-white", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "p-4 border-b border-purple-500/20 flex items-center justify-between bg-slate-800/80", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "text-lg font-bold text-white flex items-center gap-2", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: "Raw JSON Inspector:" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-purple-400 font-mono text-sm", children: sectionTitle })
+  return (0, import_react_dom.createPortal)(
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden text-white", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "p-4 border-b border-purple-500/20 flex items-center justify-between bg-slate-800/80", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { className: "text-lg font-bold text-white flex items-center gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: "Raw JSON Inspector:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-purple-400 font-mono text-sm", children: sectionTitle })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-xs text-slate-400", children: "Direct JSON editing for power users. Changes are validated before applying." })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "text-xs text-slate-400", children: "Direct JSON editing for power users. Changes are validated before applying." })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+            "button",
+            {
+              onClick: handleCopy,
+              className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition-colors border border-slate-600",
+              children: [
+                copied ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.Check, { className: "w-3.5 h-3.5 text-emerald-400" }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.Copy, { className: "w-3.5 h-3.5" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: copied ? "Copied" : "Copy" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "button",
+            {
+              onClick: onClose,
+              className: "p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors",
+              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.X, { className: "w-5 h-5" })
+            }
+          )
+        ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "button",
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex-1 p-4 overflow-hidden flex flex-col", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "textarea",
           {
-            onClick: handleCopy,
-            className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition-colors border border-slate-600",
-            children: [
-              copied ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.Check, { className: "w-3.5 h-3.5 text-emerald-400" }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.Copy, { className: "w-3.5 h-3.5" }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: copied ? "Copied" : "Copy" })
-            ]
+            value: text,
+            onChange: handleTextChange,
+            spellCheck: false,
+            className: "w-full flex-1 min-h-[400px] font-mono text-xs p-4 bg-slate-950 border border-slate-800 rounded-xl text-emerald-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 resize-none"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-          "button",
-          {
-            onClick: onClose,
-            className: "p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors",
-            children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.X, { className: "w-5 h-5" })
-          }
-        )
+        error && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-2 flex items-center gap-2 text-rose-400 text-xs bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.AlertCircle, { className: "w-4 h-4 shrink-0" }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "font-mono", children: error })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "p-4 border-t border-purple-500/20 bg-slate-800/80 flex items-center justify-between", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-xs text-slate-400", children: error ? "Fix errors to apply" : "Syntax valid" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "button",
+            {
+              onClick: onClose,
+              className: "px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors",
+              children: "Cancel"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "button",
+            {
+              onClick: handleApply,
+              disabled: error !== null,
+              className: `px-5 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all ${error !== null ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30"}`,
+              children: "Apply to Form"
+            }
+          )
+        ] })
       ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex-1 p-4 overflow-hidden flex flex-col", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-        "textarea",
-        {
-          value: text,
-          onChange: handleTextChange,
-          spellCheck: false,
-          className: "w-full flex-1 min-h-[400px] font-mono text-xs p-4 bg-slate-950 border border-slate-800 rounded-xl text-emerald-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 resize-none"
-        }
-      ),
-      error && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "mt-2 flex items-center gap-2 text-rose-400 text-xs bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_lucide_react.AlertCircle, { className: "w-4 h-4 shrink-0" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "font-mono", children: error })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "p-4 border-t border-purple-500/20 bg-slate-800/80 flex items-center justify-between", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "text-xs text-slate-400", children: error ? "Fix errors to apply" : "Syntax valid" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-          "button",
-          {
-            onClick: onClose,
-            className: "px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors",
-            children: "Cancel"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-          "button",
-          {
-            onClick: handleApply,
-            disabled: error !== null,
-            className: `px-5 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all ${error !== null ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30"}`,
-            children: "Apply to Form"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
+    ] }) }),
+    document.body
+  );
 };
 
 // src/admin/LivePreviewModal.tsx
 var import_react3 = require("react");
+var import_react_dom2 = require("react-dom");
 var import_lucide_react2 = require("lucide-react");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var LivePreviewModal = ({
@@ -312,7 +317,7 @@ var LivePreviewModal = ({
   const [device, setDevice] = (0, import_react3.useState)("desktop");
   const [iframeKey, setIframeKey] = (0, import_react3.useState)(0);
   const { config } = useStudio();
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
   const getDeviceWidth = () => {
     switch (device) {
       case "mobile":
@@ -328,107 +333,110 @@ var LivePreviewModal = ({
   };
   const getPublicLiveUrl = (route) => publicUrl(route, config.publicSiteUrl);
   const iframeSrc = buildPreviewUrl(pagePath, { publicSiteUrl: config.publicSiteUrl, cacheBust: iframeKey });
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "fixed inset-0 z-50 flex flex-col bg-slate-950/90 backdrop-blur-md animate-fadeIn", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "h-14 border-b border-purple-500/20 bg-slate-900/90 px-4 flex items-center justify-between text-white", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "font-semibold text-sm sm:text-base text-purple-300", children: [
-          "Live Preview: ",
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("code", { className: "text-white bg-slate-800 px-2 py-0.5 rounded", children: pagePath })
+  return (0, import_react_dom2.createPortal)(
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "fixed inset-0 z-[99999] flex flex-col bg-slate-950/90 backdrop-blur-md animate-fadeIn", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "h-14 border-b border-purple-500/20 bg-slate-900/90 px-4 flex items-center justify-between text-white", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "font-semibold text-sm sm:text-base text-purple-300", children: [
+            "Live Preview: ",
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("code", { className: "text-white bg-slate-800 px-2 py-0.5 rounded", children: pagePath })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "a",
+            {
+              href: getPublicLiveUrl(pagePath),
+              target: "_blank",
+              rel: "noopener noreferrer",
+              className: "flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/80 px-2 py-1 rounded border border-slate-700",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Open in Tab" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.ExternalLink, { className: "w-3 h-3" })
+              ]
+            }
+          )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-          "a",
-          {
-            href: getPublicLiveUrl(pagePath),
-            target: "_blank",
-            rel: "noopener noreferrer",
-            className: "flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/80 px-2 py-1 rounded border border-slate-700",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Open in Tab" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.ExternalLink, { className: "w-3 h-3" })
-            ]
-          }
-        )
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700/60", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "button",
+            {
+              onClick: () => setDevice("desktop"),
+              className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "desktop" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
+              title: "Desktop view",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.Monitor, { className: "w-4 h-4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "hidden sm:inline", children: "Desktop" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "button",
+            {
+              onClick: () => setDevice("tablet"),
+              className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "tablet" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
+              title: "Tablet view (768px)",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.Tablet, { className: "w-4 h-4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "hidden sm:inline", children: "Tablet" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "button",
+            {
+              onClick: () => setDevice("mobile"),
+              className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "mobile" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
+              title: "Mobile view (375px)",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.Smartphone, { className: "w-4 h-4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "hidden sm:inline", children: "Mobile" })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              onClick: handleRefresh,
+              className: "p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700",
+              title: "Refresh preview",
+              children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.RefreshCw, { className: "w-4 h-4" })
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              onClick: onClose,
+              className: "p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors",
+              title: "Close preview",
+              children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.X, { className: "w-5 h-5" })
+            }
+          )
+        ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700/60", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-          "button",
-          {
-            onClick: () => setDevice("desktop"),
-            className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "desktop" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
-            title: "Desktop view",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.Monitor, { className: "w-4 h-4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "hidden sm:inline", children: "Desktop" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-          "button",
-          {
-            onClick: () => setDevice("tablet"),
-            className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "tablet" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
-            title: "Tablet view (768px)",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.Tablet, { className: "w-4 h-4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "hidden sm:inline", children: "Tablet" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-          "button",
-          {
-            onClick: () => setDevice("mobile"),
-            className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "mobile" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
-            title: "Mobile view (375px)",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.Smartphone, { className: "w-4 h-4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "hidden sm:inline", children: "Mobile" })
-            ]
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          "button",
-          {
-            onClick: handleRefresh,
-            className: "p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700",
-            title: "Refresh preview",
-            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.RefreshCw, { className: "w-4 h-4" })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          "button",
-          {
-            onClick: onClose,
-            className: "p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors",
-            title: "Close preview",
-            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_lucide_react2.X, { className: "w-5 h-5" })
-          }
-        )
-      ] })
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-950", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        "div",
+        {
+          className: `transition-all duration-300 shadow-2xl rounded-xl overflow-hidden border border-purple-500/30 bg-white ${getDeviceWidth()}`,
+          children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "iframe",
+            {
+              src: iframeSrc,
+              title: "Live Preview",
+              className: "w-full h-full border-0"
+            },
+            iframeKey
+          )
+        }
+      ) })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-950", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-      "div",
-      {
-        className: `transition-all duration-300 shadow-2xl rounded-xl overflow-hidden border border-purple-500/30 bg-white ${getDeviceWidth()}`,
-        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          "iframe",
-          {
-            src: iframeSrc,
-            title: "Live Preview",
-            className: "w-full h-full border-0"
-          },
-          iframeKey
-        )
-      }
-    ) })
-  ] });
+    document.body
+  );
 };
 
 // src/admin/VisualImagePicker.tsx
 var import_react4 = require("react");
-var import_react_dom = require("react-dom");
+var import_react_dom3 = require("react-dom");
 var import_lucide_react3 = require("lucide-react");
 var import_react_hot_toast2 = __toESM(require("react-hot-toast"));
 var import_jsx_runtime4 = require("react/jsx-runtime");
@@ -901,13 +909,13 @@ var VisualImagePicker = ({
         )
       ] })
     ] }),
-    mounted && typeof document !== "undefined" && modalContent && (0, import_react_dom.createPortal)(modalContent, document.body)
+    mounted && typeof document !== "undefined" && modalContent && (0, import_react_dom3.createPortal)(modalContent, document.body)
   ] });
 };
 
 // src/admin/VisualIconPicker.tsx
 var import_react5 = require("react");
-var import_react_dom2 = require("react-dom");
+var import_react_dom4 = require("react-dom");
 var import_lucide_react4 = require("lucide-react");
 
 // src/admin/dynamicIcon.tsx
@@ -1132,7 +1140,7 @@ var VisualIconPicker = ({
         }
       )
     ] }),
-    mounted && typeof document !== "undefined" && modalContent && (0, import_react_dom2.createPortal)(modalContent, document.body)
+    mounted && typeof document !== "undefined" && modalContent && (0, import_react_dom4.createPortal)(modalContent, document.body)
   ] });
 };
 

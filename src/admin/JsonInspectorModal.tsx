@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Copy, Check, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -28,7 +29,7 @@ export const JsonInspectorModal: React.FC<JsonInspectorModalProps> = ({
     }
   }, [jsonData, isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
@@ -60,8 +61,9 @@ export const JsonInspectorModal: React.FC<JsonInspectorModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+  // Rendered on document.body: inside the editor panel the live preview would cover it.
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
       <div className="w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden text-white">
         {/* Header */}
         <div className="p-4 border-b border-purple-500/20 flex items-center justify-between bg-slate-800/80">
@@ -133,7 +135,8 @@ export const JsonInspectorModal: React.FC<JsonInspectorModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

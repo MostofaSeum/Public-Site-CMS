@@ -87,6 +87,7 @@ import toast3 from "react-hot-toast";
 
 // src/admin/JsonInspectorModal.tsx
 import { useState as useState2, useEffect as useEffect2 } from "react";
+import { createPortal } from "react-dom";
 import { X, Copy, Check, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { jsx as jsx2, jsxs } from "react/jsx-runtime";
@@ -106,7 +107,7 @@ var JsonInspectorModal = ({
       setError(null);
     }
   }, [jsonData, isOpen]);
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -134,79 +135,83 @@ var JsonInspectorModal = ({
       toast.error("Please fix JSON syntax errors before applying");
     }
   };
-  return /* @__PURE__ */ jsx2("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn", children: /* @__PURE__ */ jsxs("div", { className: "w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden text-white", children: [
-    /* @__PURE__ */ jsxs("div", { className: "p-4 border-b border-purple-500/20 flex items-center justify-between bg-slate-800/80", children: [
-      /* @__PURE__ */ jsxs("div", { children: [
-        /* @__PURE__ */ jsxs("h3", { className: "text-lg font-bold text-white flex items-center gap-2", children: [
-          /* @__PURE__ */ jsx2("span", { children: "Raw JSON Inspector:" }),
-          /* @__PURE__ */ jsx2("span", { className: "text-purple-400 font-mono text-sm", children: sectionTitle })
+  return createPortal(
+    /* @__PURE__ */ jsx2("div", { className: "fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn", children: /* @__PURE__ */ jsxs("div", { className: "w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden text-white", children: [
+      /* @__PURE__ */ jsxs("div", { className: "p-4 border-b border-purple-500/20 flex items-center justify-between bg-slate-800/80", children: [
+        /* @__PURE__ */ jsxs("div", { children: [
+          /* @__PURE__ */ jsxs("h3", { className: "text-lg font-bold text-white flex items-center gap-2", children: [
+            /* @__PURE__ */ jsx2("span", { children: "Raw JSON Inspector:" }),
+            /* @__PURE__ */ jsx2("span", { className: "text-purple-400 font-mono text-sm", children: sectionTitle })
+          ] }),
+          /* @__PURE__ */ jsx2("p", { className: "text-xs text-slate-400", children: "Direct JSON editing for power users. Changes are validated before applying." })
         ] }),
-        /* @__PURE__ */ jsx2("p", { className: "text-xs text-slate-400", children: "Direct JSON editing for power users. Changes are validated before applying." })
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxs(
+            "button",
+            {
+              onClick: handleCopy,
+              className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition-colors border border-slate-600",
+              children: [
+                copied ? /* @__PURE__ */ jsx2(Check, { className: "w-3.5 h-3.5 text-emerald-400" }) : /* @__PURE__ */ jsx2(Copy, { className: "w-3.5 h-3.5" }),
+                /* @__PURE__ */ jsx2("span", { children: copied ? "Copied" : "Copy" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsx2(
+            "button",
+            {
+              onClick: onClose,
+              className: "p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors",
+              children: /* @__PURE__ */ jsx2(X, { className: "w-5 h-5" })
+            }
+          )
+        ] })
       ] }),
-      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxs(
-          "button",
+      /* @__PURE__ */ jsxs("div", { className: "flex-1 p-4 overflow-hidden flex flex-col", children: [
+        /* @__PURE__ */ jsx2(
+          "textarea",
           {
-            onClick: handleCopy,
-            className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition-colors border border-slate-600",
-            children: [
-              copied ? /* @__PURE__ */ jsx2(Check, { className: "w-3.5 h-3.5 text-emerald-400" }) : /* @__PURE__ */ jsx2(Copy, { className: "w-3.5 h-3.5" }),
-              /* @__PURE__ */ jsx2("span", { children: copied ? "Copied" : "Copy" })
-            ]
+            value: text,
+            onChange: handleTextChange,
+            spellCheck: false,
+            className: "w-full flex-1 min-h-[400px] font-mono text-xs p-4 bg-slate-950 border border-slate-800 rounded-xl text-emerald-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 resize-none"
           }
         ),
-        /* @__PURE__ */ jsx2(
-          "button",
-          {
-            onClick: onClose,
-            className: "p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors",
-            children: /* @__PURE__ */ jsx2(X, { className: "w-5 h-5" })
-          }
-        )
+        error && /* @__PURE__ */ jsxs("div", { className: "mt-2 flex items-center gap-2 text-rose-400 text-xs bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg", children: [
+          /* @__PURE__ */ jsx2(AlertCircle, { className: "w-4 h-4 shrink-0" }),
+          /* @__PURE__ */ jsx2("span", { className: "font-mono", children: error })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "p-4 border-t border-purple-500/20 bg-slate-800/80 flex items-center justify-between", children: [
+        /* @__PURE__ */ jsx2("span", { className: "text-xs text-slate-400", children: error ? "Fix errors to apply" : "Syntax valid" }),
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ jsx2(
+            "button",
+            {
+              onClick: onClose,
+              className: "px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors",
+              children: "Cancel"
+            }
+          ),
+          /* @__PURE__ */ jsx2(
+            "button",
+            {
+              onClick: handleApply,
+              disabled: error !== null,
+              className: `px-5 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all ${error !== null ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30"}`,
+              children: "Apply to Form"
+            }
+          )
+        ] })
       ] })
-    ] }),
-    /* @__PURE__ */ jsxs("div", { className: "flex-1 p-4 overflow-hidden flex flex-col", children: [
-      /* @__PURE__ */ jsx2(
-        "textarea",
-        {
-          value: text,
-          onChange: handleTextChange,
-          spellCheck: false,
-          className: "w-full flex-1 min-h-[400px] font-mono text-xs p-4 bg-slate-950 border border-slate-800 rounded-xl text-emerald-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 resize-none"
-        }
-      ),
-      error && /* @__PURE__ */ jsxs("div", { className: "mt-2 flex items-center gap-2 text-rose-400 text-xs bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg", children: [
-        /* @__PURE__ */ jsx2(AlertCircle, { className: "w-4 h-4 shrink-0" }),
-        /* @__PURE__ */ jsx2("span", { className: "font-mono", children: error })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxs("div", { className: "p-4 border-t border-purple-500/20 bg-slate-800/80 flex items-center justify-between", children: [
-      /* @__PURE__ */ jsx2("span", { className: "text-xs text-slate-400", children: error ? "Fix errors to apply" : "Syntax valid" }),
-      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ jsx2(
-          "button",
-          {
-            onClick: onClose,
-            className: "px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors",
-            children: "Cancel"
-          }
-        ),
-        /* @__PURE__ */ jsx2(
-          "button",
-          {
-            onClick: handleApply,
-            disabled: error !== null,
-            className: `px-5 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all ${error !== null ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30"}`,
-            children: "Apply to Form"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
+    ] }) }),
+    document.body
+  );
 };
 
 // src/admin/LivePreviewModal.tsx
 import { useState as useState3 } from "react";
+import { createPortal as createPortal2 } from "react-dom";
 import { X as X2, Smartphone, Tablet, Monitor, RefreshCw, ExternalLink } from "lucide-react";
 import { jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
 var LivePreviewModal = ({
@@ -217,7 +222,7 @@ var LivePreviewModal = ({
   const [device, setDevice] = useState3("desktop");
   const [iframeKey, setIframeKey] = useState3(0);
   const { config } = useStudio();
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
   const getDeviceWidth = () => {
     switch (device) {
       case "mobile":
@@ -233,107 +238,110 @@ var LivePreviewModal = ({
   };
   const getPublicLiveUrl = (route) => publicUrl(route, config.publicSiteUrl);
   const iframeSrc = buildPreviewUrl(pagePath, { publicSiteUrl: config.publicSiteUrl, cacheBust: iframeKey });
-  return /* @__PURE__ */ jsxs2("div", { className: "fixed inset-0 z-50 flex flex-col bg-slate-950/90 backdrop-blur-md animate-fadeIn", children: [
-    /* @__PURE__ */ jsxs2("div", { className: "h-14 border-b border-purple-500/20 bg-slate-900/90 px-4 flex items-center justify-between text-white", children: [
-      /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-3", children: [
-        /* @__PURE__ */ jsxs2("span", { className: "font-semibold text-sm sm:text-base text-purple-300", children: [
-          "Live Preview: ",
-          /* @__PURE__ */ jsx3("code", { className: "text-white bg-slate-800 px-2 py-0.5 rounded", children: pagePath })
+  return createPortal2(
+    /* @__PURE__ */ jsxs2("div", { className: "fixed inset-0 z-[99999] flex flex-col bg-slate-950/90 backdrop-blur-md animate-fadeIn", children: [
+      /* @__PURE__ */ jsxs2("div", { className: "h-14 border-b border-purple-500/20 bg-slate-900/90 px-4 flex items-center justify-between text-white", children: [
+        /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ jsxs2("span", { className: "font-semibold text-sm sm:text-base text-purple-300", children: [
+            "Live Preview: ",
+            /* @__PURE__ */ jsx3("code", { className: "text-white bg-slate-800 px-2 py-0.5 rounded", children: pagePath })
+          ] }),
+          /* @__PURE__ */ jsxs2(
+            "a",
+            {
+              href: getPublicLiveUrl(pagePath),
+              target: "_blank",
+              rel: "noopener noreferrer",
+              className: "flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/80 px-2 py-1 rounded border border-slate-700",
+              children: [
+                /* @__PURE__ */ jsx3("span", { children: "Open in Tab" }),
+                /* @__PURE__ */ jsx3(ExternalLink, { className: "w-3 h-3" })
+              ]
+            }
+          )
         ] }),
-        /* @__PURE__ */ jsxs2(
-          "a",
-          {
-            href: getPublicLiveUrl(pagePath),
-            target: "_blank",
-            rel: "noopener noreferrer",
-            className: "flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors bg-slate-800/80 px-2 py-1 rounded border border-slate-700",
-            children: [
-              /* @__PURE__ */ jsx3("span", { children: "Open in Tab" }),
-              /* @__PURE__ */ jsx3(ExternalLink, { className: "w-3 h-3" })
-            ]
-          }
-        )
+        /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700/60", children: [
+          /* @__PURE__ */ jsxs2(
+            "button",
+            {
+              onClick: () => setDevice("desktop"),
+              className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "desktop" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
+              title: "Desktop view",
+              children: [
+                /* @__PURE__ */ jsx3(Monitor, { className: "w-4 h-4" }),
+                /* @__PURE__ */ jsx3("span", { className: "hidden sm:inline", children: "Desktop" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxs2(
+            "button",
+            {
+              onClick: () => setDevice("tablet"),
+              className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "tablet" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
+              title: "Tablet view (768px)",
+              children: [
+                /* @__PURE__ */ jsx3(Tablet, { className: "w-4 h-4" }),
+                /* @__PURE__ */ jsx3("span", { className: "hidden sm:inline", children: "Tablet" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxs2(
+            "button",
+            {
+              onClick: () => setDevice("mobile"),
+              className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "mobile" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
+              title: "Mobile view (375px)",
+              children: [
+                /* @__PURE__ */ jsx3(Smartphone, { className: "w-4 h-4" }),
+                /* @__PURE__ */ jsx3("span", { className: "hidden sm:inline", children: "Mobile" })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsx3(
+            "button",
+            {
+              onClick: handleRefresh,
+              className: "p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700",
+              title: "Refresh preview",
+              children: /* @__PURE__ */ jsx3(RefreshCw, { className: "w-4 h-4" })
+            }
+          ),
+          /* @__PURE__ */ jsx3(
+            "button",
+            {
+              onClick: onClose,
+              className: "p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors",
+              title: "Close preview",
+              children: /* @__PURE__ */ jsx3(X2, { className: "w-5 h-5" })
+            }
+          )
+        ] })
       ] }),
-      /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700/60", children: [
-        /* @__PURE__ */ jsxs2(
-          "button",
-          {
-            onClick: () => setDevice("desktop"),
-            className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "desktop" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
-            title: "Desktop view",
-            children: [
-              /* @__PURE__ */ jsx3(Monitor, { className: "w-4 h-4" }),
-              /* @__PURE__ */ jsx3("span", { className: "hidden sm:inline", children: "Desktop" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxs2(
-          "button",
-          {
-            onClick: () => setDevice("tablet"),
-            className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "tablet" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
-            title: "Tablet view (768px)",
-            children: [
-              /* @__PURE__ */ jsx3(Tablet, { className: "w-4 h-4" }),
-              /* @__PURE__ */ jsx3("span", { className: "hidden sm:inline", children: "Tablet" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxs2(
-          "button",
-          {
-            onClick: () => setDevice("mobile"),
-            className: `p-1.5 rounded transition-all flex items-center gap-1 text-xs font-medium ${device === "mobile" ? "bg-purple-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-slate-700"}`,
-            title: "Mobile view (375px)",
-            children: [
-              /* @__PURE__ */ jsx3(Smartphone, { className: "w-4 h-4" }),
-              /* @__PURE__ */ jsx3("span", { className: "hidden sm:inline", children: "Mobile" })
-            ]
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsx3(
-          "button",
-          {
-            onClick: handleRefresh,
-            className: "p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700",
-            title: "Refresh preview",
-            children: /* @__PURE__ */ jsx3(RefreshCw, { className: "w-4 h-4" })
-          }
-        ),
-        /* @__PURE__ */ jsx3(
-          "button",
-          {
-            onClick: onClose,
-            className: "p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors",
-            title: "Close preview",
-            children: /* @__PURE__ */ jsx3(X2, { className: "w-5 h-5" })
-          }
-        )
-      ] })
+      /* @__PURE__ */ jsx3("div", { className: "flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-950", children: /* @__PURE__ */ jsx3(
+        "div",
+        {
+          className: `transition-all duration-300 shadow-2xl rounded-xl overflow-hidden border border-purple-500/30 bg-white ${getDeviceWidth()}`,
+          children: /* @__PURE__ */ jsx3(
+            "iframe",
+            {
+              src: iframeSrc,
+              title: "Live Preview",
+              className: "w-full h-full border-0"
+            },
+            iframeKey
+          )
+        }
+      ) })
     ] }),
-    /* @__PURE__ */ jsx3("div", { className: "flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-950", children: /* @__PURE__ */ jsx3(
-      "div",
-      {
-        className: `transition-all duration-300 shadow-2xl rounded-xl overflow-hidden border border-purple-500/30 bg-white ${getDeviceWidth()}`,
-        children: /* @__PURE__ */ jsx3(
-          "iframe",
-          {
-            src: iframeSrc,
-            title: "Live Preview",
-            className: "w-full h-full border-0"
-          },
-          iframeKey
-        )
-      }
-    ) })
-  ] });
+    document.body
+  );
 };
 
 // src/admin/VisualImagePicker.tsx
 import { useState as useState4, useEffect as useEffect3, useMemo as useMemo2, useRef } from "react";
-import { createPortal } from "react-dom";
+import { createPortal as createPortal3 } from "react-dom";
 import {
   Image as ImageIcon,
   UploadCloud,
@@ -817,13 +825,13 @@ var VisualImagePicker = ({
         )
       ] })
     ] }),
-    mounted && typeof document !== "undefined" && modalContent && createPortal(modalContent, document.body)
+    mounted && typeof document !== "undefined" && modalContent && createPortal3(modalContent, document.body)
   ] });
 };
 
 // src/admin/VisualIconPicker.tsx
 import { useState as useState5, useMemo as useMemo3, useEffect as useEffect4 } from "react";
-import { createPortal as createPortal2 } from "react-dom";
+import { createPortal as createPortal4 } from "react-dom";
 import { Search as Search2, Check as Check3, X as X4 } from "lucide-react";
 
 // src/admin/dynamicIcon.tsx
@@ -1048,7 +1056,7 @@ var VisualIconPicker = ({
         }
       )
     ] }),
-    mounted && typeof document !== "undefined" && modalContent && createPortal2(modalContent, document.body)
+    mounted && typeof document !== "undefined" && modalContent && createPortal4(modalContent, document.body)
   ] });
 };
 

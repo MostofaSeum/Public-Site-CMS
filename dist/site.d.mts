@@ -47,6 +47,10 @@ interface CmsSectionProps {
  *  - Adds an outline and a floating edit button on hover.
  *  - Listens for SCROLL_TO_SECTION from the studio to centre and pulse the section.
  *  - Clicking anywhere on the section tells the studio to open this section's form.
+ *
+ * The button is rendered on document.body and only while its section is the innermost one
+ * under the mouse, so sticky headers, nested sections and overlapping page content can
+ * neither cover it nor catch its clicks.
  */
 declare const CmsSection: React.FC<CmsSectionProps>;
 

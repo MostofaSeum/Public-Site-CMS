@@ -195,6 +195,45 @@ def set_boolean(text: str, name: str, value: bool) -> tuple[str, str]:
     return f"{text}{suffix}{name} = {literal}\n", "changed"
 
 
+def patch_media_settings(text: str) -> tuple[str, list[str], str]:
+    """Give uploads a public URL and a folder. Returns (new_text, added_names, status)."""
+    if re.search(r"^(STORAGES|DEFAULT_FILE_STORAGE)\s*=", text, re.MULTILINE):
+        return text, [], "already"  # The project chose its own storage (S3...): leave it alone.
+    has_url = re.search(r"^MEDIA_URL\s*=", text, re.MULTILINE) is not None
+    has_root = re.search(r"^MEDIA_ROOT\s*=", text, re.MULTILINE) is not None
+    if has_url and has_root:
+        return text, [], "already"
+    if not has_root and re.search(r"^BASE_DIR\s*=", text, re.MULTILINE) is None:
+        return text, [], "failed"
+    lines, added = [], []
+    if not has_url:
+        lines.append('MEDIA_URL = "/media/"')
+        added.append("MEDIA_URL")
+    if not has_root:
+        lines.append('MEDIA_ROOT = BASE_DIR / "media"' if re.search(r"^BASE_DIR\s*=\s*Path\(", text, re.MULTILINE) else 'MEDIA_ROOT = os.path.join(BASE_DIR, "media")')
+        added.append("MEDIA_ROOT")
+    if any("os.path" in line for line in lines) and re.search(r"^import os\b", text, re.MULTILINE) is None:
+        lines.insert(0, "import os")
+    suffix = "" if text.endswith("\n") else "\n"
+    return f"{text}{suffix}\n# Uploaded images (added by django-visual-cms)\n" + "\n".join(lines) + "\n", added, "changed"
+
+
+def patch_media_urls(text: str) -> tuple[str, str]:
+    """Let Django serve uploaded images while DEBUG is True (static() does nothing in production)."""
+    if re.search(r"static\(\s*settings\.MEDIA_URL", text):
+        return text, "already"
+    if _find_bracket_block(text, "urlpatterns") is None:
+        return text, "failed"
+    suffix = "" if text.endswith("\n") else "\n"
+    return (
+        f"{text}{suffix}\n# Serves uploaded images during development (added by django-visual-cms)\n"
+        "from django.conf import settings  # noqa: E402\n"
+        "from django.conf.urls.static import static  # noqa: E402\n\n"
+        "urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)\n",
+        "changed",
+    )
+
+
 def _imports_include(text: str) -> bool:
     """True when `include` is actually imported from django.urls (docstring mentions do not count)."""
     for match in re.finditer(r"^from django\.urls import (\([^)]*\)|[^\n]+)", text, re.MULTILINE):
@@ -331,6 +370,12 @@ def run_setup(
             f"CORS_ALLOWED_ORIGINS = {origins}; CORS_ALLOW_CREDENTIALS = True."
         )
 
+    text, added, status = patch_media_settings(text)
+    if status == "changed":
+        steps.append("set " + " and ".join(added) + " so uploaded images can be opened")
+    elif status == "failed":
+        report.manual.append(f'In {rel(settings_file)} set MEDIA_URL = "/media/" and MEDIA_ROOT to a folder for uploaded images.')
+
     if steps:
         _write(settings_file, text, dry_run)
         report.done.extend(f"{rel(settings_file)}: {s}" for s in steps)
@@ -345,6 +390,14 @@ def run_setup(
         report.unchanged.append("the CMS urls are already included")
     else:
         report.manual.append(f'In {rel(urls_file)} add to urlpatterns:  path("api/cms/", include("visual_cms.urls"))  (and import include from django.urls)')
+
+    urls_now = new_urls if status == "changed" else urls_text
+    with_media, media_status = patch_media_urls(urls_now)
+    if media_status == "changed":
+        _write(urls_file, with_media, dry_run)
+        report.done.append(f"{rel(urls_file)}: serves uploaded images while DEBUG is True")
+    elif media_status == "failed":
+        report.manual.append(f"In {rel(urls_file)} add:  urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)")
 
     # ---- migrate
     if migrate and not dry_run and apps_ready:

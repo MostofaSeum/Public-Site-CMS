@@ -179,6 +179,41 @@ class MiddlewareTests(SimpleTestCase):
         self.assertEqual(s.patch_middleware("MIDDLEWARE = base()\n")[1], "failed")
 
 
+class MediaTests(SimpleTestCase):
+    def test_adds_media_settings_once(self):
+        text, added, status = s.patch_media_settings(SETTINGS_STD)
+        self.assertEqual((status, added), ("changed", ["MEDIA_URL", "MEDIA_ROOT"]))
+        self.assertIn('MEDIA_URL = "/media/"', text)
+        self.assertIn('MEDIA_ROOT = BASE_DIR / "media"', text)
+        compile(text, "s", "exec")
+        self.assertEqual(s.patch_media_settings(text)[2], "already")
+
+    def test_string_base_dir_uses_os_path(self):
+        settings = "import os\nBASE_DIR = os.path.dirname(__file__)\n"
+        text, _, status = s.patch_media_settings(settings)
+        self.assertEqual(status, "changed")
+        self.assertIn('MEDIA_ROOT = os.path.join(BASE_DIR, "media")', text)
+
+    def test_existing_values_and_custom_storage_are_left_alone(self):
+        own = 'MEDIA_URL = "https://cdn.example.com/"\nMEDIA_ROOT = "/srv/media"\n'
+        self.assertEqual(s.patch_media_settings(own), (own, [], "already"))
+        s3 = 'STORAGES = {"default": {"BACKEND": "storages.backends.s3.S3Storage"}}\n'
+        self.assertEqual(s.patch_media_settings(s3), (s3, [], "already"))
+
+    def test_no_base_dir_is_reported(self):
+        self.assertEqual(s.patch_media_settings("DEBUG = True\n")[2], "failed")
+
+    def test_urls_serve_media_once(self):
+        text, status = s.patch_media_urls(URLS_STD)
+        self.assertEqual(status, "changed")
+        self.assertIn("urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)", text)
+        compile(text, "u", "exec")
+        self.assertEqual(s.patch_media_urls(text), (text, "already"))
+
+    def test_urls_without_a_list_are_reported(self):
+        self.assertEqual(s.patch_media_urls("urlpatterns = build()\n")[1], "failed")
+
+
 class ProjectTests(SimpleTestCase):
     def setUp(self):
         # Never touch the network or the real Python environment from tests.
@@ -229,7 +264,10 @@ class ProjectTests(SimpleTestCase):
         self.assertIn('"visual_cms"', settings)
         self.assertIn(ORIGIN, settings)
         self.assertIn("visual_cms.urls", urls)
+        self.assertIn("MEDIA_ROOT", settings)
+        self.assertIn("static(settings.MEDIA_URL", urls)
         self.assertEqual((root / "proj" / "settings.py.visual-cms.bak").read_text(), SETTINGS_STD)
+        self.assertEqual((root / "proj" / "urls.py.visual-cms.bak").read_text(), URLS_STD)
         compile(settings, "s", "exec")
         compile(urls, "u", "exec")
         # No corsheaders in this project, so the CORS requirement is reported instead of edited.

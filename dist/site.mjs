@@ -111,13 +111,18 @@ function usePageContent(pageKey, options = {}) {
 
 // src/site/CmsSection.tsx
 import { useState as useState3, useEffect as useEffect3, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Pencil } from "lucide-react";
 import { Fragment, jsx as jsx2, jsxs } from "react/jsx-runtime";
-var BUTTON_PLACEMENT_CLASSES = {
-  inside: "absolute top-6 right-8 z-40",
-  "inside-low": "absolute top-28 right-8 z-40",
-  fixed: "fixed top-24 right-8 z-[10000]"
+var BUTTON_TOP = {
+  inside: 24,
+  "inside-low": 112,
+  fixed: 96
 };
+var BUTTON_RIGHT = 32;
+var WINDOW_MARGIN = 8;
+var BUTTON_HEIGHT = 56;
+var BUTTON_Z_INDEX = 2147483e3;
 var CmsSection = ({
   sectionKey,
   title,
@@ -129,12 +134,16 @@ var CmsSection = ({
   const isEditMode = useCmsEditMode(origins);
   const [pathname, setPathname] = useState3(null);
   const [isTargeted, setIsTargeted] = useState3(false);
+  const [isHovered, setIsHovered] = useState3(false);
+  const [buttonPosition, setButtonPosition] = useState3(null);
   const sectionRef = useRef(null);
+  const buttonRef = useRef(null);
   const originsKey = origins.join("|");
   useEffect3(() => {
     setPathname(window.location.pathname);
   }, []);
   const isValidPath = !activeOnPath || pathname === activeOnPath;
+  const showButton = isEditMode && isValidPath && (isHovered || isTargeted);
   useEffect3(() => {
     if (!isEditMode) return;
     let timer;
@@ -159,6 +168,30 @@ var CmsSection = ({
       unsubscribe();
     };
   }, [isEditMode, sectionKey, originsKey]);
+  useEffect3(() => {
+    if (!showButton) {
+      setButtonPosition(null);
+      return;
+    }
+    const update = () => {
+      const section = sectionRef.current;
+      if (!section) return;
+      const rect = section.getBoundingClientRect();
+      const isFixed = buttonPlacement === "fixed" || rect.width === 0;
+      const right = isFixed ? BUTTON_RIGHT : Math.max(WINDOW_MARGIN, document.documentElement.clientWidth - rect.right + BUTTON_RIGHT);
+      const wanted = isFixed ? BUTTON_TOP[buttonPlacement] : rect.top + BUTTON_TOP[buttonPlacement];
+      const lowest = Math.max(WINDOW_MARGIN, window.innerHeight - BUTTON_HEIGHT - WINDOW_MARGIN);
+      const top = Math.min(Math.max(WINDOW_MARGIN, wanted), lowest);
+      setButtonPosition((prev) => prev && prev.top === top && prev.right === right ? prev : { top, right });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [showButton, buttonPlacement]);
   const handleEditClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -174,6 +207,11 @@ var CmsSection = ({
       );
     }
   };
+  const handleMouseOver = (e) => {
+    const target = e.target;
+    if (buttonRef.current?.contains(target)) return;
+    setIsHovered(target.closest("[data-cms-section]") === sectionRef.current);
+  };
   if (!isEditMode || !isValidPath) {
     return /* @__PURE__ */ jsx2(Fragment, { children });
   }
@@ -183,31 +221,38 @@ var CmsSection = ({
       ref: sectionRef,
       "data-cms-section": sectionKey,
       onClick: handleEditClick,
-      className: `relative group/cms-section transition-all duration-300 cursor-pointer rounded-2xl ${isTargeted ? "ring-4 ring-purple-500 ring-offset-4 ring-offset-slate-950 shadow-[0_0_60px_rgba(168,85,247,0.5)]" : "hover:ring-2 hover:ring-purple-500 hover:ring-offset-2 hover:ring-offset-slate-900"}`,
+      onMouseOver: handleMouseOver,
+      onMouseLeave: () => setIsHovered(false),
+      className: `relative transition-all duration-300 cursor-pointer rounded-2xl ${isTargeted ? "ring-4 ring-purple-500 ring-offset-4 ring-offset-slate-950 shadow-[0_0_60px_rgba(168,85,247,0.5)]" : isHovered ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-slate-900" : ""}`,
       children: [
-        /* @__PURE__ */ jsx2(
-          "div",
-          {
-            className: `pointer-events-auto transition-all duration-200 transform group-hover/cms-section:scale-100 scale-95 ${isTargeted ? "opacity-100 scale-100" : "opacity-0 group-hover/cms-section:opacity-100"} ${BUTTON_PLACEMENT_CLASSES[buttonPlacement]}`,
-            children: /* @__PURE__ */ jsxs(
-              "button",
-              {
-                type: "button",
-                onClick: handleEditClick,
-                className: "flex items-center gap-2.5 px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-sm sm:text-base tracking-wide shadow-2xl shadow-purple-950/80 border-2 border-purple-300/80 backdrop-blur-xl cursor-pointer transition-all hover:scale-105 active:scale-95 whitespace-nowrap",
-                title: `Edit ${title} in the editor panel`,
-                children: [
-                  /* @__PURE__ */ jsx2(Pencil, { className: "w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5] text-purple-100" }),
-                  /* @__PURE__ */ jsxs("span", { className: "drop-shadow-sm", children: [
-                    "Edit ",
-                    title
-                  ] })
-                ]
-              }
-            )
-          }
-        ),
-        children
+        children,
+        showButton && buttonPosition && createPortal(
+          /* @__PURE__ */ jsx2(
+            "div",
+            {
+              ref: buttonRef,
+              "data-cms-edit-button": sectionKey,
+              style: { position: "fixed", top: buttonPosition.top, right: buttonPosition.right, zIndex: BUTTON_Z_INDEX },
+              children: /* @__PURE__ */ jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: handleEditClick,
+                  className: "flex items-center gap-2.5 px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-sm sm:text-base tracking-wide shadow-2xl shadow-purple-950/80 border-2 border-purple-300/80 backdrop-blur-xl cursor-pointer transition-all hover:scale-105 active:scale-95 whitespace-nowrap",
+                  title: `Edit ${title} in the editor panel`,
+                  children: [
+                    /* @__PURE__ */ jsx2(Pencil, { className: "w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5] text-purple-100" }),
+                    /* @__PURE__ */ jsxs("span", { className: "drop-shadow-sm", children: [
+                      "Edit ",
+                      title
+                    ] })
+                  ]
+                }
+              )
+            }
+          ),
+          document.body
+        )
       ]
     }
   );

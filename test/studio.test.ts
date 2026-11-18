@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import * as admin from '../src/admin';
 import { CmsStudio } from '../src/admin/CmsStudio';
+import { JsonInspectorModal } from '../src/admin/JsonInspectorModal';
 import { defineCms } from '../src/core/defineCms';
 import { memoryAdapter } from '../src/adapters/memory';
 
@@ -28,6 +29,11 @@ describe('CmsStudio', () => {
     expect(html).not.toContain('Form Studio');
     expect(html).not.toContain('Visual Interactive Canvas');
     expect(html).not.toContain('Pick a section from the list and edit its fields.');
+  });
+
+  it('renders an open modal safely on the server', () => {
+    const modal = React.createElement(JsonInspectorModal, { isOpen: true, onClose: () => undefined, sectionTitle: 'hero', jsonData: {}, onApply: () => undefined });
+    expect(renderToStaticMarkup(modal)).toBe('');
   });
 
   it('no longer exports a form studio', () => {

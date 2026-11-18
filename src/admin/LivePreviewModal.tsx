@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Smartphone, Tablet, Monitor, RefreshCw, ExternalLink } from 'lucide-react';
 import { buildPreviewUrl, publicUrl } from '../core/paths';
 import { useStudio } from './StudioContext';
@@ -20,7 +21,7 @@ export const LivePreviewModal: React.FC<LivePreviewModalProps> = ({
   const [iframeKey, setIframeKey] = useState(0);
   const { config } = useStudio();
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const getDeviceWidth = () => {
     switch (device) {
@@ -41,8 +42,9 @@ export const LivePreviewModal: React.FC<LivePreviewModalProps> = ({
 
   const iframeSrc = buildPreviewUrl(pagePath, { publicSiteUrl: config.publicSiteUrl, cacheBust: iframeKey });
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+  // Rendered on document.body so no part of the editor can sit on top of it.
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-950/90 backdrop-blur-md animate-fadeIn">
       {/* Top Bar */}
       <div className="h-14 border-b border-purple-500/20 bg-slate-900/90 px-4 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
@@ -132,7 +134,8 @@ export const LivePreviewModal: React.FC<LivePreviewModalProps> = ({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
