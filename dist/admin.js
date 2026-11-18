@@ -57,7 +57,7 @@ var import_react = require("react");
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's edit button was clicked. */
+  /** iframe -> studio: a section's or a single field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -163,6 +163,19 @@ function getSectionDetail(page, sectionKey, record) {
 }
 
 // src/core/paths.ts
+function parseFieldPath(path) {
+  return path.split(".").map((part) => /^\d+$/.test(part) ? Number(part) : part);
+}
+function getAtPath(data, path) {
+  let current = data;
+  for (const part of path) {
+    if (current === null || typeof current !== "object") return void 0;
+    if (Array.isArray(current) && typeof part !== "number") return void 0;
+    if (!Object.prototype.hasOwnProperty.call(current, part)) return void 0;
+    current = current[part];
+  }
+  return current;
+}
 function publicUrl(route, publicSiteUrl) {
   if (!publicSiteUrl) return route;
   return `${publicSiteUrl.replace(/\/+$/, "")}${route.startsWith("/") ? route : `/${route}`}`;
@@ -1164,7 +1177,10 @@ var SectionEditorForm = ({
   onChangeDraft,
   sectionLabel,
   pagePath,
-  transform
+  transform,
+  focusPath,
+  onClearFocus,
+  onDirtyChange
 }) => {
   const { config } = useStudio();
   const collectionLimits = config.collectionLimits ?? {};
@@ -1184,6 +1200,18 @@ var SectionEditorForm = ({
     setPublished(initialPublished);
     setIsDirty(false);
   }, [initialData, initialPublished]);
+  (0, import_react6.useEffect)(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty]);
+  const focusSegments = (0, import_react6.useMemo)(() => focusPath ? parseFieldPath(focusPath) : null, [focusPath]);
+  const focusValue = focusSegments ? getAtPath(formData, focusSegments) : void 0;
+  const isFocused = focusValue !== void 0 && focusValue !== null;
+  const focusAreaRef = (0, import_react6.useRef)(null);
+  (0, import_react6.useEffect)(() => {
+    if (!focusPath) return;
+    const input = focusAreaRef.current?.querySelector("input:not([type=checkbox]), textarea");
+    input?.focus();
+  }, [focusPath, isFocused]);
   const cloneData = (obj) => {
     if (obj === null || typeof obj !== "object") return obj;
     return JSON.parse(JSON.stringify(obj));
@@ -1660,45 +1688,66 @@ var SectionEditorForm = ({
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "bg-slate-900/80 border border-purple-500/20 rounded-xl p-3 sm:p-4 space-y-3", children: CodeWidget && isCodeValue(formData) ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-        CodeWidget,
-        {
-          value: formData,
-          onChange: (next) => {
-            const updated = {
-              html: next.html,
-              css: next.css,
-              js: next.js
-            };
-            setFormData(updated);
-            setIsDirty(true);
-            if (onChangeDraft) {
-              onChangeDraft(updated);
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "bg-slate-900/80 border border-purple-500/20 rounded-xl p-3 sm:p-4 space-y-3", children: [
+      focusPath && !isFocused && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { role: "status", className: "text-xs rounded-lg px-3 py-2 bg-amber-950/40 border border-amber-700/60 text-amber-200", children: "This field could not be found, so the whole section is shown." }),
+      isFocused && focusSegments ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { ref: focusAreaRef, className: "space-y-3", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between gap-2 pb-2 border-b border-purple-500/20", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "text-[11px] font-semibold text-purple-200", children: "Editing one field" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "button",
+            {
+              type: "button",
+              onClick: onClearFocus,
+              className: "text-[11px] font-semibold px-2.5 py-1 rounded-lg text-purple-200 bg-purple-600/25 hover:bg-purple-600/45 border border-purple-500/40 transition-colors",
+              children: "Show all fields in this section"
+            }
+          )
+        ] }),
+        renderField(
+          String([...focusSegments].reverse().find((part) => typeof part === "string") ?? focusPath),
+          focusValue,
+          focusSegments
+        )
+      ] }, focusPath) : CodeWidget && isCodeValue(formData) ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          CodeWidget,
+          {
+            value: formData,
+            onChange: (next) => {
+              const updated = {
+                html: next.html,
+                css: next.css,
+                js: next.js
+              };
+              setFormData(updated);
+              setIsDirty(true);
+              if (onChangeDraft) {
+                onChangeDraft(updated);
+              }
             }
           }
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between pt-3 border-t border-purple-500/20", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "text-xs text-slate-400 flex items-center gap-1.5", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: `w-2 h-2 rounded-full ${isDirty ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}` }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: isDirty ? "Unsaved edits in studio" : "Ready / Up to date" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
-          "button",
-          {
-            type: "button",
-            disabled: isSaving,
-            onClick: handleSave,
-            className: `inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${isSaving ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40 active:scale-95"}`,
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_lucide_react5.Save, { className: "w-4 h-4 shrink-0" }),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: isSaving ? "Saving..." : "Save & Publish" })
-            ]
-          }
-        )
-      ] })
-    ] }) : formData && typeof formData === "object" ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "space-y-3", children: Object.entries(formData).map(([key, val]) => renderField(key, val, [key])) }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "p-4 text-center text-xs text-slate-400", children: "No editable data found for this section." }) }),
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between pt-3 border-t border-purple-500/20", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "text-xs text-slate-400 flex items-center gap-1.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: `w-2 h-2 rounded-full ${isDirty ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}` }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: isDirty ? "Unsaved edits in studio" : "Ready / Up to date" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+            "button",
+            {
+              type: "button",
+              disabled: isSaving,
+              onClick: handleSave,
+              className: `inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${isSaving ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40 active:scale-95"}`,
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_lucide_react5.Save, { className: "w-4 h-4 shrink-0" }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: isSaving ? "Saving..." : "Save & Publish" })
+              ]
+            }
+          )
+        ] })
+      ] }) : formData && typeof formData === "object" ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "space-y-3", children: Object.entries(formData).map(([key, val]) => renderField(key, val, [key])) }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "p-4 text-center text-xs text-slate-400", children: "No editable data found for this section." })
+    ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
       JsonInspectorModal,
       {
@@ -1747,6 +1796,10 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   const pageDef = findPage(config, activePage);
   const availableSections = pageDef?.sections ?? [];
   const [activeSectionKey, setActiveSectionKey] = (0, import_react7.useState)(availableSections[0]?.key ?? "");
+  const [activeFieldPath, setActiveFieldPath] = (0, import_react7.useState)(null);
+  const hasUnsavedEdits = (0, import_react7.useRef)(false);
+  const activeSectionRef = (0, import_react7.useRef)(activeSectionKey);
+  activeSectionRef.current = activeSectionKey;
   const [sectionDetail, setSectionDetail] = (0, import_react7.useState)(null);
   const [isLoadingDetail, setIsLoadingDetail] = (0, import_react7.useState)(false);
   const iframeRef = (0, import_react7.useRef)(null);
@@ -1803,7 +1856,16 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     },
     [origins]
   );
+  const confirmLeavingSection = (0, import_react7.useCallback)(() => {
+    if (!hasUnsavedEdits.current) return true;
+    if (!window.confirm("You have unsaved changes in this section. Leave without saving them?")) return false;
+    hasUnsavedEdits.current = false;
+    sendToPreview({ type: CMS_MESSAGE.CONTENT_UPDATED });
+    return true;
+  }, [sendToPreview]);
   const changePage = (pageKey) => {
+    if (!confirmLeavingSection()) return;
+    setActiveFieldPath(null);
     setActivePage(pageKey);
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
@@ -1845,6 +1907,8 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     }
   }, [activePage, activeSectionKey, loadSectionData]);
   const handleSelectSection = (sectionKey) => {
+    if (sectionKey !== activeSectionKey && !confirmLeavingSection()) return;
+    setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
     sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
@@ -1857,6 +1921,8 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
           import_react_hot_toast4.default.error(`Section '${message.sectionKey}' is not configured for this page`);
           return;
         }
+        if (message.sectionKey !== activeSectionRef.current && !confirmLeavingSection()) return;
+        setActiveFieldPath(message.fieldPath ?? null);
         setActiveSectionKey(message.sectionKey);
         import_react_hot_toast4.default.success(`Selected: ${message.title || message.sectionKey} in Editor`, {
           duration: 2e3
@@ -1864,7 +1930,7 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
       },
       { origins, source: () => iframeRef.current?.contentWindow }
     );
-  }, [origins, availableSections]);
+  }, [origins, availableSections, confirmLeavingSection]);
   const handleSaveSection = async (content, isPublished) => {
     if (!pageDef) return;
     await adapter.saveRecord({ page: activePage, sectionKey: activeSectionKey, content, isPublished });
@@ -2045,6 +2111,11 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
             sectionLabel: activeSectionDef?.label,
             pagePath: currentRoute,
             transform: activeSectionDef?.transform,
+            focusPath: activeFieldPath,
+            onClearFocus: () => setActiveFieldPath(null),
+            onDirtyChange: (dirty) => {
+              hasUnsavedEdits.current = dirty;
+            },
             initialData: sectionDetail.content,
             hasCustomOverride: sectionDetail.hasCustomOverride,
             isPublished: sectionDetail.isPublished,

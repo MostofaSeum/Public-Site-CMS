@@ -14,7 +14,7 @@ import {
   originOf,
   postCmsMessage,
   trustedOrigins
-} from "./chunk-K2BCAQV2.mjs";
+} from "./chunk-INI5NYLW.mjs";
 
 // src/core/paths.ts
 function publicUrl(route, publicSiteUrl) {

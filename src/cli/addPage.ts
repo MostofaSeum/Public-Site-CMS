@@ -157,8 +157,8 @@ export function runAddPage(options: AddPageOptions): AddPageReport {
     .map(
       (s) => `      <CmsSection sectionKey="${s}" title="${titleCase(s)}">
         <section className="mx-auto max-w-5xl px-6 py-12">
-          <h2 className="text-3xl font-bold">{${camel(s)}.title}</h2>
-          <p className="mt-3 text-gray-600">{${camel(s)}.text}</p>
+          <h2 className="text-3xl font-bold"><CmsField path="title" label="Title">{${camel(s)}.title}</CmsField></h2>
+          <p className="mt-3 text-gray-600"><CmsField path="text" label="Text">{${camel(s)}.text}</CmsField></p>
         </section>
       </CmsSection>`
     )
@@ -167,13 +167,13 @@ export function runAddPage(options: AddPageOptions): AddPageReport {
     viewFile,
     `'use client';
 
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
 import type pageDefaults from '${imp(viewFile, jsonFile)}';
 
 type Content = typeof pageDefaults;
 
 export function ${name}View() {
-  const { ${sections.map(camel).join(', ')} } = usePageContent<Content>('${options.key}');
+  const { ${sections.map((s) => (camel(s) === s ? s : `'${s}': ${camel(s)}`)).join(', ')} } = usePageContent<Content>('${options.key}');
 
   return (
     <main>

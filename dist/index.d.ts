@@ -33,7 +33,7 @@ declare function getSectionDetail<T = unknown>(page: PageDef, sectionKey: string
  * the preview iframe. Names are part of the public protocol; keep them stable.
  */
 declare const CMS_MESSAGE: {
-    /** iframe -> studio: a section's edit button was clicked. */
+    /** iframe -> studio: a section's or a single field's edit button was clicked. */
     readonly EDIT_SECTION: "CMS_EDIT_SECTION";
     /** studio -> iframe: scroll to and highlight a section. */
     readonly SCROLL_TO_SECTION: "SCROLL_TO_SECTION";
@@ -52,6 +52,7 @@ type CmsMessage = {
     type: typeof CMS_MESSAGE.EDIT_SECTION;
     sectionKey: string;
     title?: string;
+    fieldPath?: string;
 } | {
     type: typeof CMS_MESSAGE.SCROLL_TO_SECTION;
     sectionKey: string;

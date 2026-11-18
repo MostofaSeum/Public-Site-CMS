@@ -9,7 +9,7 @@ import {
   originOf,
   postCmsMessage,
   trustedOrigins
-} from "./chunk-7UG44WXN.mjs";
+} from "./chunk-L4Y3JMXZ.mjs";
 
 // src/admin/CmsStudio.tsx
 import { useState as useState8, useEffect as useEffect7 } from "react";
@@ -38,7 +38,7 @@ function useStudio() {
 }
 
 // src/admin/CanvasEditor.tsx
-import React7, { useState as useState7, useEffect as useEffect6, useRef as useRef2, useCallback } from "react";
+import React7, { useState as useState7, useEffect as useEffect6, useRef as useRef3, useCallback } from "react";
 import {
   Monitor as Monitor2,
   Tablet as Tablet2,
@@ -56,6 +56,19 @@ import {
 import toast4 from "react-hot-toast";
 
 // src/core/paths.ts
+function parseFieldPath(path) {
+  return path.split(".").map((part) => /^\d+$/.test(part) ? Number(part) : part);
+}
+function getAtPath(data, path) {
+  let current = data;
+  for (const part of path) {
+    if (current === null || typeof current !== "object") return void 0;
+    if (Array.isArray(current) && typeof part !== "number") return void 0;
+    if (!Object.prototype.hasOwnProperty.call(current, part)) return void 0;
+    current = current[part];
+  }
+  return current;
+}
 function publicUrl(route, publicSiteUrl) {
   if (!publicSiteUrl) return route;
   return `${publicSiteUrl.replace(/\/+$/, "")}${route.startsWith("/") ? route : `/${route}`}`;
@@ -69,7 +82,7 @@ function buildPreviewUrl(route, options = {}) {
 }
 
 // src/admin/SectionEditorForm.tsx
-import { useState as useState6, useEffect as useEffect5 } from "react";
+import { useState as useState6, useEffect as useEffect5, useMemo as useMemo4, useRef as useRef2 } from "react";
 import {
   Save,
   RotateCcw,
@@ -1080,7 +1093,10 @@ var SectionEditorForm = ({
   onChangeDraft,
   sectionLabel,
   pagePath,
-  transform
+  transform,
+  focusPath,
+  onClearFocus,
+  onDirtyChange
 }) => {
   const { config } = useStudio();
   const collectionLimits = config.collectionLimits ?? {};
@@ -1100,6 +1116,18 @@ var SectionEditorForm = ({
     setPublished(initialPublished);
     setIsDirty(false);
   }, [initialData, initialPublished]);
+  useEffect5(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty]);
+  const focusSegments = useMemo4(() => focusPath ? parseFieldPath(focusPath) : null, [focusPath]);
+  const focusValue = focusSegments ? getAtPath(formData, focusSegments) : void 0;
+  const isFocused = focusValue !== void 0 && focusValue !== null;
+  const focusAreaRef = useRef2(null);
+  useEffect5(() => {
+    if (!focusPath) return;
+    const input = focusAreaRef.current?.querySelector("input:not([type=checkbox]), textarea");
+    input?.focus();
+  }, [focusPath, isFocused]);
   const cloneData = (obj) => {
     if (obj === null || typeof obj !== "object") return obj;
     return JSON.parse(JSON.stringify(obj));
@@ -1576,45 +1604,66 @@ var SectionEditorForm = ({
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ jsx6("div", { className: "bg-slate-900/80 border border-purple-500/20 rounded-xl p-3 sm:p-4 space-y-3", children: CodeWidget && isCodeValue(formData) ? /* @__PURE__ */ jsxs5(Fragment2, { children: [
-      /* @__PURE__ */ jsx6(
-        CodeWidget,
-        {
-          value: formData,
-          onChange: (next) => {
-            const updated = {
-              html: next.html,
-              css: next.css,
-              js: next.js
-            };
-            setFormData(updated);
-            setIsDirty(true);
-            if (onChangeDraft) {
-              onChangeDraft(updated);
+    /* @__PURE__ */ jsxs5("div", { className: "bg-slate-900/80 border border-purple-500/20 rounded-xl p-3 sm:p-4 space-y-3", children: [
+      focusPath && !isFocused && /* @__PURE__ */ jsx6("p", { role: "status", className: "text-xs rounded-lg px-3 py-2 bg-amber-950/40 border border-amber-700/60 text-amber-200", children: "This field could not be found, so the whole section is shown." }),
+      isFocused && focusSegments ? /* @__PURE__ */ jsxs5("div", { ref: focusAreaRef, className: "space-y-3", children: [
+        /* @__PURE__ */ jsxs5("div", { className: "flex items-center justify-between gap-2 pb-2 border-b border-purple-500/20", children: [
+          /* @__PURE__ */ jsx6("span", { className: "text-[11px] font-semibold text-purple-200", children: "Editing one field" }),
+          /* @__PURE__ */ jsx6(
+            "button",
+            {
+              type: "button",
+              onClick: onClearFocus,
+              className: "text-[11px] font-semibold px-2.5 py-1 rounded-lg text-purple-200 bg-purple-600/25 hover:bg-purple-600/45 border border-purple-500/40 transition-colors",
+              children: "Show all fields in this section"
+            }
+          )
+        ] }),
+        renderField(
+          String([...focusSegments].reverse().find((part) => typeof part === "string") ?? focusPath),
+          focusValue,
+          focusSegments
+        )
+      ] }, focusPath) : CodeWidget && isCodeValue(formData) ? /* @__PURE__ */ jsxs5(Fragment2, { children: [
+        /* @__PURE__ */ jsx6(
+          CodeWidget,
+          {
+            value: formData,
+            onChange: (next) => {
+              const updated = {
+                html: next.html,
+                css: next.css,
+                js: next.js
+              };
+              setFormData(updated);
+              setIsDirty(true);
+              if (onChangeDraft) {
+                onChangeDraft(updated);
+              }
             }
           }
-        }
-      ),
-      /* @__PURE__ */ jsxs5("div", { className: "flex items-center justify-between pt-3 border-t border-purple-500/20", children: [
-        /* @__PURE__ */ jsxs5("span", { className: "text-xs text-slate-400 flex items-center gap-1.5", children: [
-          /* @__PURE__ */ jsx6("span", { className: `w-2 h-2 rounded-full ${isDirty ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}` }),
-          /* @__PURE__ */ jsx6("span", { children: isDirty ? "Unsaved edits in studio" : "Ready / Up to date" })
-        ] }),
-        /* @__PURE__ */ jsxs5(
-          "button",
-          {
-            type: "button",
-            disabled: isSaving,
-            onClick: handleSave,
-            className: `inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${isSaving ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40 active:scale-95"}`,
-            children: [
-              /* @__PURE__ */ jsx6(Save, { className: "w-4 h-4 shrink-0" }),
-              /* @__PURE__ */ jsx6("span", { children: isSaving ? "Saving..." : "Save & Publish" })
-            ]
-          }
-        )
-      ] })
-    ] }) : formData && typeof formData === "object" ? /* @__PURE__ */ jsx6("div", { className: "space-y-3", children: Object.entries(formData).map(([key, val]) => renderField(key, val, [key])) }) : /* @__PURE__ */ jsx6("div", { className: "p-4 text-center text-xs text-slate-400", children: "No editable data found for this section." }) }),
+        ),
+        /* @__PURE__ */ jsxs5("div", { className: "flex items-center justify-between pt-3 border-t border-purple-500/20", children: [
+          /* @__PURE__ */ jsxs5("span", { className: "text-xs text-slate-400 flex items-center gap-1.5", children: [
+            /* @__PURE__ */ jsx6("span", { className: `w-2 h-2 rounded-full ${isDirty ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}` }),
+            /* @__PURE__ */ jsx6("span", { children: isDirty ? "Unsaved edits in studio" : "Ready / Up to date" })
+          ] }),
+          /* @__PURE__ */ jsxs5(
+            "button",
+            {
+              type: "button",
+              disabled: isSaving,
+              onClick: handleSave,
+              className: `inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${isSaving ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40 active:scale-95"}`,
+              children: [
+                /* @__PURE__ */ jsx6(Save, { className: "w-4 h-4 shrink-0" }),
+                /* @__PURE__ */ jsx6("span", { children: isSaving ? "Saving..." : "Save & Publish" })
+              ]
+            }
+          )
+        ] })
+      ] }) : formData && typeof formData === "object" ? /* @__PURE__ */ jsx6("div", { className: "space-y-3", children: Object.entries(formData).map(([key, val]) => renderField(key, val, [key])) }) : /* @__PURE__ */ jsx6("div", { className: "p-4 text-center text-xs text-slate-400", children: "No editable data found for this section." })
+    ] }),
     /* @__PURE__ */ jsx6(
       JsonInspectorModal,
       {
@@ -1663,10 +1712,14 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   const pageDef = findPage(config, activePage);
   const availableSections = pageDef?.sections ?? [];
   const [activeSectionKey, setActiveSectionKey] = useState7(availableSections[0]?.key ?? "");
+  const [activeFieldPath, setActiveFieldPath] = useState7(null);
+  const hasUnsavedEdits = useRef3(false);
+  const activeSectionRef = useRef3(activeSectionKey);
+  activeSectionRef.current = activeSectionKey;
   const [sectionDetail, setSectionDetail] = useState7(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState7(false);
-  const iframeRef = useRef2(null);
-  const viewportContainerRef = useRef2(null);
+  const iframeRef = useRef3(null);
+  const viewportContainerRef = useRef3(null);
   const [containerSize, setContainerSize] = useState7({
     width: 1e3,
     height: 800
@@ -1719,7 +1772,16 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     },
     [origins]
   );
+  const confirmLeavingSection = useCallback(() => {
+    if (!hasUnsavedEdits.current) return true;
+    if (!window.confirm("You have unsaved changes in this section. Leave without saving them?")) return false;
+    hasUnsavedEdits.current = false;
+    sendToPreview({ type: CMS_MESSAGE.CONTENT_UPDATED });
+    return true;
+  }, [sendToPreview]);
   const changePage = (pageKey) => {
+    if (!confirmLeavingSection()) return;
+    setActiveFieldPath(null);
     setActivePage(pageKey);
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
@@ -1761,6 +1823,8 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     }
   }, [activePage, activeSectionKey, loadSectionData]);
   const handleSelectSection = (sectionKey) => {
+    if (sectionKey !== activeSectionKey && !confirmLeavingSection()) return;
+    setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
     sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
@@ -1773,6 +1837,8 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
           toast4.error(`Section '${message.sectionKey}' is not configured for this page`);
           return;
         }
+        if (message.sectionKey !== activeSectionRef.current && !confirmLeavingSection()) return;
+        setActiveFieldPath(message.fieldPath ?? null);
         setActiveSectionKey(message.sectionKey);
         toast4.success(`Selected: ${message.title || message.sectionKey} in Editor`, {
           duration: 2e3
@@ -1780,7 +1846,7 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
       },
       { origins, source: () => iframeRef.current?.contentWindow }
     );
-  }, [origins, availableSections]);
+  }, [origins, availableSections, confirmLeavingSection]);
   const handleSaveSection = async (content, isPublished) => {
     if (!pageDef) return;
     await adapter.saveRecord({ page: activePage, sectionKey: activeSectionKey, content, isPublished });
@@ -1961,6 +2027,11 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
             sectionLabel: activeSectionDef?.label,
             pagePath: currentRoute,
             transform: activeSectionDef?.transform,
+            focusPath: activeFieldPath,
+            onClearFocus: () => setActiveFieldPath(null),
+            onDirtyChange: (dirty) => {
+              hasUnsavedEdits.current = dirty;
+            },
             initialData: sectionDetail.content,
             hasCustomOverride: sectionDetail.hasCustomOverride,
             isPublished: sectionDetail.isPublished,

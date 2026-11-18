@@ -267,7 +267,7 @@ export default function CmsExamplePage() {
 export function exampleView(jsonImport: string): string {
   return `'use client';
 
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
 import type example from '${jsonImport}';
 
 type ExampleContent = typeof example;
@@ -276,7 +276,8 @@ type ExampleContent = typeof example;
  * How a page becomes editable:
  *   1. its text lives in a content object (content/cms-example.json),
  *   2. usePageContent('<page key>') reads it,
- *   3. each editable block is wrapped in <CmsSection sectionKey="..." title="...">.
+ *   3. each editable block is wrapped in <CmsSection sectionKey="..." title="...">,
+ *   4. each value that needs its own pencil is wrapped in <CmsField path="...">.
  */
 export function CmsExampleView() {
   const { hero, features } = usePageContent<ExampleContent>('example');
@@ -286,22 +287,24 @@ export function CmsExampleView() {
       <CmsSection sectionKey="hero" title="Hero">
         <section className="mx-auto grid max-w-5xl items-center gap-8 px-6 py-20 md:grid-cols-2">
           <div>
-            <h1 className="text-5xl font-bold">{hero.title}</h1>
-            <p className="mt-4 text-lg text-gray-600">{hero.subtitle}</p>
+            <h1 className="text-5xl font-bold"><CmsField path="title" label="Title">{hero.title}</CmsField></h1>
+            <p className="mt-4 text-lg text-gray-600"><CmsField path="subtitle" label="Subtitle">{hero.subtitle}</CmsField></p>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={hero.image} alt="" className="rounded-2xl" />
+          <CmsField path="image" label="Image">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={hero.image} alt="" className="rounded-2xl" />
+          </CmsField>
         </section>
       </CmsSection>
 
       <CmsSection sectionKey="features" title="Features">
         <section className="mx-auto max-w-5xl px-6 py-16">
-          <h2 className="mb-6 text-3xl font-bold">{features.title}</h2>
+          <h2 className="mb-6 text-3xl font-bold"><CmsField path="title" label="Title">{features.title}</CmsField></h2>
           <div className="grid gap-6 sm:grid-cols-3">
-            {features.items.map((item) => (
+            {features.items.map((item, index) => (
               <div key={item.id} className="rounded-2xl border border-gray-200 p-6">
-                <h3 className="mb-1 font-semibold">{item.title}</h3>
-                <p className="text-sm text-gray-600">{item.text}</p>
+                <h3 className="mb-1 font-semibold"><CmsField path={\`items.\${index}.title\`} label="Card title">{item.title}</CmsField></h3>
+                <p className="text-sm text-gray-600"><CmsField path={\`items.\${index}.text\`} label="Card text">{item.text}</CmsField></p>
               </div>
             ))}
           </div>

@@ -68,6 +68,16 @@ describe('add-page', () => {
     expect(config).toContain("{ key: 'team', label: 'Team' }");
   });
 
+  it('reads sections whose key is not a usable variable name', () => {
+    makeProject(dir);
+    runInit(initOptions());
+    runAddPage({ cwd: dir, key: 'about', sections: ['hero', 'content', 'our-team'], dryRun: false });
+    const view = read(dir, 'components', 'AboutView.tsx');
+    expect(view).toContain("const { hero, 'content': contentData, 'our-team': ourTeam } = usePageContent<Content>('about');");
+    expect(view).toContain('{contentData.title}');
+    expect(view).toContain('{ourTeam.title}');
+  });
+
   it('can add several pages and a nested route', () => {
     makeProject(dir);
     runInit(initOptions());
@@ -116,8 +126,8 @@ describe('add-page', () => {
     runInit(initOptions());
     runAddPage({ cwd: dir, key: 'about', dryRun: false });
     const view = read(dir, 'components', 'AboutView.tsx');
-    expect(view).toContain('contentData');
-    expect(view).not.toMatch(/const \{[^}]*\bcontent\b[^}]*\} =/);
+    expect(view).toContain("const { hero, 'content': contentData } = usePageContent<Content>('about');");
+    expect(view).toContain('{contentData.title}');
   });
 });
 

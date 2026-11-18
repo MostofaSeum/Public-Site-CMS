@@ -15,7 +15,7 @@ function render(source: string, content: unknown): string {
     if (id === 'react') return React;
     if (id === 'react/jsx-runtime') return require('react/jsx-runtime');
     if (id === 'next/link') return { __esModule: true, default: (p: { href: string; children: React.ReactNode }) => React.createElement('a', { href: p.href }, p.children) };
-    if (id === '@brainicon/visual-cms/site') return { CmsSection: (p: { children: React.ReactNode }) => p.children, usePageContent: () => content };
+    if (id === '@brainicon/visual-cms/site') return { CmsSection: (p: { children: React.ReactNode }) => p.children, CmsField: (p: { children: React.ReactNode }) => p.children, usePageContent: () => content };
     if (id.endsWith('.json')) return {};
     throw new Error(`unexpected import ${id}`);
   };
@@ -130,11 +130,22 @@ describe('scan', () => {
 
     expect(converted).toContain('<CmsSection sectionKey="header" title="Header" buttonPlacement="fixed">');
     expect(converted).toContain("const cmsText = usePageContent<CmsPageText>('home');");
+    expect(converted).toContain('<CmsField path="title" label="Title">{cmsText.hero.title}</CmsField>');
+    expect(converted).toContain("import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';");
     const config = fs.readFileSync(path.join(dir, 'cms.config.ts'), 'utf8');
     expect(config).toContain("import cmsPageDefaults from '@/content/home.json';");
     expect(config).toContain("key: 'home'");
     expect(config).toContain("{ key: 'features', label: '3. Features' }");
     expect(fs.readFileSync(`${file}.visual-cms.bak`, 'utf8')).toBe(PAGE);
+  });
+
+  it('keeps plain text in elements that cannot hold a field wrapper', () => {
+    const select = '"use client";\nexport default function P() {\n  return <section><h1>Choose</h1><title>Page name</title></section>;\n}\n';
+    const file = makeProject(dir, select);
+    runScan({ cwd: dir, file: 'app/page.tsx', dryRun: false });
+    const out = fs.readFileSync(file, 'utf8');
+    expect(out).toMatch(/<title>\{cmsText\.[a-zA-Z]+\.[a-zA-Z0-9]+\}<\/title>/);
+    expect(out).toContain('<h1><CmsField path="title" label="Title">');
   });
 
   it('writes nothing in dry-run and refuses to run twice', () => {

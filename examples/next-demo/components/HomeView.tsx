@@ -1,6 +1,6 @@
 'use client';
 
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
 import { getDynamicIcon } from '@brainicon/visual-cms/icons';
 import type homeDefaults from '@/content/home.json';
 
@@ -19,15 +19,17 @@ export function HomeView({ initialData }: { initialData: HomeContent }) {
                 {hero.badge}
               </span>
             )}
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">{hero.title}</h1>
-            <p className="text-lg text-slate-600">{hero.subtitle}</p>
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight"><CmsField path="title" label="Title">{hero.title}</CmsField></h1>
+            <p className="text-lg text-slate-600"><CmsField path="subtitle" label="Subtitle">{hero.subtitle}</CmsField></p>
             <a href={hero.primaryHref} className="inline-block px-5 py-3 rounded-xl bg-purple-600 text-white font-semibold">
               {hero.primaryText}
             </a>
           </div>
           {hero.heroImage && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={hero.heroImage} alt="" className="rounded-2xl shadow-xl w-full object-cover aspect-video" />
+            <CmsField path="heroImage" label="Image">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={hero.heroImage} alt="" className="rounded-2xl shadow-xl w-full object-cover aspect-video" />
+            </CmsField>
           )}
         </section>
       </CmsSection>
@@ -37,13 +39,13 @@ export function HomeView({ initialData }: { initialData: HomeContent }) {
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold mb-8">{features.title}</h2>
             <div className="grid sm:grid-cols-3 gap-6">
-              {features.items.map((item) => {
+              {features.items.map((item, index) => {
                 const Icon = getDynamicIcon(item.icon);
                 return (
                   <div key={item.id} className="p-6 rounded-2xl bg-white border border-slate-200">
-                    <Icon className="w-6 h-6 text-purple-600 mb-3" />
-                    <h3 className="font-semibold mb-1">{item.title}</h3>
-                    <p className="text-sm text-slate-600">{item.text}</p>
+                    <CmsField path={`items.${index}.icon`} label="Icon"><Icon className="w-6 h-6 text-purple-600 mb-3" /></CmsField>
+                    <h3 className="font-semibold mb-1"><CmsField path={`items.${index}.title`} label="Card title">{item.title}</CmsField></h3>
+                    <p className="text-sm text-slate-600"><CmsField path={`items.${index}.text`} label="Card text">{item.text}</CmsField></p>
                   </div>
                 );
               })}

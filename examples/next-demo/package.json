@@ -7,7 +7,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@brainicon/visual-cms": "github:MostofaSeum/Public-Site-CMS#v0.5.2",
+    "@brainicon/visual-cms": "github:MostofaSeum/Public-Site-CMS#v0.6.0",
     "lucide-react": "^0.554.0",
     "next": "15.1.7",
     "react": "19.0.0",

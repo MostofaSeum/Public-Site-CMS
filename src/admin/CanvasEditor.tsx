@@ -61,6 +61,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
   const pageDef: PageDef | undefined = findPage(config, activePage);
   const availableSections = pageDef?.sections ?? [];
   const [activeSectionKey, setActiveSectionKey] = useState<string>(availableSections[0]?.key ?? '');
+  // The single field opened with its own pencil. Null shows the whole section.
+  const [activeFieldPath, setActiveFieldPath] = useState<string | null>(null);
+  const hasUnsavedEdits = useRef(false);
+  const activeSectionRef = useRef(activeSectionKey);
+  activeSectionRef.current = activeSectionKey;
   const [sectionDetail, setSectionDetail] = useState<SectionDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
@@ -129,7 +134,18 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
     [origins]
   );
 
+  /** Asks before unsaved edits are lost, and removes them from the preview when the editor agrees. */
+  const confirmLeavingSection = useCallback(() => {
+    if (!hasUnsavedEdits.current) return true;
+    if (!window.confirm('You have unsaved changes in this section. Leave without saving them?')) return false;
+    hasUnsavedEdits.current = false;
+    sendToPreview({ type: CMS_MESSAGE.CONTENT_UPDATED });
+    return true;
+  }, [sendToPreview]);
+
   const changePage = (pageKey: string) => {
+    if (!confirmLeavingSection()) return;
+    setActiveFieldPath(null);
     setActivePage(pageKey);
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
@@ -185,6 +201,8 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
 
   // Two-way interaction: select a section on the left -> scroll the preview to it
   const handleSelectSection = (sectionKey: string) => {
+    if (sectionKey !== activeSectionKey && !confirmLeavingSection()) return;
+    setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
     sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
@@ -199,6 +217,8 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
           toast.error(`Section '${message.sectionKey}' is not configured for this page`);
           return;
         }
+        if (message.sectionKey !== activeSectionRef.current && !confirmLeavingSection()) return;
+        setActiveFieldPath(message.fieldPath ?? null);
         setActiveSectionKey(message.sectionKey);
         toast.success(`Selected: ${message.title || message.sectionKey} in Editor`, {
           duration: 2000,
@@ -206,7 +226,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
       },
       { origins, source: () => iframeRef.current?.contentWindow }
     );
-  }, [origins, availableSections]);
+  }, [origins, availableSections, confirmLeavingSection]);
 
   // Save handler for the left editor panel.
   // Errors are re-thrown so SectionEditorForm shows a single toast.
@@ -431,6 +451,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
                 sectionLabel={activeSectionDef?.label}
                 pagePath={currentRoute}
                 transform={activeSectionDef?.transform}
+                focusPath={activeFieldPath}
+                onClearFocus={() => setActiveFieldPath(null)}
+                onDirtyChange={(dirty) => {
+                  hasUnsavedEdits.current = dirty;
+                }}
                 initialData={sectionDetail.content}
                 hasCustomOverride={sectionDetail.hasCustomOverride}
                 isPublished={sectionDetail.isPublished}

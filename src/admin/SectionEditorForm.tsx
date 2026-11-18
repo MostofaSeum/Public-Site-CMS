@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Save, RotateCcw, Code, Eye, Plus, Trash2, ChevronDown, ChevronUp,
   CheckCircle2, ShieldCheck, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CodeValue } from '../core/types';
+import { getAtPath, parseFieldPath } from '../core/paths';
 import { JsonInspectorModal } from './JsonInspectorModal';
 import { LivePreviewModal } from './LivePreviewModal';
 import { VisualImagePicker } from './VisualImagePicker';
@@ -28,6 +29,12 @@ export interface SectionEditorFormProps {
   onChangeDraft?: (draftContent: unknown) => void;
   /** Normaliser applied to the data before it is loaded into the form. */
   transform?: (data: unknown) => unknown;
+  /** Show only this field ("items.0.title") instead of the whole section. */
+  focusPath?: string | null;
+  /** Called when the editor asks to see every field of the section again. */
+  onClearFocus?: () => void;
+  /** Tells the studio whether this form holds unsaved edits. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** True for objects shaped like { html, css, js } with string values. */
@@ -55,6 +62,9 @@ export const SectionEditorForm: React.FC<SectionEditorFormProps> = ({
   sectionLabel,
   pagePath,
   transform,
+  focusPath,
+  onClearFocus,
+  onDirtyChange,
 }) => {
   const { config } = useStudio();
   const collectionLimits = config.collectionLimits ?? {};
@@ -77,6 +87,24 @@ export const SectionEditorForm: React.FC<SectionEditorFormProps> = ({
     setPublished(initialPublished);
     setIsDirty(false);
   }, [initialData, initialPublished]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
+
+  const focusSegments = useMemo(() => (focusPath ? parseFieldPath(focusPath) : null), [focusPath]);
+  const focusValue = focusSegments ? getAtPath(formData, focusSegments) : undefined;
+  const isFocused = focusValue !== undefined && focusValue !== null;
+  const focusAreaRef = useRef<HTMLDivElement>(null);
+
+  // Put the cursor in the field the editor just opened.
+  useEffect(() => {
+    if (!focusPath) return;
+    const input = focusAreaRef.current?.querySelector<HTMLElement>('input:not([type=checkbox]), textarea');
+    input?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPath, isFocused]);
 
   // Deep clone utility
   const cloneData = <T,>(obj: T): T => {
@@ -641,7 +669,30 @@ export const SectionEditorForm: React.FC<SectionEditorFormProps> = ({
 
       {/* Main Flat Form Container: Full Width, No Box Shrinking */}
       <div className="bg-slate-900/80 border border-purple-500/20 rounded-xl p-3 sm:p-4 space-y-3">
-        {CodeWidget && isCodeValue(formData) ? (
+        {focusPath && !isFocused && (
+          <p role="status" className="text-xs rounded-lg px-3 py-2 bg-amber-950/40 border border-amber-700/60 text-amber-200">
+            This field could not be found, so the whole section is shown.
+          </p>
+        )}
+        {isFocused && focusSegments ? (
+          <div ref={focusAreaRef} key={focusPath} className="space-y-3">
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-purple-500/20">
+              <span className="text-[11px] font-semibold text-purple-200">Editing one field</span>
+              <button
+                type="button"
+                onClick={onClearFocus}
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg text-purple-200 bg-purple-600/25 hover:bg-purple-600/45 border border-purple-500/40 transition-colors"
+              >
+                Show all fields in this section
+              </button>
+            </div>
+            {renderField(
+              String([...focusSegments].reverse().find((part) => typeof part === 'string') ?? focusPath),
+              focusValue,
+              focusSegments
+            )}
+          </div>
+        ) : CodeWidget && isCodeValue(formData) ? (
           <>
           <CodeWidget
             value={formData}

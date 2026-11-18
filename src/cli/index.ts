@@ -13,7 +13,7 @@ Usage
   visual-cms init [options]           Set up the library in this project
   visual-cms add-page <key> [options] Create a new editable page (content, view, route, config entry)
   visual-cms scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
-                                      wraps its sections in <CmsSection>, registers it (backs up the file)
+                                      wraps sections in <CmsSection> and texts in <CmsField>, registers it (backs up the file)
   visual-cms doctor [options]         Check the setup and say what to fix
 
 scan options
@@ -28,6 +28,7 @@ add-page options
   --title <text>            Page title shown in the CMS (default: made from the key)
   --route <path>            Public route (default: /<key>)
   --sections <a,b,c>        Section keys (default: hero,content)
+  --dry-run                 Show what would be created, change nothing
 
 doctor options
   --api-url <url>           Check this Django API instead of the one in cms.config.ts
@@ -43,7 +44,7 @@ init options
   --api-url <url>           Django API base URL (default: http://localhost:8000/api/cms)
   --django-dir <path>       Folder of your Django project (has manage.py). Also sets up Django:
                             installs django-visual-cms, edits settings.py and urls.py (with
-                            backups), and runs the migration. Needs --backend django
+                            backups), and runs the migration. Implies --backend django
   --frontend-origin <url>   Where this Next.js site runs, allowed by Django (default: http://localhost:3000)
   --auth <token|session>    How editors sign in (django backend, default: token)
                               token    a sign-in form in your React admin; works across domains

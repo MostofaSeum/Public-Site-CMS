@@ -105,6 +105,9 @@ function loadTypeScript(root: string): TS {
   }
 }
 
+/** Elements that may only contain plain text, so a field wrapper cannot go inside them. */
+const PLAIN_TEXT_TAGS = new Set(['title']);
+
 export function runScan(options: ScanOptions): ScanReport {
   const root = path.resolve(options.cwd);
   const ts = loadTypeScript(root);
@@ -311,7 +314,11 @@ export function runScan(options: ScanOptions): ScanReport {
           const trail = raw.slice(lead.length).match(/\s*$/)![0];
           const field = nextField(fieldBase(parentTag));
           values[field] = value;
-          edits.push({ start: n.pos, end: n.end, text: `${lead}{${ref(field)}}${trail}`, order: 0 });
+          const parent = n.parent;
+          const plainOnly = ts.isJsxElement(parent) && PLAIN_TEXT_TAGS.has(tagName(parent));
+          const fieldLabel = titleCase(field).replace(/"/g, '');
+          const replacement = plainOnly ? `{${ref(field)}}` : `<CmsField path="${field}" label="${fieldLabel}">{${ref(field)}}</CmsField>`;
+          edits.push({ start: n.pos, end: n.end, text: `${lead}${replacement}${trail}`, order: 0 });
         }
         return;
       }
@@ -357,7 +364,7 @@ export function runScan(options: ScanOptions): ScanReport {
   out += sf.text.slice(cursor);
 
   const jsonSpec = importSpecifier(file, jsonFile, alias);
-  out = addImportLine(out, `import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';`);
+  out = addImportLine(out, `import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';`);
   out = addImportLine(out, `import type ${defaultsName} from '${jsonSpec}';`);
   // Type alias after the imports.
   out = out.replace(`import type ${defaultsName} from '${jsonSpec}';`, `import type ${defaultsName} from '${jsonSpec}';\n\ntype ${typeName} = typeof ${defaultsName};`);
@@ -396,7 +403,7 @@ ${sectionInfo.map((s, i) => `    { key: '${s.key}', label: '${`${i + 1}. ${title
     fs.writeFileSync(configFile, newConfig);
   }
   actions.push({ kind: 'created', file: rel(jsonFile), note: `${fields.length} texts in ${sectionInfo.length} sections` });
-  actions.push({ kind: 'modified', file: rel(file), note: 'texts now come from the CMS; sections wrapped in <CmsSection>' });
+  actions.push({ kind: 'modified', file: rel(file), note: 'texts now come from the CMS; sections wrapped in <CmsSection>, texts in <CmsField>' });
   actions.push({ kind: 'modified', file: rel(configFile), note: `registered page "${pageKey}" (${route})` });
   if (!hasUseClient) warnings.push(`Added "use client" to ${rel(file)}.`);
 

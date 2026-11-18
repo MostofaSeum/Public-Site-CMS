@@ -342,7 +342,7 @@ async function getPageMetadata(config, pageKey, options) {
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's edit button was clicked. */
+  /** iframe -> studio: a section's or a single field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",

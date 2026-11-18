@@ -54,6 +54,27 @@ interface CmsSectionProps {
  */
 declare const CmsSection: React.FC<CmsSectionProps>;
 
+interface CmsFieldProps {
+    /**
+     * Where the value lives inside the section's content, in dot form:
+     * "title", "image", "items.0.title". It can also point to a whole object or list ("items.0").
+     */
+    path: string;
+    /** Name shown on the pencil button. Default: made from the path. */
+    label?: string;
+    children: React.ReactNode;
+}
+/**
+ * CmsField
+ *
+ * Gives one value of a section its own pencil, so an editor can change just the title, the
+ * image or the icon. Place it inside a <CmsSection>.
+ *
+ * Visitors get the children only, with no extra element. In the studio preview the wrapper uses
+ * `display: contents`, so it does not affect the page layout.
+ */
+declare const CmsField: React.FC<CmsFieldProps>;
+
 /** True when the current page is rendered inside the studio's preview iframe. */
 declare function isCmsPreview(): boolean;
 /**
@@ -62,4 +83,4 @@ declare function isCmsPreview(): boolean;
  */
 declare function useCmsEditMode(origins: string[]): boolean;
 
-export { CmsProvider, type CmsProviderProps, CmsSection, type CmsSectionProps, isCmsPreview, useCmsConfig, useCmsEditMode, usePageContent };
+export { CmsField, type CmsFieldProps, CmsProvider, type CmsProviderProps, CmsSection, type CmsSectionProps, isCmsPreview, useCmsConfig, useCmsEditMode, usePageContent };

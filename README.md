@@ -5,7 +5,8 @@ A visual CMS for Next.js sites (with an optional Django backend). Add one page t
 - a list of every page of the site,
 - a **live preview** of the real page, at desktop, tablet or mobile size,
 - a **pencil "Edit" button** that appears when they hover any section of the preview,
-- a **form editor** for that section, built automatically from the section's content,
+- an optional **small pencil for each title, subtitle, image or icon**, which opens only that one field,
+- a **form editor** for that section or field, built automatically from the content,
 - changes shown in the preview **as they type**, then saved, published, or reset to the default.
 
 Content is stored through a small adapter, so it works with a JSON file, Django, a database, or your own API. Editors never see JSON: they use forms.
@@ -30,7 +31,7 @@ Safety rules (most important):
 
 Steps:
 1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py).
-2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.5.2   then check: npx visual-cms --version
+2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.6.0   then check: npx visual-cms --version
 3. Set it up with `npx visual-cms init --yes`:
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
    - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
@@ -40,11 +41,12 @@ Steps:
    - npx visual-cms scan <page file> --dry-run   then review the list of texts it will move, then run it without --dry-run.
    - If scan says the file is a Server Component: if the page has no server-only code (not async, no metadata export, no database/fs/server imports) re-run with --add-use-client; otherwise move the page's JSX into a new client component file (components/<Name>View.tsx with 'use client'), render it from the page, and scan that file with --page <key> --route <url>.
    - Review the change with git diff and run the type check. The page must render exactly as before.
+   - Single-field pencils: scan already wraps each moved text in <CmsField>, so each text gets its own pencil. Scan does not move images, icons or values built in code. To make one editable on its own, add its current value to that section in content/<page>.json, read it with usePageContent, and wrap the element in <CmsField path="<key inside that section>" label="<name>"> inside its <CmsSection>. Use dots for lists (items.0.title). Put <CmsField> inside <li> and <td>, never around them, and do not use it inside <option>, <title> or <textarea>. Keep the output identical.
    - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
 6. Run npx visual-cms doctor and fix every FAIL.
-7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a section, click the pencil, change a text, Save & Publish, and check the public page shows it. Then reset it.
+7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a title, click its small pencil, and confirm the form shows only that field. Change it, Save & Publish, and check the public page shows it. Then reset it. Also hover an empty part of the section and confirm the larger section pencil opens the full form.
 8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx visual-cms doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
-9. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
+9. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, which images or icons have their own pencil, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
 ```
 
 ## Contents
@@ -70,13 +72,13 @@ Steps:
 In your Next.js project:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.5.2
+npm install github:MostofaSeum/Public-Site-CMS#v0.6.0
 ```
 
-`#v0.5.2` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
+`#v0.6.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
 
 ```bash
-npx visual-cms --version     # prints 0.5.2
+npx visual-cms --version     # prints 0.6.0
 ```
 
 ### Step 2. Run the setup command
@@ -120,7 +122,7 @@ Besides the Next.js files above, this installs `django-visual-cms` (shipped insi
 
 ### Step 3. Make your pages editable
 
-Convert an existing page in one command. It moves the page's texts into `content/<page>.json`, wraps each section in `<CmsSection>`, and registers the page. The page looks exactly the same afterwards:
+Convert an existing page in one command. It moves the page's texts into `content/<page>.json`, wraps each section in `<CmsSection>` and each moved text in `<CmsField>`, and registers the page. The page looks exactly the same afterwards:
 
 ```bash
 npx visual-cms scan src/app/page.tsx --dry-run     # see which texts it would move
@@ -142,7 +144,7 @@ Details: [section 4](#4-make-your-own-pages-editable).
 npm run dev
 ```
 
-Open `http://localhost:3000/admin/cms`. Hover a section in the preview, click the pencil, change the text, and watch the preview update. **Save & Publish** puts it on the site. The reset button (circular arrow) goes back to the default. With Django, the CMS screen first shows a sign-in form: use a Django staff username and password (`python manage.py createsuperuser` makes one).
+Open `http://localhost:3000/admin/cms`. Hover a text in the preview, click its small pencil, change the text, and watch the preview update. Hover an empty part of a section to get the pencil that opens the whole section. **Save & Publish** puts it on the site. The reset button (circular arrow) goes back to the default. With Django, the CMS screen first shows a sign-in form: use a Django staff username and password (`python manage.py createsuperuser` makes one).
 
 ### Step 5. Connect your admin panel
 
@@ -293,7 +295,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 **Step 3. Install the library.**
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.5.2
+npm install github:MostofaSeum/Public-Site-CMS#v0.6.0
 npx visual-cms --version
 ```
 
@@ -322,7 +324,8 @@ Pass when the command exits with code 0 and lists created and modified files. **
 1. `npx visual-cms scan <page file> --dry-run`. Read the list of texts. It moves only static text and `placeholder`/`alt` attributes; code, state and API data stay as they are.
 2. If it reports a Server Component: when the page has no server-only code (not `async`, no `metadata`/`generateMetadata` export, no database, `fs` or server-only imports), re-run with `--add-use-client`. Otherwise create `components/<Name>View.tsx` with `'use client'`, move the page's JSX into it (keep the server code in the page and pass data as props), render `<NameView />` from the page, and scan the new file with `--page <key> --route <url>`.
 3. Run it without `--dry-run`, then `git diff` and `npx tsc --noEmit`. The page must render the same as before. If anything is wrong, restore the file from `<file>.visual-cms.bak`, remove the page entry from `cms.config.ts` and delete `content/<key>.json`.
-4. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
+4. Optional: for values `scan` did not move (images, icons, data from code), wrap the element in `<CmsField path="...">` so it gets its own pencil (section "Edit single fields").
+5. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
 
 **Step 7. Verify.** Pass only when all of these hold (the dev server uses port 3000 unless the project says otherwise):
 
@@ -334,7 +337,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000<ADMIN_URL>"   # 20
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/"             # 200
 ```
 
-If you have a browser tool: open the CMS URL (with Django, sign in with a staff account on the form it shows), confirm the preview loads, hover a section, click the pencil, change a text, **Save & Publish**, check the public page, then reset it. Stop the dev server you started.
+If you have a browser tool: open the CMS URL (with Django, sign in with a staff account on the form it shows), confirm the preview loads, hover a text, click its small pencil, confirm the form shows only that field, change it, **Save & Publish**, check the public page, then reset it. Stop the dev server you started.
 
 **Step 8. Report to the developer.** Say what was created and edited, the CMS URL, where the menu link was added, which pages are editable, and what is still theirs to do: the real login check for the file backend if you could not add it, a staff user for Django, and a database-backed storage before deploying to a serverless host ([Before you go live](#5-before-you-go-live)).
 
@@ -365,17 +368,18 @@ It reads the file with your project's TypeScript compiler, finds its sections (`
 
 - moves every static text, and every `placeholder` and `alt` attribute, into `content/<page>.json` (one object per section),
 - replaces each of them with the matching value from `usePageContent()`,
-- wraps each section in `<CmsSection>` (no wrapper is rendered for visitors),
+- wraps each section in `<CmsSection>` and each moved page text in `<CmsField>` (no wrapper is rendered for visitors),
 - registers the page and its sections in `cms.config.ts`.
 
 It leaves code alone: state, props, API data, string literals inside expressions, `<code>`/`<pre>` blocks and anything inside an element marked `data-cms-ignore`. The page renders the same HTML as before (this is what the tests check). The original file is saved as `<file>.visual-cms.bak`, and the rewritten file is checked for syntax errors before anything is written.
 
 Things to know:
 
+- Each moved page text gets its own pencil through `<CmsField>` ([Edit single fields](#edit-single-fields)). `placeholder` and `alt` values and text inside `<title>` cannot be wrapped, so editors change those with the section pencil.
 - The page must be a client component, because the content is read with a hook. For a Server Component it stops and explains: pass `--add-use-client` when the page has no server-only code, or move the JSX into a client component and scan that file with `--page` and `--route`.
 - The page key and route come from the file's place under `app/` (`app/page.tsx` is `home` at `/`). Pass `--page` and `--route` for files elsewhere.
 - Blocks written out several times by hand (four copied cards) become separate fields. Turn them into an array plus `.map()` by hand if editors should add or remove items.
-- Images that use `src={...}` and texts built in code are not moved. Edit them by hand if needed.
+- Image `src` values, icons and texts built in code are not moved. To make one editable, add it to the JSON and wrap it in `<CmsField>` ([Edit single fields](#edit-single-fields)).
 
 **By hand.** Three steps, using the generated example as the pattern.
 
@@ -439,6 +443,34 @@ Tips:
 - For sticky headers or banners, use `<CmsSection buttonPlacement="fixed">` so the pencil is not hidden.
 - To let editors control the page's SEO, add a `seo` section (`title`, `description`, `keywords`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `twitterCard`, `robots`) and use `getPageMetadata(cms, 'home', { storage })` in `generateMetadata`.
 - With the Django backend, use `import { storage } from '@/lib/cms-storage'` the same way; `init` already generates it for Django.
+
+### Edit single fields
+
+By default a pencil opens the whole section. To give one value its own pencil, wrap it in `<CmsField>` inside the `<CmsSection>`. The editor hovers that title, image or icon, clicks its small pencil, and sees a form with only that field:
+
+```tsx
+import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+
+<CmsSection sectionKey="hero" title="Hero">
+  <h1><CmsField path="title" label="Title">{hero.title}</CmsField></h1>
+  <p><CmsField path="subtitle" label="Subtitle">{hero.subtitle}</CmsField></p>
+  <CmsField path="image" label="Image"><img src={hero.image} alt="" /></CmsField>
+  <CmsField path="icon" label="Icon"><HeroIcon name={hero.icon} /></CmsField>
+
+  {hero.items.map((item, index) => (
+    <h3 key={item.id}>
+      <CmsField path={`items.${index}.title`} label="Card title">{item.title}</CmsField>
+    </h3>
+  ))}
+</CmsSection>
+```
+
+- `path` is where the value lives inside that section's content. Use dots for nested values and list positions. It can also point to a whole card (`items.0`) to edit it as a group.
+- Visitors get no extra HTML, and in the CMS preview the wrapper does not change the page layout.
+- The section pencil still works on the section's empty areas, and **Show all fields in this section** opens the full form.
+- Put `<CmsField>` inside list and table elements (`<li>`, `<td>`), not around them. `<option>`, `<title>` and `<textarea>` only allow plain text, so edit those with the section pencil.
+- Saving a field saves its section, so no storage or API change is needed.
+- Moving to another field of the same section keeps unsaved edits. Leaving the section or page with unsaved edits asks for confirmation first.
 
 ---
 
@@ -534,7 +566,7 @@ A copy of each edited file is saved next to it as `*.visual-cms.bak`. Running th
 You can also run the Django part on its own, without the Next.js part:
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.5.2#subdirectory=django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"
 python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
@@ -557,7 +589,7 @@ adapter: djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers }),
 </CmsAuthGate>
 ```
 
-**Who counts as signed in.** Only a token from the sign-in form. A leftover Django admin login in the same browser does **not** let anyone past `<CmsAuthGate>`: the gate does not send cookies. After a successful sign-in the token is kept in `localStorage` for 12 hours, so reloading or reopening the browser does not ask again until it expires or the editor clicks **Sign out**. To ask every time the browser closes, use `cmsAuth({ baseUrl, storage: 'session' })`; to shorten the period, set `TOKEN_MAX_AGE` in Django.
+**Who counts as signed in.** Only a token from the sign-in form. A leftover Django admin login in the same browser does **not** let anyone past `<CmsAuthGate>`: the gate does not send cookies. After a successful sign-in the token is kept in `localStorage` for 12 hours, so reloading or reopening the browser does not ask again until it expires or the editor signs out. The generated CMS screen has no sign-out button, so add `<CmsLogoutButton auth={cmsLogin} />` where you want one. To ask every time the browser closes, use `cmsAuth({ baseUrl, storage: 'session' })`; to shorten the period, set `TOKEN_MAX_AGE` in Django.
 
 **Your own React admin with a sign-in page.** Put the same gate around your whole admin area and give it a login page, so signed-out visitors are sent to the form and back afterwards:
 
@@ -602,7 +634,7 @@ Add `<CmsLogoutButton auth={cmsLogin} redirectTo="/admin/login" />` to your admi
 
 #### By hand
 
-Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.5.2#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -650,11 +682,13 @@ interface CmsStorageAdapter {
 | the sign-in form says "This account is not allowed to edit the site" | the account is not staff (or your `AUTHORIZE` function says no) | set `is_staff` on the user in the Django admin |
 | the sign-in form says "Too many failed attempts" | 5 wrong passwords for that username from this address | wait 5 minutes (`LOGIN_LOCKOUT_SECONDS`) |
 | the sign-in form says "Token login is not available on this server" | `django-visual-cms` is older than 0.4 or `TOKEN_LOGIN` is `False` | upgrade the package ([section 9](#9-updating)); `npx visual-cms doctor` says which |
-| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.5.2` in the project root, then retry |
-| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.5.2` |
+| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.6.0` in the project root, then retry |
+| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.6.0` |
 | the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/visual-cms/dist";` below `@import "tailwindcss";` |
 | the preview shows "Loading…" forever, or is blank | the page's `route` in `cms.config.ts` is wrong, the page throws an error, a redirect catches the preview, or the site blocks being framed | open the route in a normal tab; check `middleware.ts` ([below](#redirects-and-the-preview-iframe)); remove `X-Frame-Options: DENY` |
 | hovering shows no pencil | the block is not wrapped in `<CmsSection>`, `CmsProviders` is missing from the root layout, or Edit Mode is off | wrap the block; check `app/layout.tsx`; turn Edit Mode on in the toolbar |
+| hovering a title or image shows only the section pencil | the value is not wrapped in `<CmsField>`, or the `<CmsField>` is outside its `<CmsSection>` (the browser console warns about this) | wrap the value inside its section ([Edit single fields](#edit-single-fields)) |
+| a small pencil opens the whole section and says "This field could not be found" | the `path` does not match that section's content, or the list item was deleted | use the key from `content/<page>.json`, for example `title` or `items.0.title` |
 | clicking the pencil says "Section '…' is not configured for this page" | the `sectionKey` is not in that page's `sections` | add `{ key: '…', label: '…' }` to the page in `cms.config.ts` |
 | saving fails with 401 | `authorize()` returned false. The generated one allows editing only under `next dev` | implement your login check ([Case B step 4](#case-b-your-admin-panel-is-part-of-this-nextjs-app)); log in |
 | saving fails with 404 "Unknown page" | the page key is not in `cms.config.ts` `pages` | register the page |
@@ -695,7 +729,7 @@ Makes an existing page editable ([section 4](#4-make-your-own-pages-editable)). 
 
 ### `visual-cms add-page <key>`
 
-Creates an editable page in one step: `content/<key>.json` (default text, one object per section), `components/<Name>View.tsx` (with a `<CmsSection>` per section), `app/<route>/page.tsx` (server page that loads saved content), and registers the page in `cms.config.ts`. It refuses to overwrite existing files.
+Creates an editable page in one step: `content/<key>.json` (default text, one object per section), `components/<Name>View.tsx` (with a `<CmsSection>` per section and a `<CmsField>` per text), `app/<route>/page.tsx` (renders that view; the root layout already loads the saved content), and registers the page in `cms.config.ts`. It refuses to overwrite existing files.
 
 | Option | Meaning |
 |---|---|
@@ -704,7 +738,7 @@ Creates an editable page in one step: `content/<key>.json` (default text, one ob
 | `--sections <a,b,c>` | section keys (default `hero,content`) |
 | `--dry-run` | show what would be created |
 
-Afterwards, replace the placeholder markup in the generated view with your own design (keep the `<CmsSection>` wrappers), and put real default text in the JSON file.
+Afterwards, replace the placeholder markup in the generated view with your own design (keep the `<CmsSection>` and `<CmsField>` wrappers), and put real default text in the JSON file.
 
 ### `visual-cms doctor`
 
@@ -716,7 +750,7 @@ Checks the setup and says exactly what to fix: Next.js and the packages, Tailwin
 
 For a project `init` does not support, or if you prefer to do it by hand. This is what `init` generates.
 
-**1.** Install the library ([Step 2](#step-2-install-it-into-your-project)) and `npm install lucide-react react-hot-toast`. In your global CSS, below `@import "tailwindcss";`, add `@source "../node_modules/@brainicon/visual-cms/dist";` (the path is relative to the CSS file).
+**1.** Install the library ([Step 1](#step-1-install-the-library-from-github)) and `npm install lucide-react react-hot-toast`. In your global CSS, below `@import "tailwindcss";`, add `@source "../node_modules/@brainicon/visual-cms/dist";` (the path is relative to the CSS file).
 
 **2.** `cms.config.ts`:
 
@@ -821,6 +855,7 @@ There is no schema to write. The editor reads the section's content and picks a 
 | `<CmsProvider config>` | `/site` | wrap the site once (root layout) |
 | `usePageContent(pageKey, { initialData? })` | `/site` | read a page's content, with live preview in the CMS |
 | `<CmsSection sectionKey title activeOnPath? buttonPlacement?>` | `/site` | make a block editable |
+| `<CmsField path label?>` | `/site` | give one value inside a `<CmsSection>` its own pencil |
 | `getDynamicIcon(name)` | `/icons` | draw any icon chosen in the icon picker (adds the whole lucide icon set to your bundle) |
 | `getPageContent(config, pageKey, { storage })` | `/next` | load a page's content on the server |
 | `getAllPageContent(config, { storage })` | `/next` | load every page's content on the server, for `<CmsProvider initialContent>` (used by the generated `CmsProviders`) |
@@ -861,11 +896,11 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 Install a newer release by its tag, then restart the dev server:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.5.2     # use the new tag
+npm install github:MostofaSeum/Public-Site-CMS#v0.6.0     # use the new tag
 rm -rf .next                                               # PowerShell: Remove-Item -Recurse -Force .next
 ```
 
-With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.5.2#subdirectory=django-visual-cms"`.
+With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"`.
 
 ### Development
 
@@ -878,7 +913,7 @@ npm test
 npm run build
 ```
 
-`dist/` is committed, because installing from GitHub uses it directly (there is no build step on the user's machine). **Run `npm run build` and commit `dist/` together with every source change.** To release: bump `version` in `package.json`, `django-visual-cms/pyproject.toml` and `django-visual-cms/visual_cms/__init__.py`, build, commit, then tag and push: `git tag vX.Y.Z && git push origin main --tags`.
+`dist/` is committed, because installing from GitHub uses it directly (there is no build step on the user's machine). **Run `npm run build` and commit `dist/` together with every source change.** To release: update the version in `package.json`, `package-lock.json`, `django-visual-cms/pyproject.toml`, `django-visual-cms/visual_cms/__init__.py`, both READMEs and `examples/next-demo/package.json`. Run `npm run build`, confirm it exits with code 0 and that every file listed under `exports` exists, stage the build with `git add -A dist`, commit, then tag and push: `git tag vX.Y.Z && git push origin main vX.Y.Z`.
 
 The Django package has its own tests: `cd django-visual-cms && python -m django test tests --settings=tests.settings` (set `PYTHONPATH=.` first).
 

@@ -420,7 +420,7 @@ export default function CmsExamplePage() {
 function exampleView(jsonImport) {
   return `'use client';
 
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
 import type example from '${jsonImport}';
 
 type ExampleContent = typeof example;
@@ -429,7 +429,8 @@ type ExampleContent = typeof example;
  * How a page becomes editable:
  *   1. its text lives in a content object (content/cms-example.json),
  *   2. usePageContent('<page key>') reads it,
- *   3. each editable block is wrapped in <CmsSection sectionKey="..." title="...">.
+ *   3. each editable block is wrapped in <CmsSection sectionKey="..." title="...">,
+ *   4. each value that needs its own pencil is wrapped in <CmsField path="...">.
  */
 export function CmsExampleView() {
   const { hero, features } = usePageContent<ExampleContent>('example');
@@ -439,22 +440,24 @@ export function CmsExampleView() {
       <CmsSection sectionKey="hero" title="Hero">
         <section className="mx-auto grid max-w-5xl items-center gap-8 px-6 py-20 md:grid-cols-2">
           <div>
-            <h1 className="text-5xl font-bold">{hero.title}</h1>
-            <p className="mt-4 text-lg text-gray-600">{hero.subtitle}</p>
+            <h1 className="text-5xl font-bold"><CmsField path="title" label="Title">{hero.title}</CmsField></h1>
+            <p className="mt-4 text-lg text-gray-600"><CmsField path="subtitle" label="Subtitle">{hero.subtitle}</CmsField></p>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={hero.image} alt="" className="rounded-2xl" />
+          <CmsField path="image" label="Image">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={hero.image} alt="" className="rounded-2xl" />
+          </CmsField>
         </section>
       </CmsSection>
 
       <CmsSection sectionKey="features" title="Features">
         <section className="mx-auto max-w-5xl px-6 py-16">
-          <h2 className="mb-6 text-3xl font-bold">{features.title}</h2>
+          <h2 className="mb-6 text-3xl font-bold"><CmsField path="title" label="Title">{features.title}</CmsField></h2>
           <div className="grid gap-6 sm:grid-cols-3">
-            {features.items.map((item) => (
+            {features.items.map((item, index) => (
               <div key={item.id} className="rounded-2xl border border-gray-200 p-6">
-                <h3 className="mb-1 font-semibold">{item.title}</h3>
-                <p className="text-sm text-gray-600">{item.text}</p>
+                <h3 className="mb-1 font-semibold"><CmsField path={\`items.\${index}.title\`} label="Card title">{item.title}</CmsField></h3>
+                <p className="text-sm text-gray-600"><CmsField path={\`items.\${index}.text\`} label="Card text">{item.text}</CmsField></p>
               </div>
             ))}
           </div>
@@ -901,8 +904,8 @@ function runAddPage(options) {
   const blocks = sections.map(
     (s) => `      <CmsSection sectionKey="${s}" title="${titleCase(s)}">
         <section className="mx-auto max-w-5xl px-6 py-12">
-          <h2 className="text-3xl font-bold">{${camel(s)}.title}</h2>
-          <p className="mt-3 text-gray-600">{${camel(s)}.text}</p>
+          <h2 className="text-3xl font-bold"><CmsField path="title" label="Title">{${camel(s)}.title}</CmsField></h2>
+          <p className="mt-3 text-gray-600"><CmsField path="text" label="Text">{${camel(s)}.text}</CmsField></p>
         </section>
       </CmsSection>`
   ).join("\n\n");
@@ -910,13 +913,13 @@ function runAddPage(options) {
     viewFile,
     `'use client';
 
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
 import type pageDefaults from '${imp(viewFile, jsonFile)}';
 
 type Content = typeof pageDefaults;
 
 export function ${name}View() {
-  const { ${sections.map(camel).join(", ")} } = usePageContent<Content>('${options.key}');
+  const { ${sections.map((s) => camel(s) === s ? s : `'${s}': ${camel(s)}`).join(", ")} } = usePageContent<Content>('${options.key}');
 
   return (
     <main>
@@ -1257,6 +1260,7 @@ function loadTypeScript(root) {
     throw new CliError("TypeScript is not installed in this project (npm install -D typescript). The scan command uses it to read your code safely.");
   }
 }
+var PLAIN_TEXT_TAGS = /* @__PURE__ */ new Set(["title"]);
 function runScan(options) {
   const root = import_node_path7.default.resolve(options.cwd);
   const ts = loadTypeScript(root);
@@ -1434,7 +1438,11 @@ function runScan(options) {
           const trail = raw.slice(lead.length).match(/\s*$/)[0];
           const field = nextField(fieldBase(parentTag));
           values[field] = value;
-          edits.push({ start: n.pos, end: n.end, text: `${lead}{${ref(field)}}${trail}`, order: 0 });
+          const parent = n.parent;
+          const plainOnly = ts.isJsxElement(parent) && PLAIN_TEXT_TAGS.has(tagName(parent));
+          const fieldLabel = titleCase2(field).replace(/"/g, "");
+          const replacement = plainOnly ? `{${ref(field)}}` : `<CmsField path="${field}" label="${fieldLabel}">{${ref(field)}}</CmsField>`;
+          edits.push({ start: n.pos, end: n.end, text: `${lead}${replacement}${trail}`, order: 0 });
         }
         return;
       }
@@ -1480,7 +1488,7 @@ ${indent}` : `
   }
   out += sf.text.slice(cursor);
   const jsonSpec = importSpecifier(file, jsonFile, alias);
-  out = addImportLine(out, `import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';`);
+  out = addImportLine(out, `import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';`);
   out = addImportLine(out, `import type ${defaultsName} from '${jsonSpec}';`);
   out = out.replace(`import type ${defaultsName} from '${jsonSpec}';`, `import type ${defaultsName} from '${jsonSpec}';
 
@@ -1517,7 +1525,7 @@ ${sectionInfo.map((s, i) => `    { key: '${s.key}', label: '${`${i + 1}. ${title
     import_node_fs5.default.writeFileSync(configFile, newConfig);
   }
   actions.push({ kind: "created", file: rel(jsonFile), note: `${fields.length} texts in ${sectionInfo.length} sections` });
-  actions.push({ kind: "modified", file: rel(file), note: "texts now come from the CMS; sections wrapped in <CmsSection>" });
+  actions.push({ kind: "modified", file: rel(file), note: "texts now come from the CMS; sections wrapped in <CmsSection>, texts in <CmsField>" });
   actions.push({ kind: "modified", file: rel(configFile), note: `registered page "${pageKey}" (${route})` });
   if (!hasUseClient) warnings.push(`Added "use client" to ${rel(file)}.`);
   return { actions, warnings, page: pageKey, route, sections: sectionInfo, fields, backup: backup ? rel(backup) : null };
@@ -1577,7 +1585,7 @@ Usage
   visual-cms init [options]           Set up the library in this project
   visual-cms add-page <key> [options] Create a new editable page (content, view, route, config entry)
   visual-cms scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
-                                      wraps its sections in <CmsSection>, registers it (backs up the file)
+                                      wraps sections in <CmsSection> and texts in <CmsField>, registers it (backs up the file)
   visual-cms doctor [options]         Check the setup and say what to fix
 
 scan options
@@ -1592,6 +1600,7 @@ add-page options
   --title <text>            Page title shown in the CMS (default: made from the key)
   --route <path>            Public route (default: /<key>)
   --sections <a,b,c>        Section keys (default: hero,content)
+  --dry-run                 Show what would be created, change nothing
 
 doctor options
   --api-url <url>           Check this Django API instead of the one in cms.config.ts
@@ -1607,7 +1616,7 @@ init options
   --api-url <url>           Django API base URL (default: http://localhost:8000/api/cms)
   --django-dir <path>       Folder of your Django project (has manage.py). Also sets up Django:
                             installs django-visual-cms, edits settings.py and urls.py (with
-                            backups), and runs the migration. Needs --backend django
+                            backups), and runs the migration. Implies --backend django
   --frontend-origin <url>   Where this Next.js site runs, allowed by Django (default: http://localhost:3000)
   --auth <token|session>    How editors sign in (django backend, default: token)
                               token    a sign-in form in your React admin; works across domains

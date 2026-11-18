@@ -8,7 +8,7 @@ import {
   mergePageContent,
   postCmsMessage,
   trustedOrigins
-} from "./chunk-7UG44WXN.mjs";
+} from "./chunk-L4Y3JMXZ.mjs";
 
 // src/site/CmsProvider.tsx
 import { createContext, useContext, useEffect as useEffect2, useMemo, useState as useState2 } from "react";
@@ -110,10 +110,43 @@ function usePageContent(pageKey, options = {}) {
 }
 
 // src/site/CmsSection.tsx
-import { useState as useState3, useEffect as useEffect3, useRef } from "react";
+import { useState as useState3, useEffect as useEffect3, useMemo as useMemo2, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Pencil } from "lucide-react";
-import { Fragment, jsx as jsx2, jsxs } from "react/jsx-runtime";
+
+// src/site/sectionContext.ts
+import { createContext as createContext2 } from "react";
+var CmsSectionContext = createContext2(null);
+var EDIT_BUTTON_Z_INDEX = 2147483e3;
+var activeField = null;
+var fieldHoverListeners = /* @__PURE__ */ new Set();
+function notifyFieldHover() {
+  fieldHoverListeners.forEach((listener) => listener());
+}
+function claimFieldHover(hide) {
+  if (activeField === hide) return;
+  const previous = activeField;
+  activeField = hide;
+  previous?.();
+  notifyFieldHover();
+}
+function releaseFieldHover(hide) {
+  if (activeField !== hide) return;
+  activeField = null;
+  notifyFieldHover();
+}
+function isFieldHoverActive() {
+  return activeField !== null;
+}
+function subscribeToFieldHover(listener) {
+  fieldHoverListeners.add(listener);
+  return () => {
+    fieldHoverListeners.delete(listener);
+  };
+}
+
+// src/site/CmsSection.tsx
+import { jsx as jsx2, jsxs } from "react/jsx-runtime";
 var BUTTON_TOP = {
   inside: 24,
   "inside-low": 112,
@@ -122,7 +155,6 @@ var BUTTON_TOP = {
 var BUTTON_RIGHT = 32;
 var WINDOW_MARGIN = 8;
 var BUTTON_HEIGHT = 56;
-var BUTTON_Z_INDEX = 2147483e3;
 var CmsSection = ({
   sectionKey,
   title,
@@ -142,8 +174,15 @@ var CmsSection = ({
   useEffect3(() => {
     setPathname(window.location.pathname);
   }, []);
+  const isFieldActive = useSyncExternalStore(subscribeToFieldHover, isFieldHoverActive, () => false);
+  const isSectionHovered = isHovered && !isFieldActive;
   const isValidPath = !activeOnPath || pathname === activeOnPath;
-  const showButton = isEditMode && isValidPath && (isHovered || isTargeted);
+  const showButton = isEditMode && isValidPath && (isSectionHovered || isTargeted);
+  const sectionContext = useMemo2(
+    () => ({ sectionKey, isEditMode: isEditMode && isValidPath, origins }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sectionKey, isEditMode, isValidPath, originsKey]
+  );
   useEffect3(() => {
     if (!isEditMode) return;
     let timer;
@@ -210,10 +249,10 @@ var CmsSection = ({
   const handleMouseOver = (e) => {
     const target = e.target;
     if (buttonRef.current?.contains(target)) return;
-    setIsHovered(target.closest("[data-cms-section]") === sectionRef.current);
+    setIsHovered(!target.closest("[data-cms-field]") && target.closest("[data-cms-section]") === sectionRef.current);
   };
   if (!isEditMode || !isValidPath) {
-    return /* @__PURE__ */ jsx2(Fragment, { children });
+    return /* @__PURE__ */ jsx2(CmsSectionContext.Provider, { value: sectionContext, children });
   }
   return /* @__PURE__ */ jsxs(
     "div",
@@ -223,16 +262,16 @@ var CmsSection = ({
       onClick: handleEditClick,
       onMouseOver: handleMouseOver,
       onMouseLeave: () => setIsHovered(false),
-      className: `relative transition-all duration-300 cursor-pointer rounded-2xl ${isTargeted ? "ring-4 ring-purple-500 ring-offset-4 ring-offset-slate-950 shadow-[0_0_60px_rgba(168,85,247,0.5)]" : isHovered ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-slate-900" : ""}`,
+      className: `relative transition-all duration-300 cursor-pointer rounded-2xl ${isTargeted ? "ring-4 ring-purple-500 ring-offset-4 ring-offset-slate-950 shadow-[0_0_60px_rgba(168,85,247,0.5)]" : isSectionHovered ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-slate-900" : ""}`,
       children: [
-        children,
+        /* @__PURE__ */ jsx2(CmsSectionContext.Provider, { value: sectionContext, children }),
         showButton && buttonPosition && createPortal(
           /* @__PURE__ */ jsx2(
             "div",
             {
               ref: buttonRef,
               "data-cms-edit-button": sectionKey,
-              style: { position: "fixed", top: buttonPosition.top, right: buttonPosition.right, zIndex: BUTTON_Z_INDEX },
+              style: { position: "fixed", top: buttonPosition.top, right: buttonPosition.right, zIndex: EDIT_BUTTON_Z_INDEX },
               children: /* @__PURE__ */ jsxs(
                 "button",
                 {
@@ -257,7 +296,168 @@ var CmsSection = ({
     }
   );
 };
+
+// src/site/CmsField.tsx
+import { useCallback, useContext as useContext2, useEffect as useEffect4, useRef as useRef2, useState as useState4 } from "react";
+import { createPortal as createPortal2 } from "react-dom";
+import { Pencil as Pencil2 } from "lucide-react";
+import { Fragment, jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
+var PENCIL_SIZE = 30;
+var WINDOW_MARGIN2 = 4;
+var HIDE_DELAY_MS = 400;
+function labelFromPath(path) {
+  const name = path.split(".").filter((part) => !/^\d+$/.test(part)).pop() ?? path;
+  const words = name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+var CmsField = ({ path, label, children }) => {
+  const section = useContext2(CmsSectionContext);
+  const wrapperRef = useRef2(null);
+  const pencilRef = useRef2(null);
+  const [isHovered, setIsHovered] = useState4(false);
+  const [box, setBox] = useState4(null);
+  const isEditMode = Boolean(section?.isEditMode);
+  const showControls = isEditMode && isHovered;
+  const name = label ?? labelFromPath(path);
+  const hideTimer = useRef2(void 0);
+  const hideNow = useCallback(() => {
+    clearTimeout(hideTimer.current);
+    setIsHovered(false);
+    releaseFieldHover(hideNow);
+  }, []);
+  const show = () => {
+    clearTimeout(hideTimer.current);
+    claimFieldHover(hideNow);
+    setIsHovered(true);
+  };
+  const hideSoon = () => {
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(hideNow, HIDE_DELAY_MS);
+  };
+  useEffect4(
+    () => () => {
+      clearTimeout(hideTimer.current);
+      releaseFieldHover(hideNow);
+    },
+    [hideNow]
+  );
+  useEffect4(() => {
+    if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
+      console.warn(`[visual-cms] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
+    }
+  }, [section, path]);
+  useEffect4(() => {
+    if (!showControls) {
+      setBox(null);
+      return;
+    }
+    let frame = 0;
+    const range = document.createRange();
+    const measure = () => {
+      const wrapper = wrapperRef.current;
+      if (wrapper && !pencilRef.current?.matches(":hover")) {
+        range.selectNodeContents(wrapper);
+        const rect = range.getBoundingClientRect();
+        setBox(
+          (prev) => prev && prev.top === rect.top && prev.left === rect.left && prev.width === rect.width && prev.height === rect.height ? prev : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+        );
+      }
+      frame = requestAnimationFrame(measure);
+    };
+    measure();
+    return () => cancelAnimationFrame(frame);
+  }, [showControls]);
+  if (!section || !isEditMode) return /* @__PURE__ */ jsx3(Fragment, { children });
+  const openField = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.parent === window) return;
+    postCmsMessage(
+      window.parent,
+      { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: section.sectionKey, title: name, fieldPath: path },
+      section.origins
+    );
+  };
+  const handleMouseOver = (e) => {
+    const target = e.target;
+    if (pencilRef.current?.contains(target) || target.closest("[data-cms-field]") === wrapperRef.current) show();
+    else hideNow();
+  };
+  const pencilTop = box ? Math.min(Math.max(WINDOW_MARGIN2, box.top - PENCIL_SIZE / 2), window.innerHeight - PENCIL_SIZE - WINDOW_MARGIN2) : 0;
+  const pencilLeft = box ? Math.min(
+    Math.max(WINDOW_MARGIN2, box.left + box.width - PENCIL_SIZE / 2),
+    document.documentElement.clientWidth - PENCIL_SIZE - WINDOW_MARGIN2
+  ) : 0;
+  return /* @__PURE__ */ jsxs2(
+    "span",
+    {
+      ref: wrapperRef,
+      "data-cms-field": path,
+      style: { display: "contents" },
+      onClick: openField,
+      onMouseOver: handleMouseOver,
+      onMouseLeave: hideSoon,
+      children: [
+        children,
+        showControls && box && createPortal2(
+          /* @__PURE__ */ jsxs2(Fragment, { children: [
+            /* @__PURE__ */ jsx3(
+              "div",
+              {
+                "aria-hidden": "true",
+                style: {
+                  position: "fixed",
+                  top: box.top - 3,
+                  left: box.left - 3,
+                  width: box.width + 6,
+                  height: box.height + 6,
+                  border: "2px solid #a855f7",
+                  borderRadius: 6,
+                  pointerEvents: "none",
+                  boxSizing: "border-box",
+                  zIndex: EDIT_BUTTON_Z_INDEX
+                }
+              }
+            ),
+            /* @__PURE__ */ jsx3(
+              "button",
+              {
+                ref: pencilRef,
+                type: "button",
+                "data-cms-field-button": path,
+                onClick: openField,
+                title: `Edit ${name}`,
+                "aria-label": `Edit ${name}`,
+                style: {
+                  position: "fixed",
+                  top: pencilTop,
+                  left: pencilLeft,
+                  width: PENCIL_SIZE,
+                  height: PENCIL_SIZE,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0,
+                  color: "#ffffff",
+                  background: "#9333ea",
+                  border: "2px solid #e9d5ff",
+                  borderRadius: 9999,
+                  boxShadow: "0 4px 14px rgba(59, 7, 100, 0.55)",
+                  cursor: "pointer",
+                  zIndex: EDIT_BUTTON_Z_INDEX + 1
+                },
+                children: /* @__PURE__ */ jsx3(Pencil2, { size: 14, strokeWidth: 2.5, "aria-hidden": "true" })
+              }
+            )
+          ] }),
+          document.body
+        )
+      ]
+    }
+  );
+};
 export {
+  CmsField,
   CmsProvider,
   CmsSection,
   isCmsPreview,

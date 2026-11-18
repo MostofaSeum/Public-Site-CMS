@@ -6,7 +6,7 @@ Use it when your site's frontend is React or Next.js and your backend is Django.
 
 ```
 React / Next.js site  ──  @brainicon/visual-cms  (CMS screen, live preview, pencil buttons)
-        │  djangoAdapter (fetch + session cookie + CSRF)
+        │  djangoAdapter (fetch + sign-in token)
         ▼
 Django  ──  django-visual-cms  (API + CmsRecord table + Django admin)
 ```
@@ -20,7 +20,7 @@ Supports Django 4.2, 5.x and 6.x (tested on 4.2, 5.2 and 6.0).
 To install it yourself, from GitHub (the package lives in the `django-visual-cms` folder of the repository):
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.5.2#subdirectory=django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"
 ```
 
 Then `python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000` makes the settings and urls changes below automatically (add `--dry-run` to preview them), or follow the steps by hand.

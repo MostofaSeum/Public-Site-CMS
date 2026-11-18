@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil } from 'lucide-react';
 import { CMS_MESSAGE, listenForCmsMessages, postCmsMessage } from '../core/messages';
 import { useCmsEditMode } from './preview';
 import { useCmsContext } from './CmsProvider';
+import { CmsSectionContext, EDIT_BUTTON_Z_INDEX, isFieldHoverActive, subscribeToFieldHover } from './sectionContext';
 
 export interface CmsSectionProps {
   sectionKey: string;
@@ -31,8 +32,6 @@ const BUTTON_TOP: Record<NonNullable<CmsSectionProps['buttonPlacement']>, number
 const BUTTON_RIGHT = 32;
 const WINDOW_MARGIN = 8;
 const BUTTON_HEIGHT = 56;
-/** Above anything a page can reasonably use, so sticky headers never cover the button. */
-const BUTTON_Z_INDEX = 2147483000;
 
 /**
  * CmsSection
@@ -68,8 +67,17 @@ export const CmsSection: React.FC<CmsSectionProps> = ({
     setPathname(window.location.pathname);
   }, []);
 
+  // A field's pencil takes priority, so only one pencil shows at a time.
+  const isFieldActive = useSyncExternalStore(subscribeToFieldHover, isFieldHoverActive, () => false);
+  const isSectionHovered = isHovered && !isFieldActive;
+
   const isValidPath = !activeOnPath || pathname === activeOnPath;
-  const showButton = isEditMode && isValidPath && (isHovered || isTargeted);
+  const showButton = isEditMode && isValidPath && (isSectionHovered || isTargeted);
+  const sectionContext = useMemo(
+    () => ({ sectionKey, isEditMode: isEditMode && isValidPath, origins }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sectionKey, isEditMode, isValidPath, originsKey]
+  );
 
   // Listen for scroll commands from the studio
   useEffect(() => {
@@ -144,16 +152,16 @@ export const CmsSection: React.FC<CmsSectionProps> = ({
     }
   };
 
-  // Only the innermost section under the mouse is active, so nested sections never compete.
+  // Only the innermost section under the mouse is active, and a field's own pencil takes priority.
   const handleMouseOver = (e: React.MouseEvent) => {
     const target = e.target as Element;
     if (buttonRef.current?.contains(target)) return;
-    setIsHovered(target.closest('[data-cms-section]') === sectionRef.current);
+    setIsHovered(!target.closest('[data-cms-field]') && target.closest('[data-cms-section]') === sectionRef.current);
   };
 
   // Zero wrapper overhead for normal visitors
   if (!isEditMode || !isValidPath) {
-    return <>{children}</>;
+    return <CmsSectionContext.Provider value={sectionContext}>{children}</CmsSectionContext.Provider>;
   }
 
   return (
@@ -166,12 +174,12 @@ export const CmsSection: React.FC<CmsSectionProps> = ({
       className={`relative transition-all duration-300 cursor-pointer rounded-2xl ${
         isTargeted
           ? 'ring-4 ring-purple-500 ring-offset-4 ring-offset-slate-950 shadow-[0_0_60px_rgba(168,85,247,0.5)]'
-          : isHovered
+          : isSectionHovered
           ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-slate-900'
           : ''
       }`}
     >
-      {children}
+      <CmsSectionContext.Provider value={sectionContext}>{children}</CmsSectionContext.Provider>
 
       {/* Floating edit button, rendered above the whole page */}
       {showButton &&
@@ -180,7 +188,7 @@ export const CmsSection: React.FC<CmsSectionProps> = ({
           <div
             ref={buttonRef}
             data-cms-edit-button={sectionKey}
-            style={{ position: 'fixed', top: buttonPosition.top, right: buttonPosition.right, zIndex: BUTTON_Z_INDEX }}
+            style={{ position: 'fixed', top: buttonPosition.top, right: buttonPosition.right, zIndex: EDIT_BUTTON_Z_INDEX }}
           >
             <button
               type="button"
