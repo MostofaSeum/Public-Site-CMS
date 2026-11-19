@@ -30,7 +30,7 @@ Safety rules (most important):
 6. Ask me only for things you cannot find out yourself.
 
 Steps:
-1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py).
+1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py). If package.json already lists @brainicon/visual-cms (the old name of this library), follow the README section "Upgrading from @brainicon/visual-cms" instead of steps 2 and 3, then continue with step 4.
 2. Install: npm install github:MostofaSeum/storio-elements-editor#v1.0.0   then check: npx storio-editor --version
 3. Set it up with `npx storio-editor init --yes`:
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
@@ -285,6 +285,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 | `app/` or `src/app/` exists | yes | Pages Router only: not supported by `init`; tell the developer |
 | `tsconfig.json` exists | yes | JavaScript-only: not supported by `init`; tell the developer |
 | `git status` | clean, or the developer agreed | create the branch `storio-editor-setup` |
+| `package.json` has no `@brainicon/visual-cms` | yes | the old name of this library is installed: follow [Upgrading from @brainicon/visual-cms](#upgrading-from-brainiconvisual-cms) instead of a fresh setup, then continue from Step 6 for pages that are not editable yet |
 
 **Step 2. Find the admin panel.** Decide which case applies:
 
