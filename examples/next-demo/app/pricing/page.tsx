@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getPageContent, getPageMetadata } from '@brainicon/visual-cms/next';
+import { getPageContent, getPageMetadata } from '@brainicon/storio-elements-editor/next';
 import { cms } from '@/cms.config';
 import { storage } from '@/lib/storage';
 import { SiteNav } from '@/components/SiteNav';

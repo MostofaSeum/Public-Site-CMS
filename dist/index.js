@@ -49,22 +49,22 @@ function defineCms(config) {
   const seen = /* @__PURE__ */ new Set();
   for (const page of config.pages) {
     if (!isValidKey(page.key)) {
-      throw new Error(`[visual-cms] Invalid page key "${page.key}". Use letters, digits, "_" or "-".`);
+      throw new Error(`[storio-editor] Invalid page key "${page.key}". Use letters, digits, "_" or "-".`);
     }
     if (seen.has(page.key)) {
-      throw new Error(`[visual-cms] Duplicate page key "${page.key}".`);
+      throw new Error(`[storio-editor] Duplicate page key "${page.key}".`);
     }
     seen.add(page.key);
     if (!page.route.startsWith("/")) {
-      throw new Error(`[visual-cms] Page "${page.key}" route must start with "/".`);
+      throw new Error(`[storio-editor] Page "${page.key}" route must start with "/".`);
     }
     const sectionKeys = /* @__PURE__ */ new Set();
     for (const section of page.sections) {
       if (!isValidKey(section.key)) {
-        throw new Error(`[visual-cms] Invalid section key "${section.key}" on page "${page.key}".`);
+        throw new Error(`[storio-editor] Invalid section key "${section.key}" on page "${page.key}".`);
       }
       if (sectionKeys.has(section.key)) {
-        throw new Error(`[visual-cms] Duplicate section key "${section.key}" on page "${page.key}".`);
+        throw new Error(`[storio-editor] Duplicate section key "${section.key}" on page "${page.key}".`);
       }
       sectionKeys.add(section.key);
     }

@@ -80,7 +80,7 @@ export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => 
 
   useEffect(() => {
     if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
-      console.warn(`[visual-cms] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
+      console.warn(`[storio-editor] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
     }
   }, [section, path]);
 

@@ -1,5 +1,5 @@
-import { defineCms } from '@brainicon/visual-cms';
-import { restAdapter } from '@brainicon/visual-cms/adapters';
+import { defineCms } from '@brainicon/storio-elements-editor';
+import { restAdapter } from '@brainicon/storio-elements-editor/adapters';
 import { Home, DollarSign, Sparkles, LayoutGrid, HelpCircle, Search } from 'lucide-react';
 import home from './content/home.json';
 import pricing from './content/pricing.json';

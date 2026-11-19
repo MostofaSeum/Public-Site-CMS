@@ -86,7 +86,7 @@ function wrapLayoutWithProviders(source, importSpecifier2) {
   };
 }
 function addTailwindSource(css, relativeDistPath) {
-  if (/visual-cms\/dist/.test(css)) return { source: css, status: "already" };
+  if (/storio-elements-editor\/dist/.test(css)) return { source: css, status: "already" };
   const importMatch = css.match(/@import\s+(["'])tailwindcss\1[^;\n]*;/);
   if (!importMatch || importMatch.index === void 0) {
     const reason = /@tailwind\s+base/.test(css) ? "this looks like Tailwind CSS v3; the library needs Tailwind v4" : 'no `@import "tailwindcss";` found in this file';
@@ -106,7 +106,7 @@ function addGitignoreEntries(text, entries) {
   const eol = eolOf(text);
   const prefix = text.length === 0 || text.endsWith("\n") ? "" : eol;
   return {
-    source: `${text}${prefix}${eol}# visual-cms content and uploads${eol}${added.join(eol)}${eol}`,
+    source: `${text}${prefix}${eol}# storio-editor content and uploads${eol}${added.join(eol)}${eol}`,
     added
   };
 }
@@ -166,7 +166,7 @@ function findPython(djangoDir) {
   return { command: process.platform === "win32" ? "python" : "python3", venv: false };
 }
 function djangoPackageDir() {
-  for (const rel of [["..", "django-visual-cms"], ["..", "..", "django-visual-cms"]]) {
+  for (const rel of [["..", "django-storio-elements-editor"], ["..", "..", "django-storio-elements-editor"]]) {
     const candidate = import_node_path2.default.resolve(__dirname, ...rel);
     if (import_node_fs.default.existsSync(import_node_path2.default.join(candidate, "pyproject.toml"))) return candidate;
   }
@@ -176,7 +176,7 @@ function runDjangoSetup(opts) {
   const { command, venv } = findPython(opts.djangoDir);
   const pkgDir = djangoPackageDir();
   if (!pkgDir) {
-    return { ok: false, python: command, venv, problem: "The django-visual-cms folder was not found inside the installed library." };
+    return { ok: false, python: command, venv, problem: "The django-storio-elements-editor folder was not found inside the installed library." };
   }
   const run = (args2, env2 = process.env) => (0, import_node_child_process.spawnSync)(command, args2, { cwd: opts.djangoDir, stdio: "inherit", env: env2, shell: false });
   const probe = (0, import_node_child_process.spawnSync)(command, ["--version"], { encoding: "utf8" });
@@ -189,10 +189,10 @@ function runDjangoSetup(opts) {
   } else {
     const install = run(["-m", "pip", "install", "--quiet", "--disable-pip-version-check", pkgDir]);
     if (install.status !== 0) {
-      return { ok: false, python: command, venv, problem: `pip could not install django-visual-cms from ${pkgDir}.` };
+      return { ok: false, python: command, venv, problem: `pip could not install django-storio-elements-editor from ${pkgDir}.` };
     }
   }
-  const args = ["-m", "visual_cms", "setup", "--project", opts.djangoDir, "--frontend-origin", opts.frontendOrigin];
+  const args = ["-m", "storio_elements_editor", "setup", "--project", opts.djangoDir, "--frontend-origin", opts.frontendOrigin];
   if (opts.dryRun) args.push("--dry-run");
   const setup = run(args, env);
   if (setup.status !== 0) {
@@ -204,7 +204,7 @@ function runDjangoSetup(opts) {
 // src/cli/templates.ts
 function cmsConfig(opts) {
   const token = opts.backend === "django" && (opts.auth ?? "token") === "token";
-  const adapterImport = opts.backend === "django" ? token ? "import { cmsAuth, djangoAdapter } from '@brainicon/visual-cms/adapters';" : "import { djangoAdapter } from '@brainicon/visual-cms/adapters';" : "import { restAdapter } from '@brainicon/visual-cms/adapters';";
+  const adapterImport = opts.backend === "django" ? token ? "import { cmsAuth, djangoAdapter } from '@brainicon/storio-elements-editor/adapters';" : "import { djangoAdapter } from '@brainicon/storio-elements-editor/adapters';" : "import { restAdapter } from '@brainicon/storio-elements-editor/adapters';";
   const adapter = opts.backend === "django" ? token ? "djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers })," : "djangoAdapter({ baseUrl: API_URL })," : "restAdapter({ baseUrl: '/api/cms' }),";
   const apiSetup = opts.backend !== "django" ? "" : `
 // Set NEXT_PUBLIC_CMS_API_URL in production, e.g. https://api.example.com/api/cms
@@ -233,7 +233,7 @@ export const cmsLogin = cmsAuth({ baseUrl: API_URL });
     //   defaults: homeContent,
     //   sections: [{ key: 'hero', label: 'Hero' }],
     // },`;
-  return `import { defineCms } from '@brainicon/visual-cms';
+  return `import { defineCms } from '@brainicon/storio-elements-editor';
 ${adapterImport}
 ${opts.example ? `import example from '${opts.exampleJsonImport}';
 ` : ""}${apiSetup}
@@ -263,7 +263,7 @@ var exampleContentJson = `{
 }
 `;
 function filesStorage() {
-  return `import { fileStorage } from '@brainicon/visual-cms/next';
+  return `import { fileStorage } from '@brainicon/storio-elements-editor/next';
 
 // Edits are saved to .cms/content.json and uploads to public/cms-uploads.
 // Fine for local development and a single server. On read-only or multi-instance
@@ -279,7 +279,7 @@ export const storage = cms.adapter;
 `;
 }
 function apiRoute(opts) {
-  return `import { createCmsRouteHandler } from '@brainicon/visual-cms/next';
+  return `import { createCmsRouteHandler } from '@brainicon/storio-elements-editor/next';
 import { storage } from '${opts.storageImport}';
 import { cms } from '${opts.configImport}';
 
@@ -296,7 +296,7 @@ export const { GET, PUT, DELETE, POST } = createCmsRouteHandler({
 function providersV1(configImport) {
   return `'use client';
 
-import { CmsProvider } from '@brainicon/visual-cms/site';
+import { CmsProvider } from '@brainicon/storio-elements-editor/site';
 import { cms } from '${configImport}';
 
 export function CmsProviders({ children }: { children: React.ReactNode }) {
@@ -328,7 +328,7 @@ export async function CmsProviders({ children }: { children: React.ReactNode }) 
   return <CmsClientProviders initialContent={initialContent}>{children}</CmsClientProviders>;
 }`;
   return `${imports}
-import { getAllPageContent } from '@brainicon/visual-cms/next';
+import { getAllPageContent } from '@brainicon/storio-elements-editor/next';
 import { cms } from '${opts.configImport}';
 import { storage } from '${opts.storageImport}';
 import { CmsClientProviders } from '${opts.clientImport}';
@@ -341,7 +341,7 @@ ${loader}
 function clientProviders(configImport) {
   return `'use client';
 
-import { CmsProvider } from '@brainicon/visual-cms/site';
+import { CmsProvider } from '@brainicon/storio-elements-editor/site';
 import { cms } from '${configImport}';
 
 export function CmsClientProviders({
@@ -363,7 +363,7 @@ function adminPage(configImport, auth) {
   if (auth && auth.backend === "django" && auth.mode === "token") {
     return `'use client';
 
-import { CmsAuthGate, CmsStudio } from '@brainicon/visual-cms/admin';
+import { CmsAuthGate, CmsStudio } from '@brainicon/storio-elements-editor/admin';
 import { cms, cmsLogin } from '${configImport}';
 
 // Editors must sign in (Django staff username and password) before the CMS screen shows.
@@ -378,7 +378,7 @@ export default function CmsPage() {
   }
   return `'use client';
 
-import { CmsStudio } from '@brainicon/visual-cms/admin';
+import { CmsStudio } from '@brainicon/storio-elements-editor/admin';
 import { cms } from '${configImport}';
 
 export default function CmsPage() {
@@ -390,7 +390,7 @@ function adminLayout(opts) {
   return `'use client';
 
 import Link from 'next/link';
-import { CmsNavButton } from '@brainicon/visual-cms/admin';
+import { CmsNavButton } from '@brainicon/storio-elements-editor/admin';
 
 // A minimal admin shell. If you already have an admin layout, delete this file and
 // put the <CmsNavButton> line into your own menu instead.
@@ -420,7 +420,7 @@ export default function CmsExamplePage() {
 function exampleView(jsonImport) {
   return `'use client';
 
-import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 import type example from '${jsonImport}';
 
 type ExampleContent = typeof example;
@@ -472,7 +472,7 @@ export function CmsExampleView() {
 // src/cli/init.ts
 var CliError = class extends Error {
 };
-var LIB = "@brainicon/visual-cms";
+var LIB = "@brainicon/storio-elements-editor";
 var PEERS = ["lucide-react", "react-hot-toast"];
 var exists = (p) => import_node_fs2.default.existsSync(p);
 var read = (p) => import_node_fs2.default.readFileSync(p, "utf8");
@@ -500,7 +500,7 @@ function installArgs(pm, packages) {
 function findLibraryDir(root) {
   let dir = root;
   for (; ; ) {
-    const candidate = import_node_path3.default.join(dir, "node_modules", "@brainicon", "visual-cms");
+    const candidate = import_node_path3.default.join(dir, "node_modules", "@brainicon", "storio-elements-editor");
     if (exists(candidate)) return candidate;
     const parent = import_node_path3.default.dirname(dir);
     if (parent === dir) return null;
@@ -664,7 +664,7 @@ function runInit(options) {
     }
   }
   const cssFile = findGlobalCss(appDir, layoutFile, alias);
-  const libDir = findLibraryDir(root) ?? import_node_path3.default.join(root, "node_modules", "@brainicon", "visual-cms");
+  const libDir = findLibraryDir(root) ?? import_node_path3.default.join(root, "node_modules", "@brainicon", "storio-elements-editor");
   if (!cssFile) {
     manual.push(
       `Add this line to your global CSS, below @import "tailwindcss";   @source "<path to node_modules>/${LIB}/dist";`
@@ -716,7 +716,7 @@ function runInit(options) {
   }
   if (options.backend === "django") {
     manual.push(
-      'Before deploying: set NEXT_PUBLIC_CMS_API_URL to your production API (for example https://api.example.com/api/cms), then run  npx visual-cms doctor --production --api-url <that URL> --frontend-origin <your site URL>  (see the README, "Deploying to production").'
+      'Before deploying: set NEXT_PUBLIC_CMS_API_URL to your production API (for example https://api.example.com/api/cms), then run  npx storio-editor doctor --production --api-url <that URL> --frontend-origin <your site URL>  (see the README, "Deploying to production").'
     );
   }
   if (options.backend === "files") {
@@ -765,8 +765,8 @@ function findGlobalCss(appDir, layoutFile, alias) {
 }
 function djangoSteps() {
   return [
-    'Set up the Django side: run   npx visual-cms init --backend django --django-dir <folder with manage.py>   again, or by hand (see django-visual-cms/README.md): pip install django-visual-cms, add "visual_cms" to INSTALLED_APPS, add path("api/cms/", include("visual_cms.urls")) to urls.py, then run python manage.py migrate.',
-    "If the site and Django run on different domains, configure django-cors-headers and CSRF_TRUSTED_ORIGINS (see django-visual-cms/README.md)."
+    'Set up the Django side: run   npx storio-editor init --backend django --django-dir <folder with manage.py>   again, or by hand (see django-storio-elements-editor/README.md): pip install django-storio-elements-editor, add "storio_elements_editor" to INSTALLED_APPS, add path("api/cms/", include("storio_elements_editor.urls")) to urls.py, then run python manage.py migrate.',
+    "If the site and Django run on different domains, configure django-cors-headers and CSRF_TRUSTED_ORIGINS (see django-storio-elements-editor/README.md)."
   ];
 }
 
@@ -775,7 +775,7 @@ var import_node_path4 = __toESM(require("path"));
 async function askMissingOptions(options, given, ask) {
   const next = { ...options };
   if (!given.has("backend")) {
-    const answer = (await ask("Where should content be stored?\n  1) In this Next.js app (JSON file)\n  2) A Django API (django-visual-cms)\n> [1] ")).trim().toLowerCase();
+    const answer = (await ask("Where should content be stored?\n  1) In this Next.js app (JSON file)\n  2) A Django API (django-storio-elements-editor)\n> [1] ")).trim().toLowerCase();
     next.backend = answer === "2" || answer === "django" ? "django" : "files";
   }
   if (next.backend === "django" && !given.has("api-url")) {
@@ -876,7 +876,7 @@ function runAddPage(options) {
   if (!appDir) throw new CliError("No app/ folder found. Run this from the root of your Next.js App Router project.");
   const base = appDir === srcApp ? import_node_path5.default.join(root, "src") : root;
   const configFile = [import_node_path5.default.join(base, "cms.config.ts"), import_node_path5.default.join(root, "cms.config.ts")].find(exists2);
-  if (!configFile) throw new CliError("cms.config.ts not found. Run `npx visual-cms init` first.");
+  if (!configFile) throw new CliError("cms.config.ts not found. Run `npx storio-editor init` first.");
   const tsconfig = import_node_path5.default.join(root, "tsconfig.json");
   const alias = exists2(tsconfig) ? detectAlias(read2(tsconfig), root) : null;
   const name = pascal(options.key);
@@ -913,7 +913,7 @@ function runAddPage(options) {
     viewFile,
     `'use client';
 
-import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 import type pageDefaults from '${imp(viewFile, jsonFile)}';
 
 type Content = typeof pageDefaults;
@@ -967,7 +967,7 @@ var import_node_fs4 = __toESM(require("fs"));
 var import_node_path6 = __toESM(require("path"));
 var exists3 = (p) => import_node_fs4.default.existsSync(p);
 var read3 = (p) => import_node_fs4.default.readFileSync(p, "utf8");
-var LIB2 = "@brainicon/visual-cms";
+var LIB2 = "@brainicon/storio-elements-editor";
 function walk(dir, match, out = [], depth = 0) {
   if (depth > 6) return out;
   let entries;
@@ -1010,21 +1010,21 @@ function checkProject(root) {
   }
   const base = appDir === srcApp ? import_node_path6.default.join(root, "src") : root;
   const css = walk(appDir, (f) => f.endsWith(".css")).concat(walk(base, (f) => /globals?\.css$/.test(f)));
-  const withSource = css.find((f) => /@source[^;\n]*visual-cms/.test(read3(f)));
+  const withSource = css.find((f) => /@source[^;\n]*storio-elements-editor/.test(read3(f)));
   add(
     withSource ? "ok" : "fail",
     withSource ? "Tailwind scans the library (@source line)" : "Tailwind does not scan the library",
-    withSource ? void 0 : 'Add to your global CSS, below @import "tailwindcss":   @source "../node_modules/@brainicon/visual-cms/dist";   (the path is relative to that CSS file)'
+    withSource ? void 0 : 'Add to your global CSS, below @import "tailwindcss":   @source "../node_modules/@brainicon/storio-elements-editor/dist";   (the path is relative to that CSS file)'
   );
   const config = [import_node_path6.default.join(base, "cms.config.ts"), import_node_path6.default.join(root, "cms.config.ts")].find(exists3);
   let djangoBaseUrl = null;
-  if (!config) add("fail", "cms.config.ts not found", "Run:  npx visual-cms init");
+  if (!config) add("fail", "cms.config.ts not found", "Run:  npx storio-editor init");
   else {
     add("ok", `Config found (${import_node_path6.default.relative(root, config).split(import_node_path6.default.sep).join("/")})`);
     const text = read3(config);
     djangoBaseUrl = /djangoAdapter\(/.test(text) ? text.match(/(?:baseUrl:|\bAPI_URL\s*=)\s*(?:process\.env\.\w+\s*\?\?\s*)?['"`]([^'"`]+)['"`]/)?.[1] ?? null : null;
     if (/\bcmsAuth\(/.test(text)) add("ok", "Editors sign in with the token login (cmsAuth)");
-    if (!/\bkey:\s*['"]/.test(text)) add("warn", "No pages are listed in cms.config.ts yet", "Add one with:  npx visual-cms add-page <name>");
+    if (!/\bkey:\s*['"]/.test(text)) add("warn", "No pages are listed in cms.config.ts yet", "Add one with:  npx storio-editor add-page <name>");
   }
   const sources = walk(appDir, (f) => /\.(tsx|jsx|ts|js)$/.test(f)).concat(walk(import_node_path6.default.join(base, "components"), (f) => /\.(tsx|jsx)$/.test(f)));
   const has = (re) => sources.find((f) => re.test(read3(f)));
@@ -1070,7 +1070,7 @@ function checkProductionFiles(root) {
   }
   const providers2 = [import_node_path6.default.join(base, "components", "CmsProviders.tsx")].find(exists3);
   if (providers2 && /getAllPageContent/.test(read3(providers2))) add("ok", "Content is rendered on the server (search engines see the edited text)");
-  else add("warn", "Content is only loaded in the browser, so search engines index the default text", "Run  npx visual-cms init  again: it upgrades components/CmsProviders.tsx to load content on the server.");
+  else add("warn", "Content is only loaded in the browser, so search engines index the default text", "Run  npx storio-editor init  again: it upgrades components/CmsProviders.tsx to load content on the server.");
   return checks;
 }
 async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch, options = {}) {
@@ -1105,7 +1105,7 @@ async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch, options =
     return checks;
   }
   if (res.status !== 200) {
-    add("fail", `${url}/csrf returned ${res.status}`, res.status === 404 ? 'Add path("api/cms/", include("visual_cms.urls")) to the production urls.py.' : "Check ALLOWED_HOSTS and the Django logs.");
+    add("fail", `${url}/csrf returned ${res.status}`, res.status === 404 ? 'Add path("api/cms/", include("storio_elements_editor.urls")) to the production urls.py.' : "Check ALLOWED_HOSTS and the Django logs.");
     return checks;
   }
   add("ok", "The production API is reachable");
@@ -1122,7 +1122,7 @@ async function checkProductionApi(apiUrl, siteOrigin, fetchFn = fetch, options =
     if (!sameSite && !options.tokenAuth && !/samesite=none/i.test(cookie)) add("fail", "Cookies use SameSite=Lax across different sites", 'If you cannot share a domain: CSRF_COOKIE_SAMESITE = "None" and SESSION_COOKIE_SAMESITE = "None" (with Secure). Some browsers still block it.');
   }
   try {
-    const probe = await fetchFn(`${api.origin}/visual-cms-doctor-missing-page/`);
+    const probe = await fetchFn(`${api.origin}/storio-editor-doctor-missing-page/`);
     const body = probe.text ? await probe.text() : "";
     if (/DEBUG\s*=\s*True/.test(body)) add("fail", "Django runs with DEBUG = True", "Set DEBUG = False in production (it shows settings and code to anyone).");
     else add("ok", "Django does not show debug pages");
@@ -1142,7 +1142,7 @@ async function checkDjango(baseUrl, frontendOrigin, fetchFn = fetch, options = {
     return checks;
   }
   if (res.status === 404) {
-    add("fail", `${url}/csrf returned 404`, 'Django does not serve the CMS API. Add path("api/cms/", include("visual_cms.urls")) to urls.py (or run init with --django-dir).');
+    add("fail", `${url}/csrf returned 404`, 'Django does not serve the CMS API. Add path("api/cms/", include("storio_elements_editor.urls")) to urls.py (or run init with --django-dir).');
     return checks;
   }
   if (res.status !== 200) {
@@ -1177,7 +1177,7 @@ async function checkDjango(baseUrl, frontendOrigin, fetchFn = fetch, options = {
     try {
       const me = await fetchFn(`${url}/auth/me`, { headers: { Origin: frontendOrigin } });
       if (me.status === 401) add("ok", "Token login is available on the server");
-      else if (me.status === 404) add("fail", "The server has no token login (django-visual-cms is too old, or TOKEN_LOGIN is False)", 'Upgrade the package: pip install -U "git+https://github.com/MostofaSeum/Public-Site-CMS.git#subdirectory=django-visual-cms" (or run init with --django-dir), and make sure VISUAL_CMS["TOKEN_LOGIN"] is not False.');
+      else if (me.status === 404) add("fail", "The server has no token login (django-storio-elements-editor is too old, or TOKEN_LOGIN is False)", 'Upgrade the package: pip install -U "git+https://github.com/MostofaSeum/storio-elements-editor.git#subdirectory=django-storio-elements-editor" (or run init with --django-dir), and make sure STORIO_EDITOR["TOKEN_LOGIN"] is not False.');
       else add("warn", `${url}/auth/me returned ${me.status}`, "Expected 401 for a visitor who is not signed in.");
     } catch {
     }
@@ -1277,7 +1277,7 @@ function runScan(options) {
   if (!appDir) throw new CliError("No app/ folder found. Run this from the root of your Next.js App Router project.");
   const base = appDir === srcApp ? import_node_path7.default.join(root, "src") : root;
   const configFile = [import_node_path7.default.join(base, "cms.config.ts"), import_node_path7.default.join(root, "cms.config.ts")].find((p) => import_node_fs5.default.existsSync(p));
-  if (!configFile) throw new CliError("cms.config.ts not found. Run `npx visual-cms init` first.");
+  if (!configFile) throw new CliError("cms.config.ts not found. Run `npx storio-editor init` first.");
   const tsconfig = import_node_path7.default.join(root, "tsconfig.json");
   const alias = import_node_fs5.default.existsSync(tsconfig) ? detectAlias(import_node_fs5.default.readFileSync(tsconfig, "utf8"), root) : null;
   const route = options.route ?? routeFromFile(appDir, file);
@@ -1488,7 +1488,7 @@ ${indent}` : `
   }
   out += sf.text.slice(cursor);
   const jsonSpec = importSpecifier(file, jsonFile, alias);
-  out = addImportLine(out, `import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';`);
+  out = addImportLine(out, `import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';`);
   out = addImportLine(out, `import type ${defaultsName} from '${jsonSpec}';`);
   out = out.replace(`import type ${defaultsName} from '${jsonSpec}';`, `import type ${defaultsName} from '${jsonSpec}';
 
@@ -1517,7 +1517,7 @@ ${sectionInfo.map((s, i) => `    { key: '${s.key}', label: '${`${i + 1}. ${title
   const newConfig = addImportLine(configEdit.source, `import ${defaultsName} from '${importSpecifier(configFile, jsonFile, alias)}';`);
   let backup = null;
   if (!options.dryRun) {
-    backup = `${file}.visual-cms.bak`;
+    backup = `${file}.storio-editor.bak`;
     if (!import_node_fs5.default.existsSync(backup)) import_node_fs5.default.writeFileSync(backup, original);
     import_node_fs5.default.mkdirSync(import_node_path7.default.dirname(jsonFile), { recursive: true });
     import_node_fs5.default.writeFileSync(jsonFile, JSON.stringify(content, null, 2) + "\n");
@@ -1579,14 +1579,14 @@ function findReturnedJsx(ts, fn) {
 }
 
 // src/cli/index.ts
-var HELP = `visual-cms: set up @brainicon/visual-cms in a Next.js project
+var HELP = `storio-editor: set up @brainicon/storio-elements-editor in a Next.js project
 
 Usage
-  visual-cms init [options]           Set up the library in this project
-  visual-cms add-page <key> [options] Create a new editable page (content, view, route, config entry)
-  visual-cms scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
+  storio-editor init [options]           Set up the library in this project
+  storio-editor add-page <key> [options] Create a new editable page (content, view, route, config entry)
+  storio-editor scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
                                       wraps sections in <CmsSection> and texts in <CmsField>, registers it (backs up the file)
-  visual-cms doctor [options]         Check the setup and say what to fix
+  storio-editor doctor [options]         Check the setup and say what to fix
 
 scan options
   --page <key>              Page key (default: from the route; "/" is "home")
@@ -1612,10 +1612,10 @@ doctor options
 init options
   --backend <files|django>  Where content is stored (default: files)
                               files   a JSON file inside this Next.js app
-                              django  a Django API running django-visual-cms
+                              django  a Django API running django-storio-elements-editor
   --api-url <url>           Django API base URL (default: http://localhost:8000/api/cms)
   --django-dir <path>       Folder of your Django project (has manage.py). Also sets up Django:
-                            installs django-visual-cms, edits settings.py and urls.py (with
+                            installs django-storio-elements-editor, edits settings.py and urls.py (with
                             backups), and runs the migration. Implies --backend django
   --frontend-origin <url>   Where this Next.js site runs, allowed by Django (default: http://localhost:3000)
   --auth <token|session>    How editors sign in (django backend, default: token)
@@ -1793,7 +1793,7 @@ async function main(argv) {
     }
     const cwd = typeof flags.get("cwd") === "string" ? flags.get("cwd") : process.cwd();
     if (command === "add-page") {
-      if (positionals.length !== 1) throw new CliError("Usage: visual-cms add-page <key>   (for example: visual-cms add-page about)");
+      if (positionals.length !== 1) throw new CliError("Usage: storio-editor add-page <key>   (for example: storio-editor add-page about)");
       const report = runAddPage({
         cwd,
         key: positionals[0],
@@ -1815,7 +1815,7 @@ async function main(argv) {
       return 0;
     }
     if (command === "scan") {
-      if (positionals.length !== 1) throw new CliError("Usage: visual-cms scan <file>   (for example: visual-cms scan src/app/page.tsx)");
+      if (positionals.length !== 1) throw new CliError("Usage: storio-editor scan <file>   (for example: storio-editor scan src/app/page.tsx)");
       const dryRun = flags.has("dry-run");
       const report = runScan({
         cwd,

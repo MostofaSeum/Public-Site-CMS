@@ -61,7 +61,7 @@ export class CliError extends Error {}
 
 export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun';
 
-const LIB = '@brainicon/visual-cms';
+const LIB = '@brainicon/storio-elements-editor';
 const PEERS = ['lucide-react', 'react-hot-toast'];
 
 const exists = (p: string) => fs.existsSync(p);
@@ -95,7 +95,7 @@ function installArgs(pm: PackageManager, packages: string[]): string[] {
 function findLibraryDir(root: string): string | null {
   let dir = root;
   for (;;) {
-    const candidate = path.join(dir, 'node_modules', '@brainicon', 'visual-cms');
+    const candidate = path.join(dir, 'node_modules', '@brainicon', 'storio-elements-editor');
     if (exists(candidate)) return candidate;
     const parent = path.dirname(dir);
     if (parent === dir) return null;
@@ -297,7 +297,7 @@ export function runInit(options: InitOptions): InitReport {
 
   // Tailwind @source line, in the stylesheet the layout imports.
   const cssFile = findGlobalCss(appDir, layoutFile, alias);
-  const libDir = findLibraryDir(root) ?? path.join(root, 'node_modules', '@brainicon', 'visual-cms');
+  const libDir = findLibraryDir(root) ?? path.join(root, 'node_modules', '@brainicon', 'storio-elements-editor');
   if (!cssFile) {
     manual.push(
       `Add this line to your global CSS, below @import "tailwindcss";   @source "<path to node_modules>/${LIB}/dist";`
@@ -359,7 +359,7 @@ export function runInit(options: InitOptions): InitReport {
   if (options.backend === 'django') {
     manual.push(
       'Before deploying: set NEXT_PUBLIC_CMS_API_URL to your production API (for example https://api.example.com/api/cms), ' +
-        'then run  npx visual-cms doctor --production --api-url <that URL> --frontend-origin <your site URL>  (see the README, "Deploying to production").'
+        'then run  npx storio-editor doctor --production --api-url <that URL> --frontend-origin <your site URL>  (see the README, "Deploying to production").'
     );
   }
   if (options.backend === 'files') {
@@ -411,9 +411,9 @@ function findGlobalCss(appDir: string, layoutFile: string | null, alias: AliasIn
 
 function djangoSteps(): string[] {
   return [
-    'Set up the Django side: run   npx visual-cms init --backend django --django-dir <folder with manage.py>   again, ' +
-      'or by hand (see django-visual-cms/README.md): pip install django-visual-cms, add "visual_cms" to INSTALLED_APPS, ' +
-      'add path("api/cms/", include("visual_cms.urls")) to urls.py, then run python manage.py migrate.',
-    'If the site and Django run on different domains, configure django-cors-headers and CSRF_TRUSTED_ORIGINS (see django-visual-cms/README.md).',
+    'Set up the Django side: run   npx storio-editor init --backend django --django-dir <folder with manage.py>   again, ' +
+      'or by hand (see django-storio-elements-editor/README.md): pip install django-storio-elements-editor, add "storio_elements_editor" to INSTALLED_APPS, ' +
+      'add path("api/cms/", include("storio_elements_editor.urls")) to urls.py, then run python manage.py migrate.',
+    'If the site and Django run on different domains, configure django-cors-headers and CSRF_TRUSTED_ORIGINS (see django-storio-elements-editor/README.md).',
   ];
 }

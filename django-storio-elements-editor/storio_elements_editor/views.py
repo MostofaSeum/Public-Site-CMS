@@ -1,5 +1,5 @@
 """
-REST API used by @brainicon/visual-cms (restAdapter / djangoAdapter):
+REST API used by @brainicon/storio-elements-editor (restAdapter / djangoAdapter):
 
     GET    records?page=&drafts=1      -> SectionRecord[]
     GET    records/<page>/<section>    -> SectionRecord, or null when never edited

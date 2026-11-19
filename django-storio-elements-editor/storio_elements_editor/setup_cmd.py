@@ -1,4 +1,4 @@
-"""`python -m visual_cms setup`: wires django-visual-cms into an existing Django project.
+"""`python -m storio_elements_editor setup`: wires django-storio-elements-editor into an existing Django project.
 
 It edits the project's settings and root urls (after saving a backup copy), then runs the
 migration. It never needs Django to be configured, so it works before the app is installed
@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 SKIP_DIRS = {"venv", ".venv", "env", "node_modules", ".git", "__pycache__", "site-packages", "build", "dist"}
-BACKUP_SUFFIX = ".visual-cms.bak"
+BACKUP_SUFFIX = ".storio-editor.bak"
 
 
 class SetupError(Exception):
@@ -127,13 +127,18 @@ def _append_item(text: str, name: str, item_literal: str) -> str | None:
     return f"{text[:end]}{sep}{item_literal}{text[end:]}"
 
 
-def patch_installed_apps(text: str, app: str = "visual_cms") -> tuple[str, str]:
+def patch_installed_apps(text: str, app: str = "storio_elements_editor") -> tuple[str, str]:
     """Returns (new_text, status) with status in changed | already | failed."""
     block = _find_bracket_block(text, "INSTALLED_APPS")
     if block is None:
         return text, "failed"
     if re.search(rf"""['"]{app}(\.apps\.\w+)?['"]""", text[block[0] : block[1]]):
         return text, "already"
+    # Upgrade an entry from before the rename ("visual_cms") in place.
+    old = re.search(r"""(['"])visual_cms(\.apps\.\w+)?\1""", text[block[0] : block[1]])
+    if old:
+        start, end = block[0] + old.start(), block[0] + old.end()
+        return f'{text[:start]}"{app}"{text[end:]}', "changed"
     patched = _append_item(text, "INSTALLED_APPS", f'"{app}"')
     return (patched, "changed") if patched else (text, "failed")
 
@@ -215,7 +220,7 @@ def patch_media_settings(text: str) -> tuple[str, list[str], str]:
     if any("os.path" in line for line in lines) and re.search(r"^import os\b", text, re.MULTILINE) is None:
         lines.insert(0, "import os")
     suffix = "" if text.endswith("\n") else "\n"
-    return f"{text}{suffix}\n# Uploaded images (added by django-visual-cms)\n" + "\n".join(lines) + "\n", added, "changed"
+    return f"{text}{suffix}\n# Uploaded images (added by django-storio-elements-editor)\n" + "\n".join(lines) + "\n", added, "changed"
 
 
 def patch_media_urls(text: str) -> tuple[str, str]:
@@ -226,7 +231,7 @@ def patch_media_urls(text: str) -> tuple[str, str]:
         return text, "failed"
     suffix = "" if text.endswith("\n") else "\n"
     return (
-        f"{text}{suffix}\n# Serves uploaded images during development (added by django-visual-cms)\n"
+        f"{text}{suffix}\n# Serves uploaded images during development (added by django-storio-elements-editor)\n"
         "from django.conf import settings  # noqa: E402\n"
         "from django.conf.urls.static import static  # noqa: E402\n\n"
         "urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)\n",
@@ -243,8 +248,11 @@ def _imports_include(text: str) -> bool:
 
 
 def patch_urls(text: str) -> tuple[str, str]:
-    if re.search(r"""['"]visual_cms\.urls['"]""", text):
+    if re.search(r"""['"]storio_elements_editor\.urls['"]""", text):
         return text, "already"
+    # Upgrade an include from before the rename in place.
+    if re.search(r"""['"]visual_cms\.urls['"]""", text):
+        return re.sub(r"""(['"])visual_cms\.urls\1""", '"storio_elements_editor.urls"', text), "changed"
     block = _find_bracket_block(text, "urlpatterns")
     if block is None:
         return text, "failed"
@@ -272,7 +280,7 @@ def patch_urls(text: str) -> tuple[str, str]:
         return text, "failed"
     start, end = block
     inner = text[start + 1 : end]
-    entry = 'path("api/cms/", include("visual_cms.urls"))'
+    entry = 'path("api/cms/", include("storio_elements_editor.urls"))'
     if "\n" in inner:
         lines = [l for l in inner.splitlines() if l.strip() and not l.strip().startswith("#")]
         indent = re.match(r"\s*", lines[0]).group(0) if lines else "    "
@@ -316,12 +324,12 @@ def run_setup(
 
     text, status = patch_installed_apps(text)
     if status == "changed":
-        steps.append('added "visual_cms" to INSTALLED_APPS')
+        steps.append('added "storio_elements_editor" to INSTALLED_APPS')
     elif status == "already":
-        report.unchanged.append('"visual_cms" is already in INSTALLED_APPS')
+        report.unchanged.append('"storio_elements_editor" is already in INSTALLED_APPS')
     else:
         apps_ready = False
-        report.manual.append(f'In {rel(settings_file)} add "visual_cms" to INSTALLED_APPS (it is not a plain list, so it was not edited).')
+        report.manual.append(f'In {rel(settings_file)} add "storio_elements_editor" to INSTALLED_APPS (it is not a plain list, so it was not edited).')
 
     text, added, status = patch_origin_list(text, "CSRF_TRUSTED_ORIGINS", origins)
     if status == "changed":
@@ -385,11 +393,11 @@ def run_setup(
     new_urls, status = patch_urls(urls_text)
     if status == "changed":
         _write(urls_file, new_urls, dry_run)
-        report.done.append(f'{rel(urls_file)}: added path("api/cms/", include("visual_cms.urls"))')
+        report.done.append(f'{rel(urls_file)}: added path("api/cms/", include("storio_elements_editor.urls"))')
     elif status == "already":
         report.unchanged.append("the CMS urls are already included")
     else:
-        report.manual.append(f'In {rel(urls_file)} add to urlpatterns:  path("api/cms/", include("visual_cms.urls"))  (and import include from django.urls)')
+        report.manual.append(f'In {rel(urls_file)} add to urlpatterns:  path("api/cms/", include("storio_elements_editor.urls"))  (and import include from django.urls)')
 
     urls_now = new_urls if status == "changed" else urls_text
     with_media, media_status = patch_media_urls(urls_now)
@@ -436,9 +444,9 @@ def print_report(report: Report, dry_run: bool) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m visual_cms", description="django-visual-cms helper commands")
+    parser = argparse.ArgumentParser(prog="python -m storio_elements_editor", description="django-storio-elements-editor helper commands")
     sub = parser.add_subparsers(dest="command", required=True)
-    setup = sub.add_parser("setup", help="Wire django-visual-cms into a Django project (settings, urls, migrate)")
+    setup = sub.add_parser("setup", help="Wire django-storio-elements-editor into a Django project (settings, urls, migrate)")
     setup.add_argument("--project", default=".", help="Folder with manage.py, or a folder above it (default: current folder)")
     setup.add_argument("--settings", help="Settings module, if it cannot be read from manage.py")
     setup.add_argument(

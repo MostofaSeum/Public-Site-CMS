@@ -132,7 +132,7 @@ var StudioProvider = ({ config, children }) => {
 };
 function useStudio() {
   const ctx = (0, import_react.useContext)(StudioContext);
-  if (!ctx) throw new Error("[visual-cms] Studio components must be rendered inside <CmsStudio>.");
+  if (!ctx) throw new Error("[storio-editor] Studio components must be rendered inside <CmsStudio>.");
   return ctx;
 }
 
@@ -1802,6 +1802,8 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   activeSectionRef.current = activeSectionKey;
   const [sectionDetail, setSectionDetail] = (0, import_react7.useState)(null);
   const [isLoadingDetail, setIsLoadingDetail] = (0, import_react7.useState)(false);
+  const [isSectionListOpen, setIsSectionListOpen] = (0, import_react7.useState)(false);
+  const activeSection = availableSections.find((s) => s.key === activeSectionKey);
   const iframeRef = (0, import_react7.useRef)(null);
   const viewportContainerRef = (0, import_react7.useRef)(null);
   const [containerSize, setContainerSize] = (0, import_react7.useState)({
@@ -1910,6 +1912,7 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     if (sectionKey !== activeSectionKey && !confirmLeavingSection()) return;
     setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
+    setIsSectionListOpen(false);
     sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
   (0, import_react7.useEffect)(() => {
@@ -2070,34 +2073,60 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "grid grid-cols-1 lg:grid-cols-12 gap-5 items-start", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "lg:col-span-5 xl:col-span-5 flex flex-col space-y-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-80px)] overflow-y-auto pr-1 custom-scrollbar", children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "p-3 rounded-xl bg-slate-900/95 border border-purple-500/25 backdrop-blur-sm space-y-2.5 shadow-lg", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "flex items-center justify-between", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "text-xs font-bold text-white flex items-center gap-1.5", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Select Section to Edit:" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "text-[10px] font-mono text-purple-300 px-2 py-0.5 rounded-full bg-purple-950/60 border border-purple-800/40", children: [
-              "Page: ",
-              currentRoute
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+            "button",
+            {
+              type: "button",
+              onClick: () => setIsSectionListOpen((open) => !open),
+              "aria-expanded": isSectionListOpen,
+              "aria-controls": "cms-section-list",
+              className: "w-full flex items-center justify-between gap-2 text-left rounded-lg -m-1 p-1 hover:bg-slate-800/50 transition-colors",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "min-w-0 flex items-center gap-1.5 text-xs", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "font-bold text-white shrink-0", children: "Select Section to Edit:" }),
+                  !isSectionListOpen && activeSection && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "flex items-center gap-1 min-w-0 px-2 py-0.5 rounded-lg bg-purple-600/30 border border-purple-500/40 text-purple-100 font-semibold", children: [
+                    activeSection.icon && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(activeSection.icon, { className: "w-3 h-3 shrink-0 opacity-80" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "truncate", children: activeSection.label })
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "flex items-center gap-2 shrink-0", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "text-[10px] font-mono text-purple-300 px-2 py-0.5 rounded-full bg-purple-950/60 border border-purple-800/40", children: [
+                    "Page: ",
+                    currentRoute
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+                    import_lucide_react6.ChevronDown,
+                    {
+                      className: `w-4 h-4 text-purple-300 transition-transform ${isSectionListOpen ? "rotate-180" : ""}`
+                    }
+                  )
+                ] })
+              ]
+            }
+          ),
+          isSectionListOpen && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { id: "cms-section-list", className: "flex flex-wrap gap-1.5", children: availableSections.map((sec) => {
+              const isSelected = sec.key === activeSectionKey;
+              const IconComponent = sec.icon;
+              return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => handleSelectSection(sec.key),
+                  className: `flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${isSelected ? "bg-purple-600 text-white shadow-md shadow-purple-900/50 ring-1 ring-purple-400" : "bg-slate-950/70 hover:bg-slate-800/80 text-slate-300 border border-slate-800"}`,
+                  children: [
+                    IconComponent && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconComponent, { className: "w-3.5 h-3.5 opacity-80" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: sec.label }),
+                    isSelected && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react6.ChevronRight, { className: "w-3 h-3 text-purple-200" })
+                  ]
+                },
+                sec.key
+              );
+            }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "flex items-center gap-1.5 text-[11px] text-slate-400 pt-1 border-t border-slate-800/60", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react6.MousePointerClick, { className: "w-3.5 h-3.5 text-purple-400 shrink-0" }),
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Selecting a section scrolls the preview on the right to it." })
             ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "flex flex-wrap gap-1.5", children: availableSections.map((sec) => {
-            const isSelected = sec.key === activeSectionKey;
-            const IconComponent = sec.icon;
-            return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
-              "button",
-              {
-                type: "button",
-                onClick: () => handleSelectSection(sec.key),
-                className: `flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${isSelected ? "bg-purple-600 text-white shadow-md shadow-purple-900/50 ring-1 ring-purple-400" : "bg-slate-950/70 hover:bg-slate-800/80 text-slate-300 border border-slate-800"}`,
-                children: [
-                  IconComponent && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(IconComponent, { className: "w-3.5 h-3.5 opacity-80" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: sec.label }),
-                  isSelected && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react6.ChevronRight, { className: "w-3 h-3 text-purple-200" })
-                ]
-              },
-              sec.key
-            );
-          }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "flex items-center gap-1.5 text-[11px] text-slate-400 pt-1 border-t border-slate-800/60", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react6.MousePointerClick, { className: "w-3.5 h-3.5 text-purple-400 shrink-0" }),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Selecting a section scrolls the preview on the right to it." })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "rounded-2xl bg-slate-900/80 border border-purple-500/20 p-3 sm:p-4 shadow-xl", children: isLoadingDetail ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "h-64 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs", children: [

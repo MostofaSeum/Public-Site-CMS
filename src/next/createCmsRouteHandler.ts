@@ -54,7 +54,7 @@ export function createCmsRouteHandler(options: CmsRouteHandlerOptions): {
 } {
   const { storage, authorize } = options;
   if (typeof authorize !== 'function') {
-    throw new Error('[visual-cms] createCmsRouteHandler needs an "authorize" function.');
+    throw new Error('[storio-editor] createCmsRouteHandler needs an "authorize" function.');
   }
   const allowedPages = options.allowedPages ? new Set(options.allowedPages) : null;
   const maxBodyBytes = options.maxBodyBytes ?? 1024 * 1024;

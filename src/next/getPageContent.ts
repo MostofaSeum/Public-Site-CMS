@@ -28,7 +28,7 @@ export async function getPageContent<T = Record<string, unknown>>(
   options: { storage: CmsStorageAdapter; includeDrafts?: boolean }
 ): Promise<T> {
   const page = findPage(config, pageKey);
-  if (!page) throw new Error(`[visual-cms] Unknown page "${pageKey}".`);
+  if (!page) throw new Error(`[storio-editor] Unknown page "${pageKey}".`);
   try {
     const records = await options.storage.listRecords(pageKey, { includeDrafts: options.includeDrafts });
     return mergePageContent<T>(page, records, { includeDrafts: options.includeDrafts });

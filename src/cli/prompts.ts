@@ -14,7 +14,7 @@ export async function askMissingOptions(options: InitOptions, given: Set<string>
 
   if (!given.has('backend')) {
     const answer = (
-      await ask('Where should content be stored?\n  1) In this Next.js app (JSON file)\n  2) A Django API (django-visual-cms)\n> [1] ')
+      await ask('Where should content be stored?\n  1) In this Next.js app (JSON file)\n  2) A Django API (django-storio-elements-editor)\n> [1] ')
     )
       .trim()
       .toLowerCase();

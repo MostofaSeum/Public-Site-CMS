@@ -1,6 +1,6 @@
 'use client';
 
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 import type pricingDefaults from '@/content/pricing.json';
 
 type PricingContent = typeof pricingDefaults;

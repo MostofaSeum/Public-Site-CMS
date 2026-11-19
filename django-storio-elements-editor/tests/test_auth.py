@@ -5,8 +5,8 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 
-from visual_cms import auth
-from visual_cms.models import CmsRecord
+from storio_elements_editor import auth
+from storio_elements_editor.models import CmsRecord
 
 BASE = "/api/cms"
 
@@ -77,7 +77,7 @@ class TokenAuthTests(TestCase):
         self.assertEqual(post(json.dumps({"username": "a", "password": "x" * 5000})).status_code, 413)
 
     def test_login_can_be_disabled(self):
-        with override_settings(VISUAL_CMS={"TOKEN_LOGIN": False}):
+        with override_settings(STORIO_EDITOR={"TOKEN_LOGIN": False}):
             self.assertEqual(self.login().status_code, 404)
 
     # ------------------------------------------------------------------ using the token
@@ -99,7 +99,7 @@ class TokenAuthTests(TestCase):
 
     def test_token_cannot_be_used_after_it_expires(self):
         token = self.token()
-        with override_settings(VISUAL_CMS={"TOKEN_MAX_AGE": -1}):
+        with override_settings(STORIO_EDITOR={"TOKEN_MAX_AGE": -1}):
             auth_client = Client()
             res = auth_client.get(f"{BASE}/auth/me", HTTP_AUTHORIZATION=f"Bearer {token}")
             self.assertEqual(res.status_code, 401)
@@ -148,8 +148,8 @@ class TokenAuthTests(TestCase):
 
     def test_custom_authorize_decides_who_gets_a_token(self):
         get_user_model().objects.create_user("ana", password="pw12345")  # not staff
-        with override_settings(VISUAL_CMS={"AUTHORIZE": "tests.test_auth.only_ana"}):
-            from visual_cms import conf
+        with override_settings(STORIO_EDITOR={"AUTHORIZE": "tests.test_auth.only_ana"}):
+            from storio_elements_editor import conf
 
             conf._import.cache_clear()
             try:
@@ -185,7 +185,7 @@ class TokenAuthTests(TestCase):
     def test_failures_expire_with_the_lockout_window(self):
         for _ in range(5):
             self.login(password="wrong")
-        with mock.patch("visual_cms.auth.cache.get", return_value=0):
+        with mock.patch("storio_elements_editor.auth.cache.get", return_value=0):
             self.assertEqual(self.login().status_code, 200)
 
     # ------------------------------------------------------------------ helpers

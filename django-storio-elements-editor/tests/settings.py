@@ -1,6 +1,6 @@
 import tempfile
 
-SECRET_KEY = "visual-cms-tests"
+SECRET_KEY = "storio-editor-tests"
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
 USE_TZ = True
@@ -11,7 +11,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "visual_cms",
+    "storio_elements_editor",
 ]
 
 MIDDLEWARE = [
@@ -40,6 +40,6 @@ TEMPLATES = [
     }
 ]
 
-MEDIA_ROOT = tempfile.mkdtemp(prefix="visual-cms-media-")
+MEDIA_ROOT = tempfile.mkdtemp(prefix="storio-editor-media-")
 MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   MousePointerClick,
   ChevronRight,
+  ChevronDown,
   Pencil,
   Eye,
 } from 'lucide-react';
@@ -68,6 +69,9 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
   activeSectionRef.current = activeSectionKey;
   const [sectionDetail, setSectionDetail] = useState<SectionDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  // The section list starts folded so the form gets the room; the header opens it.
+  const [isSectionListOpen, setIsSectionListOpen] = useState(false);
+  const activeSection = availableSections.find((s) => s.key === activeSectionKey);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const viewportContainerRef = useRef<HTMLDivElement>(null);
@@ -204,6 +208,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
     if (sectionKey !== activeSectionKey && !confirmLeavingSection()) return;
     setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
+    setIsSectionListOpen(false);
     sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
 
@@ -398,17 +403,36 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
         <div className="lg:col-span-5 xl:col-span-5 flex flex-col space-y-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-80px)] overflow-y-auto pr-1 custom-scrollbar">
           {/* Section selection bar */}
           <div className="p-3 rounded-xl bg-slate-900/95 border border-purple-500/25 backdrop-blur-sm space-y-2.5 shadow-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>Select Section to Edit:</span>
+            <button
+              type="button"
+              onClick={() => setIsSectionListOpen((open) => !open)}
+              aria-expanded={isSectionListOpen}
+              aria-controls="cms-section-list"
+              className="w-full flex items-center justify-between gap-2 text-left rounded-lg -m-1 p-1 hover:bg-slate-800/50 transition-colors"
+            >
+              <span className="min-w-0 flex items-center gap-1.5 text-xs">
+                <span className="font-bold text-white shrink-0">Select Section to Edit:</span>
+                {!isSectionListOpen && activeSection && (
+                  <span className="flex items-center gap-1 min-w-0 px-2 py-0.5 rounded-lg bg-purple-600/30 border border-purple-500/40 text-purple-100 font-semibold">
+                    {activeSection.icon && <activeSection.icon className="w-3 h-3 shrink-0 opacity-80" />}
+                    <span className="truncate">{activeSection.label}</span>
+                  </span>
+                )}
               </span>
-              <span className="text-[10px] font-mono text-purple-300 px-2 py-0.5 rounded-full bg-purple-950/60 border border-purple-800/40">
-                Page: {currentRoute}
+              <span className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-mono text-purple-300 px-2 py-0.5 rounded-full bg-purple-950/60 border border-purple-800/40">
+                  Page: {currentRoute}
+                </span>
+                <ChevronDown
+                  className={`w-4 h-4 text-purple-300 transition-transform ${isSectionListOpen ? 'rotate-180' : ''}`}
+                />
               </span>
-            </div>
+            </button>
 
+            {isSectionListOpen && (
+            <>
             {/* Section switcher pills */}
-            <div className="flex flex-wrap gap-1.5">
+            <div id="cms-section-list" className="flex flex-wrap gap-1.5">
               {availableSections.map((sec) => {
                 const isSelected = sec.key === activeSectionKey;
                 const IconComponent = sec.icon;
@@ -435,6 +459,8 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
               <MousePointerClick className="w-3.5 h-3.5 text-purple-400 shrink-0" />
               <span>Selecting a section scrolls the preview on the right to it.</span>
             </div>
+            </>
+            )}
           </div>
 
           {/* Form area for the active section */}

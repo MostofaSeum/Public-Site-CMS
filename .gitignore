@@ -1,7 +1,7 @@
 node_modules
 *.tgz
 
-# Python (django-visual-cms)
+# Python (django-storio-elements-editor)
 __pycache__/
 *.py[cod]
 *.egg-info/

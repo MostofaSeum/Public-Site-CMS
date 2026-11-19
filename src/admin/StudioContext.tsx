@@ -26,6 +26,6 @@ export const StudioProvider: React.FC<{ config: CmsConfig; children: React.React
 
 export function useStudio(): StudioContextValue {
   const ctx = useContext(StudioContext);
-  if (!ctx) throw new Error('[visual-cms] Studio components must be rendered inside <CmsStudio>.');
+  if (!ctx) throw new Error('[storio-editor] Studio components must be rendered inside <CmsStudio>.');
   return ctx;
 }

@@ -49,7 +49,7 @@ declare const POPULAR_ICONS: {
 }[];
 
 /**
- * Token login for the django-visual-cms API: lets editors sign in from your own React admin
+ * Token login for the django-storio-elements-editor API: lets editors sign in from your own React admin
  * (username + password) instead of Django's login page.
  *
  *   export const cmsLogin = cmsAuth({ baseUrl: 'https://api.example.com/api/cms' });

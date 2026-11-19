@@ -119,7 +119,7 @@ export function runAddPage(options: AddPageOptions): AddPageReport {
   const base = appDir === srcApp ? path.join(root, 'src') : root;
 
   const configFile = [path.join(base, 'cms.config.ts'), path.join(root, 'cms.config.ts')].find(exists);
-  if (!configFile) throw new CliError('cms.config.ts not found. Run `npx visual-cms init` first.');
+  if (!configFile) throw new CliError('cms.config.ts not found. Run `npx storio-editor init` first.');
 
   const tsconfig = path.join(root, 'tsconfig.json');
   const alias: AliasInfo | null = exists(tsconfig) ? detectAlias(read(tsconfig), root) : null;
@@ -167,7 +167,7 @@ export function runAddPage(options: AddPageOptions): AddPageReport {
     viewFile,
     `'use client';
 
-import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 import type pageDefaults from '${imp(viewFile, jsonFile)}';
 
 type Content = typeof pageDefaults;

@@ -1,4 +1,4 @@
-import { createCmsRouteHandler } from '@brainicon/visual-cms/next';
+import { createCmsRouteHandler } from '@brainicon/storio-elements-editor/next';
 import { storage } from '@/lib/storage';
 import { cms } from '@/cms.config';
 

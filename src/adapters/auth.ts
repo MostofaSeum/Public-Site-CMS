@@ -1,5 +1,5 @@
 /**
- * Token login for the django-visual-cms API: lets editors sign in from your own React admin
+ * Token login for the django-storio-elements-editor API: lets editors sign in from your own React admin
  * (username + password) instead of Django's login page.
  *
  *   export const cmsLogin = cmsAuth({ baseUrl: 'https://api.example.com/api/cms' });
@@ -15,7 +15,7 @@ export interface CmsUser {
 }
 
 export interface CmsAuthOptions {
-  /** Base URL of the django-visual-cms API, the same as the one given to djangoAdapter. */
+  /** Base URL of the django-storio-elements-editor API, the same as the one given to djangoAdapter. */
   baseUrl: string;
   /** Key under which the token is stored. Default: "visual-cms-token". */
   storageKey?: string;
@@ -146,7 +146,7 @@ export function cmsAuth(options: CmsAuthOptions): CmsAuth {
         throw new CmsAuthError('Cannot reach the server. Check your connection and try again.', 0);
       }
       if (!res.ok) {
-        const fallback = res.status === 404 ? 'Token login is not available on this server (update django-visual-cms).' : `Sign in failed (status ${res.status}).`;
+        const fallback = res.status === 404 ? 'Token login is not available on this server (update django-storio-elements-editor).' : `Sign in failed (status ${res.status}).`;
         throw new CmsAuthError(await detail(res, fallback), res.status);
       }
       const body = (await res.json()) as { token: string; expiresIn: number; user: CmsUser };

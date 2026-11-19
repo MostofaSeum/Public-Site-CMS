@@ -202,7 +202,7 @@ function cmsAuth(options) {
         throw new CmsAuthError("Cannot reach the server. Check your connection and try again.", 0);
       }
       if (!res.ok) {
-        const fallback = res.status === 404 ? "Token login is not available on this server (update django-visual-cms)." : `Sign in failed (status ${res.status}).`;
+        const fallback = res.status === 404 ? "Token login is not available on this server (update django-storio-elements-editor)." : `Sign in failed (status ${res.status}).`;
         throw new CmsAuthError(await detail(res, fallback), res.status);
       }
       const body = await res.json();

@@ -34,7 +34,7 @@ export default defineConfig([
     },
     banner: { js: '"use client";' },
   },
-  // `visual-cms` command line tool (Node only, no React).
+  // `storio-editor` command line tool (Node only, no React).
   {
     format: ['cjs'],
     platform: 'node',

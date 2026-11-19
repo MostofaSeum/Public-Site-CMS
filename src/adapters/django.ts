@@ -9,7 +9,7 @@ export interface DjangoAdapterOptions extends Omit<RestAdapterOptions, 'headers'
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
- * Adapter for the `django-visual-cms` package. Same API as `restAdapter`, plus
+ * Adapter for the `django-storio-elements-editor` package. Same API as `restAdapter`, plus
  * Django's CSRF handling: it fetches a token from `{baseUrl}/csrf`, sends it as
  * `X-CSRFToken` on writes, and refreshes it once if Django rejects it.
  *

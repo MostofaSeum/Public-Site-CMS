@@ -1,5 +1,5 @@
 /**
- * `visual-cms scan <file>`: turn an existing page's hardcoded text into CMS content.
+ * `storio-editor scan <file>`: turn an existing page's hardcoded text into CMS content.
  *
  * It parses the file with the project's own TypeScript compiler, finds the page's
  * sections (<header>, <section>, <footer>…), moves every static text and every
@@ -126,7 +126,7 @@ export function runScan(options: ScanOptions): ScanReport {
   if (!appDir) throw new CliError('No app/ folder found. Run this from the root of your Next.js App Router project.');
   const base = appDir === srcApp ? path.join(root, 'src') : root;
   const configFile = [path.join(base, 'cms.config.ts'), path.join(root, 'cms.config.ts')].find((p) => fs.existsSync(p));
-  if (!configFile) throw new CliError('cms.config.ts not found. Run `npx visual-cms init` first.');
+  if (!configFile) throw new CliError('cms.config.ts not found. Run `npx storio-editor init` first.');
   const tsconfig = path.join(root, 'tsconfig.json');
   const alias: AliasInfo | null = fs.existsSync(tsconfig) ? detectAlias(fs.readFileSync(tsconfig, 'utf8'), root) : null;
 
@@ -364,7 +364,7 @@ export function runScan(options: ScanOptions): ScanReport {
   out += sf.text.slice(cursor);
 
   const jsonSpec = importSpecifier(file, jsonFile, alias);
-  out = addImportLine(out, `import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';`);
+  out = addImportLine(out, `import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';`);
   out = addImportLine(out, `import type ${defaultsName} from '${jsonSpec}';`);
   // Type alias after the imports.
   out = out.replace(`import type ${defaultsName} from '${jsonSpec}';`, `import type ${defaultsName} from '${jsonSpec}';\n\ntype ${typeName} = typeof ${defaultsName};`);
@@ -395,7 +395,7 @@ ${sectionInfo.map((s, i) => `    { key: '${s.key}', label: '${`${i + 1}. ${title
 
   let backup: string | null = null;
   if (!options.dryRun) {
-    backup = `${file}.visual-cms.bak`;
+    backup = `${file}.storio-editor.bak`;
     if (!fs.existsSync(backup)) fs.writeFileSync(backup, original);
     fs.mkdirSync(path.dirname(jsonFile), { recursive: true });
     fs.writeFileSync(jsonFile, JSON.stringify(content, null, 2) + '\n');

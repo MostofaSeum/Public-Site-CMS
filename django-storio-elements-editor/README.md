@@ -1,34 +1,34 @@
-# django-visual-cms
+# django-storio-elements-editor
 
-Django backend for [`@brainicon/visual-cms`](../README.md) (the main README has the full install guide, including the React side and the `npx visual-cms init --backend django` shortcut). It stores the content editors change in the visual CMS and serves the REST API the CMS talks to.
+Django backend for [`@brainicon/storio-elements-editor`](../README.md) (the main README has the full install guide, including the React side and the `npx storio-editor init --backend django` shortcut). It stores the content editors change in Storio Elements Editor and serves the REST API the CMS talks to.
 
 Use it when your site's frontend is React or Next.js and your backend is Django. Django keeps the content in its own database and decides who may edit, through your existing Django logins.
 
 ```
-React / Next.js site  ──  @brainicon/visual-cms  (CMS screen, live preview, pencil buttons)
+React / Next.js site  ──  @brainicon/storio-elements-editor  (CMS screen, live preview, pencil buttons)
         │  djangoAdapter (fetch + sign-in token)
         ▼
-Django  ──  django-visual-cms  (API + CmsRecord table + Django admin)
+Django  ──  django-storio-elements-editor  (API + CmsRecord table + Django admin)
 ```
 
 Supports Django 4.2, 5.x and 6.x (tested on 4.2, 5.2 and 6.0).
 
 ## Install
 
-**Fastest:** from your Next.js project, `npx visual-cms init --django-dir <folder with manage.py>` installs this package and does all the setup below for you (settings, urls, CORS, migration). See the main README.
+**Fastest:** from your Next.js project, `npx storio-editor init --django-dir <folder with manage.py>` installs this package and does all the setup below for you (settings, urls, CORS, migration). See the main README.
 
-To install it yourself, from GitHub (the package lives in the `django-visual-cms` folder of the repository):
+To install it yourself, from GitHub (the package lives in the `django-storio-elements-editor` folder of the repository):
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"
+pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"
 ```
 
-Then `python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000` makes the settings and urls changes below automatically (add `--dry-run` to preview them), or follow the steps by hand.
+Then `python -m storio_elements_editor setup --project <folder with manage.py> --frontend-origin http://localhost:3000` makes the settings and urls changes below automatically (add `--dry-run` to preview them), or follow the steps by hand.
 
 Use your project's virtual environment. No build step is needed. Check it worked:
 
 ```bash
-python -c "import visual_cms; print(visual_cms.__version__)"
+python -c "import storio_elements_editor; print(storio_elements_editor.__version__)"
 ```
 
 ## Set up Django
@@ -38,7 +38,7 @@ python -c "import visual_cms; print(visual_cms.__version__)"
 ```python
 INSTALLED_APPS = [
     # ...
-    "visual_cms",
+    "storio_elements_editor",
 ]
 ```
 
@@ -49,7 +49,7 @@ from django.urls import include, path
 
 urlpatterns = [
     # ...
-    path("api/cms/", include("visual_cms.urls")),
+    path("api/cms/", include("storio_elements_editor.urls")),
 ]
 ```
 
@@ -87,8 +87,8 @@ Follow the main library's setup, but use `djangoAdapter` instead of `restAdapter
 
 ```ts
 // cms.config.ts
-import { defineCms } from '@brainicon/visual-cms';
-import { djangoAdapter } from '@brainicon/visual-cms/adapters';
+import { defineCms } from '@brainicon/storio-elements-editor';
+import { djangoAdapter } from '@brainicon/storio-elements-editor/adapters';
 
 export const cms = defineCms({
   adapter: djangoAdapter({ baseUrl: 'https://api.example.com/api/cms' }),
@@ -101,8 +101,8 @@ export const cms = defineCms({
 For server rendering in Next.js, read published content directly from Django:
 
 ```ts
-import { getPageContent } from '@brainicon/visual-cms/next';
-import { restAdapter } from '@brainicon/visual-cms/adapters';
+import { getPageContent } from '@brainicon/storio-elements-editor/next';
+import { restAdapter } from '@brainicon/storio-elements-editor/adapters';
 
 const storage = restAdapter({ baseUrl: 'https://api.example.com/api/cms' }); // read-only use
 const content = await getPageContent(cms, 'home', { storage });
@@ -112,7 +112,7 @@ const content = await getPageContent(cms, 'home', { storage });
 
 Editors can sign in in two ways, and the API accepts both.
 
-**1. Token login (recommended, what `npx visual-cms init` sets up).** The React site posts the editor's staff username and password to `POST api/cms/auth/login` and gets back a signed token that expires after 12 hours. The CMS sends it as `Authorization: Bearer <token>`. It needs no cookie and no CSRF token, so it also works when the site and Django are on different domains. The token is not stored in the database, and it stops working when it expires or when the user's password changes or the account is deactivated. Wrong passwords are rate limited (5 per username and IP address, then a 5 minute lockout, tracked in Django's cache).
+**1. Token login (recommended, what `npx storio-editor init` sets up).** The React site posts the editor's staff username and password to `POST api/cms/auth/login` and gets back a signed token that expires after 12 hours. The CMS sends it as `Authorization: Bearer <token>`. It needs no cookie and no CSRF token, so it also works when the site and Django are on different domains. The token is not stored in the database, and it stops working when it expires or when the user's password changes or the account is deactivated. Wrong passwords are rate limited (5 per username and IP address, then a 5 minute lockout, tracked in Django's cache).
 
 ```
 POST api/cms/auth/login   {"username": "...", "password": "..."}  ->  {"token": "...", "expiresIn": 43200, "user": {...}}
@@ -150,12 +150,12 @@ Also set `publicSiteUrl` / `allowedOrigins` in the frontend CMS config if the CM
 
 ## Settings
 
-All settings are optional. Put them in a `VISUAL_CMS` dict:
+All settings are optional. Put them in a `STORIO_EDITOR` dict:
 
 ```python
-VISUAL_CMS = {
+STORIO_EDITOR = {
     # Who may edit. A dotted path to a function that receives the request.
-    "AUTHORIZE": "visual_cms.permissions.is_staff_user",
+    "AUTHORIZE": "storio_elements_editor.permissions.is_staff_user",
     # Restrict which page keys can be stored (use your frontend config's page keys).
     "ALLOWED_PAGES": None,          # e.g. ["home", "pricing"]
     "MAX_BODY_BYTES": 1_048_576,    # largest section save (1 MB)
@@ -179,12 +179,12 @@ def can_edit(request):
 ```
 
 ```python
-VISUAL_CMS = {"AUTHORIZE": "myproject.cms.can_edit"}
+STORIO_EDITOR = {"AUTHORIZE": "myproject.cms.can_edit"}
 ```
 
 ## Django admin
 
-Saved sections appear under **Visual CMS → CMS sections**. From there admins can search them, inspect the JSON, and publish or unpublish several at once. Deleting a row resets that section to its default content.
+Saved sections appear under **Storio Elements Editor → CMS sections**. From there admins can search them, inspect the JSON, and publish or unpublish several at once. Deleting a row resets that section to its default content.
 
 The visual editing itself (live preview, pencil buttons, forms) happens on the React CMS page. Add a link to it in your admin menu if you like.
 
@@ -218,7 +218,7 @@ Writes need an editor (`401` otherwise). A request that relies on a session cook
 ## Development
 
 ```bash
-cd django-visual-cms
+cd django-storio-elements-editor
 pip install -e .
 python -m django test tests --settings=tests.settings
 ```

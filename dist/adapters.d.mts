@@ -36,7 +36,7 @@ interface DjangoAdapterOptions extends Omit<RestAdapterOptions, 'headers'> {
     headers?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>);
 }
 /**
- * Adapter for the `django-visual-cms` package. Same API as `restAdapter`, plus
+ * Adapter for the `django-storio-elements-editor` package. Same API as `restAdapter`, plus
  * Django's CSRF handling: it fetches a token from `{baseUrl}/csrf`, sends it as
  * `X-CSRFToken` on writes, and refreshes it once if Django rejects it.
  *
@@ -46,7 +46,7 @@ interface DjangoAdapterOptions extends Omit<RestAdapterOptions, 'headers'> {
 declare function djangoAdapter(options: DjangoAdapterOptions): CmsStorageAdapter;
 
 /**
- * Token login for the django-visual-cms API: lets editors sign in from your own React admin
+ * Token login for the django-storio-elements-editor API: lets editors sign in from your own React admin
  * (username + password) instead of Django's login page.
  *
  *   export const cmsLogin = cmsAuth({ baseUrl: 'https://api.example.com/api/cms' });
@@ -60,7 +60,7 @@ interface CmsUser {
     name: string;
 }
 interface CmsAuthOptions {
-    /** Base URL of the django-visual-cms API, the same as the one given to djangoAdapter. */
+    /** Base URL of the django-storio-elements-editor API, the same as the one given to djangoAdapter. */
     baseUrl: string;
     /** Key under which the token is stored. Default: "visual-cms-token". */
     storageKey?: string;

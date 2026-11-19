@@ -1,6 +1,6 @@
 'use client';
 
-import { CmsStudio } from '@brainicon/visual-cms/admin';
+import { CmsStudio } from '@brainicon/storio-elements-editor/admin';
 import { cms } from '@/cms.config';
 
 export default function CmsPage() {

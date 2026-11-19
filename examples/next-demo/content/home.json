@@ -23,8 +23,8 @@
     ]
   },
   "seo": {
-    "title": "Demo site | Visual CMS",
-    "description": "A demo page edited with @brainicon/visual-cms.",
+    "title": "Demo site | Storio Elements Editor",
+    "description": "A demo page edited with @brainicon/storio-elements-editor.",
     "keywords": "cms, demo",
     "robots": "index, follow"
   }

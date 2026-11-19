@@ -1,7 +1,7 @@
 """
 Include in your project:
 
-    path("api/cms/", include("visual_cms.urls")),
+    path("api/cms/", include("storio_elements_editor.urls")),
 
 Trailing slashes are optional, so APPEND_SLASH never redirects a PUT or DELETE.
 """
@@ -10,7 +10,7 @@ from django.urls import re_path
 
 from . import views
 
-app_name = "visual_cms"
+app_name = "storio_elements_editor"
 
 KEY = r"[A-Za-z0-9_-]{1,100}"
 

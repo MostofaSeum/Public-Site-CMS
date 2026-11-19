@@ -67,7 +67,7 @@ describe('restAdapter <-> createCmsRouteHandler', () => {
 describe('fileStorage', () => {
   let dir: string;
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), 'visual-cms-'));
+    dir = await mkdtemp(path.join(os.tmpdir(), 'storio-editor-'));
   });
   afterEach(async () => {
     await rm(dir, { recursive: true, force: true });

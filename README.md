@@ -1,6 +1,6 @@
-# @brainicon/visual-cms
+# Storio Elements Editor
 
-A visual CMS for Next.js sites (with an optional Django backend). Add one page to your admin panel and your editors get:
+`@brainicon/storio-elements-editor` (formerly `@brainicon/visual-cms`, see [Upgrading](#upgrading-from-brainiconvisual-cms)) is a visual editor for Next.js sites (with an optional Django backend). Add one page to your admin panel and your editors get:
 
 - a list of every page of the site,
 - a **live preview** of the real page, at desktop, tablet or mobile size,
@@ -16,37 +16,37 @@ Content is stored through a small adapter, so it works with a JSON file, Django,
 Click the **copy** button at the top right of the box below, paste it into your AI coding agent (Claude Code, Cursor, Copilot, Codex…) inside your project, and it will install the library, connect it to your admin panel, and make your pages editable, step by step, without breaking your code.
 
 ```text
-Install and set up the visual CMS library @brainicon/visual-cms in this project, then make the website's pages editable from the admin panel.
+Install and set up the Storio Elements Editor library @brainicon/storio-elements-editor in this project, then make the website's pages editable from the admin panel.
 
-Library: https://github.com/MostofaSeum/Public-Site-CMS
-Full instructions: read the README in that repository (after installing it is also at node_modules/@brainicon/visual-cms/README.md), especially section "3. Install with an AI agent". Follow it exactly.
+Library: https://github.com/MostofaSeum/storio-elements-editor
+Full instructions: read the README in that repository (after installing it is also at node_modules/@brainicon/storio-elements-editor/README.md), especially section "3. Install with an AI agent". Follow it exactly.
 
 Safety rules (most important):
-1. Before changing anything run `git status`. If there are uncommitted changes, ask me whether to commit them first. Then create a new branch named "visual-cms-setup" and do all work there.
+1. Before changing anything run `git status`. If there are uncommitted changes, ask me whether to commit them first. Then create a new branch named "storio-editor-setup" and do all work there.
 2. Never delete, rename or rewrite code you were not asked to change. Visitors must see exactly the same website after the setup as before.
-3. Run every visual-cms command with --dry-run first, read what it will change, then run it for real.
-4. After every step run the project's type check (npx tsc --noEmit) or build. If it fails, fix the cause or undo that step (git checkout -- <file>, or restore the *.visual-cms.bak copy) before continuing.
+3. Run every storio-editor command with --dry-run first, read what it will change, then run it for real.
+4. After every step run the project's type check (npx tsc --noEmit) or build. If it fails, fix the cause or undo that step (git checkout -- <file>, or restore the *.storio-editor.bak copy) before continuing.
 5. Do not edit anything inside node_modules. Do not commit .cms/ or public/cms-uploads/.
 6. Ask me only for things you cannot find out yourself.
 
 Steps:
 1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py).
-2. Install: npm install github:MostofaSeum/Public-Site-CMS#v0.6.0   then check: npx visual-cms --version
-3. Set it up with `npx visual-cms init --yes`:
+2. Install: npm install github:MostofaSeum/storio-elements-editor#v1.0.0   then check: npx storio-editor --version
+3. Set it up with `npx storio-editor init --yes`:
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
    - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
    Do every task listed under "Warnings" and "Still to do by hand" in its output.
 4. Add a link to the CMS screen in the admin panel's menu, in the same style as the other menu items.
 5. Make the pages editable, one page at a time, starting with the homepage:
-   - npx visual-cms scan <page file> --dry-run   then review the list of texts it will move, then run it without --dry-run.
+   - npx storio-editor scan <page file> --dry-run   then review the list of texts it will move, then run it without --dry-run.
    - If scan says the file is a Server Component: if the page has no server-only code (not async, no metadata export, no database/fs/server imports) re-run with --add-use-client; otherwise move the page's JSX into a new client component file (components/<Name>View.tsx with 'use client'), render it from the page, and scan that file with --page <key> --route <url>.
    - Review the change with git diff and run the type check. The page must render exactly as before.
    - Required: every small item gets its own pencil. Go through the page from top to bottom. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be wrapped in its own <CmsField>. Scan already does this for static text. For everything it did not move (images, icons, text kept in constants or arrays), add the current value to that section in content/<page>.json, read it with usePageContent, and wrap the element in <CmsField path="<key inside that section>" label="<short name>"> inside its <CmsSection>. Use dots and the list position for repeated items (items.0.title, or items.${index}.title inside .map()). For an icon, store its name in the JSON and draw it through a small map of the icons the page already imports. Put <CmsField> inside <li> and <td>, never around them. Keep the output identical.
    - Leave these without their own pencil: live data from an API, a database or props; alt and placeholder values; and text inside <title>, <option> or <textarea>. Keep every item you skip for the final report, with the reason.
    - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
-6. Run npx visual-cms doctor and fix every FAIL.
+6. Run npx storio-editor doctor and fix every FAIL.
 7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a title, an image, an icon and a list item in turn, and confirm each shows its own small pencil and opens a form with only that field. Change the title, Save & Publish, and check the public page shows it. Then reset it. Also hover an empty part of the section and confirm the larger section pencil opens the full form.
-8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx visual-cms doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
+8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx storio-editor doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
 9. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, every visible item left without its own pencil and why, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
 ```
 
@@ -73,22 +73,22 @@ Steps:
 In your Next.js project:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.6.0
+npm install github:MostofaSeum/storio-elements-editor#v1.0.0
 ```
 
-`#v0.6.0` pins a released version (see the repository's tags). The package keeps its name, so you import it as `@brainicon/visual-cms`. Check that it worked:
+`#v1.0.0` pins a released version (see the repository's tags). You import it as `@brainicon/storio-elements-editor`. Check that it worked:
 
 ```bash
-npx visual-cms --version     # prints 0.6.0
+npx storio-editor --version     # prints 1.0.0
 ```
 
 ### Step 2. Run the setup command
 
 ```bash
-npx visual-cms init
+npx storio-editor init
 ```
 
-It asks up to five questions (where content is stored, the Django URL and folder if you choose Django, the route of the CMS screen, and whether to create an example page). To skip the questions and accept the defaults: `npx visual-cms init --yes`. To see what it would do without changing anything: add `--dry-run`.
+It asks up to five questions (where content is stored, the Django URL and folder if you choose Django, the route of the CMS screen, and whether to create an example page). To skip the questions and accept the defaults: `npx storio-editor init --yes`. To see what it would do without changing anything: add `--dry-run`.
 
 What it does for you:
 
@@ -116,25 +116,25 @@ It is safe to run again. It never overwrites a file you already have (use `--for
 **Using Django as the backend?** One command sets up both sides. Point it at the folder that contains `manage.py`:
 
 ```bash
-npx visual-cms init --django-dir ../backend --frontend-origin http://localhost:3000
+npx storio-editor init --django-dir ../backend --frontend-origin http://localhost:3000
 ```
 
-Besides the Next.js files above, this installs `django-visual-cms` (shipped inside the package) into your Django project's virtual environment (found as `venv`, `.venv` or `env` next to or inside that folder, otherwise the `python` on your PATH), then edits `settings.py` and `urls.py`, sets up CORS and runs the migration. Details are in [section 6](#using-django). Add `--dry-run` first to see everything it would change.
+Besides the Next.js files above, this installs `django-storio-elements-editor` (shipped inside the package) into your Django project's virtual environment (found as `venv`, `.venv` or `env` next to or inside that folder, otherwise the `python` on your PATH), then edits `settings.py` and `urls.py`, sets up CORS and runs the migration. Details are in [section 6](#using-django). Add `--dry-run` first to see everything it would change.
 
 ### Step 3. Make your pages editable
 
 Convert an existing page in one command. It moves the page's texts into `content/<page>.json`, wraps each section in `<CmsSection>` and each moved text in `<CmsField>`, and registers the page. The page looks exactly the same afterwards:
 
 ```bash
-npx visual-cms scan src/app/page.tsx --dry-run     # see which texts it would move
-npx visual-cms scan src/app/page.tsx               # do it (the original is saved as page.tsx.visual-cms.bak)
+npx storio-editor scan src/app/page.tsx --dry-run     # see which texts it would move
+npx storio-editor scan src/app/page.tsx               # do it (the original is saved as page.tsx.storio-editor.bak)
 ```
 
 Or create a brand-new editable page, and check your setup at any time:
 
 ```bash
-npx visual-cms add-page about          # content/about.json, a view, app/about/page.tsx, and the config entry
-npx visual-cms doctor                  # checks Tailwind, the config, the provider, and the Django API (CORS included)
+npx storio-editor add-page about          # content/about.json, a view, app/about/page.tsx, and the config entry
+npx storio-editor doctor                  # checks Tailwind, the config, the provider, and the Django API (CORS included)
 ```
 
 Details: [section 4](#4-make-your-own-pages-editable).
@@ -156,8 +156,8 @@ If you already have an admin panel, continue with [section 2](#2-connect-it-to-y
 The repository includes a complete working app:
 
 ```bash
-git clone https://github.com/MostofaSeum/Public-Site-CMS.git
-cd Public-Site-CMS/examples/next-demo
+git clone https://github.com/MostofaSeum/storio-elements-editor.git
+cd storio-elements-editor/examples/next-demo
 npm install
 npm run dev          # open http://localhost:3000/admin/cms
 ```
@@ -191,9 +191,9 @@ You still must protect it before going live: [Before you go live](#5-before-you-
 **Step 2. Create the CMS page inside that folder.** Run `init` with the folder plus `/cms`:
 
 ```bash
-npx visual-cms init --admin-path admin/cms
-npx visual-cms init --admin-path dashboard/cms
-npx visual-cms init --admin-path "(dashboard)/dashboard/cms"     # quotes are required for parentheses
+npx storio-editor init --admin-path admin/cms
+npx storio-editor init --admin-path dashboard/cms
+npx storio-editor init --admin-path "(dashboard)/dashboard/cms"     # quotes are required for parentheses
 ```
 
 A folder in parentheses is a Next.js *route group*: it is part of the path on disk but not of the URL. `init` handles this, so the last example creates `app/(dashboard)/dashboard/cms/page.tsx` and the URL is `/dashboard/cms`. Because your existing admin folder is there, `init` leaves your layout alone, and the new page automatically gets your layout and your login guard.
@@ -207,7 +207,7 @@ If the menu is JSX links, add the ready-made button. Pass your menu's own `class
 ```tsx
 'use client';
 import Link from 'next/link';
-import { CmsNavButton } from '@brainicon/visual-cms/admin';
+import { CmsNavButton } from '@brainicon/storio-elements-editor/admin';
 
 <CmsNavButton href="/admin/cms" as={Link} className="your-menu-item-classes" />
 ```
@@ -237,7 +237,7 @@ authorize: async () => {
 
 **Recommended: keep the CMS screen in this Next.js site and link to it from your admin panel.** It works with any admin technology.
 
-1. Run `npx visual-cms init` in the Next.js site (Case A).
+1. Run `npx storio-editor init` in the Next.js site (Case A).
 2. In your other admin panel's menu, add a link that opens the CMS page, for example `https://your-site.com/admin/cms`. Editors can open it in a new tab.
 3. Make sure editors are signed in on the site: replace `authorize` as in Case B step 4, using whatever login the site understands (a shared cookie, a token, or a separate login).
 
@@ -247,7 +247,7 @@ authorize: async () => {
 
 ## 3. Install with an AI agent
 
-Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into your AI coding agent. The rest of this section is the detailed procedure the agent follows. After the library is installed, this README is also at `node_modules/@brainicon/visual-cms/README.md`.
+Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into your AI coding agent. The rest of this section is the detailed procedure the agent follows. After the library is installed, this README is also at `node_modules/@brainicon/storio-elements-editor/README.md`.
 
 ### Instructions for the agent
 
@@ -260,7 +260,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 5. Do not edit anything inside `node_modules`.
 6. Never leave editing open to everyone. With the file backend the generated `authorize()` only allows editing under `next dev`: replace it with the project's real login check. If you cannot work out the project's login, leave the generated check as it is and tell the developer. With Django, Django's staff login decides.
 7. Do not commit `.cms/` or `public/cms-uploads/` (init already adds them to `.gitignore`).
-8. Check the result of every step before the next one. If a check fails, use [Troubleshooting](#7-troubleshooting) and `npx visual-cms doctor`. Do not guess.
+8. Check the result of every step before the next one. If a check fails, use [Troubleshooting](#7-troubleshooting) and `npx storio-editor doctor`. Do not guess.
 9. Ask the developer only for inputs you cannot find yourself.
 
 **Inputs**
@@ -284,7 +284,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 | `node -e "const p=require('./package.json');const d={...p.dependencies,...p.devDependencies};console.log(d.next,d.tailwindcss)"` | prints a Next.js version and a Tailwind version starting with 4 (`^4`, `4.1.0`…) | not Next.js: use [Other setups](#other-setups-manual) or stop. Tailwind below 4 or missing: tell the developer, since the CMS screens need v4 |
 | `app/` or `src/app/` exists | yes | Pages Router only: not supported by `init`; tell the developer |
 | `tsconfig.json` exists | yes | JavaScript-only: not supported by `init`; tell the developer |
-| `git status` | clean, or the developer agreed | create the branch `visual-cms-setup` |
+| `git status` | clean, or the developer agreed | create the branch `storio-editor-setup` |
 
 **Step 2. Find the admin panel.** Decide which case applies:
 
@@ -296,8 +296,8 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 **Step 3. Install the library.**
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.6.0
-npx visual-cms --version
+npm install github:MostofaSeum/storio-elements-editor#v1.0.0
+npx storio-editor --version
 ```
 
 Pass when the last command prints a version.
@@ -306,7 +306,7 @@ Pass when the last command prints a version.
 
 | Situation | Command |
 |---|---|
-| NO_ADMIN or EXTERNAL_ADMIN, files backend | `npx visual-cms init --yes` |
+| NO_ADMIN or EXTERNAL_ADMIN, files backend | `npx storio-editor init --yes` |
 | NEXT_ADMIN | add `--admin-path "<ADMIN_AREA>/cms"` |
 | Django backend | add `--django-dir <DJANGO_DIR>`, plus `--api-url <API_URL> --frontend-origin <FRONTEND_ORIGIN>` when they differ from the defaults |
 | The developer does not want the example page | add `--no-example` |
@@ -322,9 +322,9 @@ Pass when the command exits with code 0 and lists created and modified files. **
 
 **Step 6. Make the pages editable.** One page at a time, homepage first:
 
-1. `npx visual-cms scan <page file> --dry-run`. Read the list of texts. It moves only static text and `placeholder`/`alt` attributes; code, state and API data stay as they are.
+1. `npx storio-editor scan <page file> --dry-run`. Read the list of texts. It moves only static text and `placeholder`/`alt` attributes; code, state and API data stay as they are.
 2. If it reports a Server Component: when the page has no server-only code (not `async`, no `metadata`/`generateMetadata` export, no database, `fs` or server-only imports), re-run with `--add-use-client`. Otherwise create `components/<Name>View.tsx` with `'use client'`, move the page's JSX into it (keep the server code in the page and pass data as props), render `<NameView />` from the page, and scan the new file with `--page <key> --route <url>`.
-3. Run it without `--dry-run`, then `git diff` and `npx tsc --noEmit`. The page must render the same as before. If anything is wrong, restore the file from `<file>.visual-cms.bak`, remove the page entry from `cms.config.ts` and delete `content/<key>.json`.
+3. Run it without `--dry-run`, then `git diff` and `npx tsc --noEmit`. The page must render the same as before. If anything is wrong, restore the file from `<file>.storio-editor.bak`, remove the page entry from `cms.config.ts` and delete `content/<key>.json`.
 4. Required: give every small item its own pencil. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be inside its own `<CmsField>`. `scan` does this for static text. For images, icons and text kept in constants or arrays, add the current value to that section in `content/<page>.json`, read it with `usePageContent`, and wrap the element in `<CmsField path="..." label="...">` ([Edit single fields](#edit-single-fields)). For an icon, store its name and draw it through a small map of the icons the page already imports. The page must render the same as before.
    Leave these without their own pencil: live data from an API, a database or props; `alt` and `placeholder` values; and text inside `<title>`, `<option>` or `<textarea>`. Note each skipped item and the reason for the report in Step 8.
 5. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
@@ -333,7 +333,7 @@ Pass when the command exits with code 0 and lists created and modified files. **
 
 ```bash
 npx tsc --noEmit                      # exit code 0 (or: npm run build)
-npx visual-cms doctor                 # no FAIL lines
+npx storio-editor doctor                 # no FAIL lines
 npm run dev                           # start it in the background, wait until it is ready
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000<ADMIN_URL>"   # 200, or a redirect to the login page when the admin is protected. Not 404.
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/"             # 200
@@ -362,8 +362,8 @@ If you have a browser tool: open the CMS URL (with Django, sign in with a staff 
 **The quick way: `scan`.** For an existing page:
 
 ```bash
-npx visual-cms scan src/app/page.tsx --dry-run
-npx visual-cms scan src/app/page.tsx
+npx storio-editor scan src/app/page.tsx --dry-run
+npx storio-editor scan src/app/page.tsx
 ```
 
 It reads the file with your project's TypeScript compiler, finds its sections (`<header>`, `<section>`, `<footer>`, `<nav>`…, or the top-level blocks when there are none), and:
@@ -373,7 +373,7 @@ It reads the file with your project's TypeScript compiler, finds its sections (`
 - wraps each section in `<CmsSection>` and each moved page text in `<CmsField>` (no wrapper is rendered for visitors),
 - registers the page and its sections in `cms.config.ts`.
 
-It leaves code alone: state, props, API data, string literals inside expressions, `<code>`/`<pre>` blocks and anything inside an element marked `data-cms-ignore`. The page renders the same HTML as before (this is what the tests check). The original file is saved as `<file>.visual-cms.bak`, and the rewritten file is checked for syntax errors before anything is written.
+It leaves code alone: state, props, API data, string literals inside expressions, `<code>`/`<pre>` blocks and anything inside an element marked `data-cms-ignore`. The page renders the same HTML as before (this is what the tests check). The original file is saved as `<file>.storio-editor.bak`, and the rewritten file is checked for syntax errors before anything is written.
 
 Things to know:
 
@@ -419,7 +419,7 @@ pages: [
 ```tsx
 // components/HomeView.tsx  (client), rendered by app/page.tsx: export default function Page() { return <HomeView />; }
 'use client';
-import { CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 import type home from '@/content/home.json';
 
 export function HomeView() {
@@ -441,7 +441,7 @@ Tips:
 
 - `CmsSection` adds nothing for visitors. The outline and pencil only appear inside the CMS preview.
 - Each `sectionKey` must match a `key` in that page's `sections`.
-- Give list items an `id`. Name image fields like `image`, `logo`, `avatar` or `src` to get the image picker, and icon fields like `icon` to get the icon picker. To draw the chosen icon on the page, either map the names you offer to icons you import yourself (small bundle, recommended: `const ICONS = { Zap, Server }` then `ICONS[item.icon] ?? Zap`), or use `getDynamicIcon(name)` from `@brainicon/visual-cms/icons`, which can draw any icon but adds the whole lucide icon set (about 0.9 MB) to your public bundle.
+- Give list items an `id`. Name image fields like `image`, `logo`, `avatar` or `src` to get the image picker, and icon fields like `icon` to get the icon picker. To draw the chosen icon on the page, either map the names you offer to icons you import yourself (small bundle, recommended: `const ICONS = { Zap, Server }` then `ICONS[item.icon] ?? Zap`), or use `getDynamicIcon(name)` from `@brainicon/storio-elements-editor/icons`, which can draw any icon but adds the whole lucide icon set (about 0.9 MB) to your public bundle.
 - For sticky headers or banners, use `<CmsSection buttonPlacement="fixed">` so the pencil is not hidden.
 - To let editors control the page's SEO, add a `seo` section (`title`, `description`, `keywords`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `twitterCard`, `robots`) and use `getPageMetadata(cms, 'home', { storage })` in `generateMetadata`.
 - With the Django backend, use `import { storage } from '@/lib/cms-storage'` the same way; `init` already generates it for Django.
@@ -451,7 +451,7 @@ Tips:
 By default a pencil opens the whole section. To give one value its own pencil, wrap it in `<CmsField>` inside the `<CmsSection>`. The editor hovers that title, image or icon, clicks its small pencil, and sees a form with only that field:
 
 ```tsx
-import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 
 <CmsSection sectionKey="hero" title="Hero">
   <h1><CmsField path="title" label="Title">{hero.title}</CmsField></h1>
@@ -483,7 +483,7 @@ import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site
 Everything you tested on `localhost` works the same in production once these settings point at the real URLs. Check them with one command:
 
 ```bash
-npx visual-cms doctor --production --frontend-origin https://example.com --api-url https://api.example.com/api/cms
+npx storio-editor doctor --production --frontend-origin https://example.com --api-url https://api.example.com/api/cms
 ```
 
 It checks HTTPS, Secure cookies, that the site and the API share a site, CORS with credentials, `DEBUG = False`, that the API URL comes from an environment variable, that content is rendered on the server, and the file-backend pitfalls below. It exits with an error code when something is wrong, so you can run it in CI.
@@ -524,7 +524,7 @@ Use any database Django supports (PostgreSQL, MySQL…): the CMS is a normal mod
 
 ### Checklist
 
-- [ ] `npx visual-cms doctor --production …` reports no FAIL.
+- [ ] `npx storio-editor doctor --production …` reports no FAIL.
 - [ ] **File backend only: replace the dev-only `authorize()`** in `app/api/cms/[...path]/route.ts` with your real login check. Until then, editing works only under `next dev`, so a deployed site cannot be edited at all.
 - [ ] **Protect the CMS page.** Keep it inside your admin area, behind the same guard as your other admin pages.
 - [ ] **Check where content is stored.** `fileStorage()` writes `.cms/content.json` and `public/cms-uploads/`. That needs a disk that is writable and persistent: a VPS, or Docker with a volume. On Vercel or other serverless/read-only hosts the edits are lost, so use Django or a database-backed adapter.
@@ -548,28 +548,28 @@ Django keeps the content in its database and uses your Django logins.
 #### The one-command way (recommended)
 
 ```bash
-npx visual-cms init --django-dir <folder with manage.py> --frontend-origin http://localhost:3000
+npx storio-editor init --django-dir <folder with manage.py> --frontend-origin http://localhost:3000
 ```
 
 Use `--api-url` if Django is not at `http://localhost:8000/api/cms`. For the Django side the command does exactly this, and prints each step:
 
 | Step | File |
 |---|---|
-| installs `django-visual-cms` (from the copy inside the library package) and `django-cors-headers` | your Django virtual environment |
-| adds `"visual_cms"` and `"corsheaders"` to `INSTALLED_APPS` | `settings.py` |
+| installs `django-storio-elements-editor` (from the copy inside the library package) and `django-cors-headers` | your Django virtual environment |
+| adds `"storio_elements_editor"` and `"corsheaders"` to `INSTALLED_APPS` | `settings.py` |
 | adds `"corsheaders.middleware.CorsMiddleware"` as the first `MIDDLEWARE` entry | `settings.py` |
 | adds your frontend origin to `CSRF_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS`, sets `CORS_ALLOW_CREDENTIALS = True` | `settings.py` |
-| adds `path("api/cms/", include("visual_cms.urls"))` (and imports `include`) | root `urls.py` |
+| adds `path("api/cms/", include("storio_elements_editor.urls"))` (and imports `include`) | root `urls.py` |
 | sets `MEDIA_URL` and `MEDIA_ROOT` when missing, and serves uploaded images while `DEBUG = True` | `settings.py`, root `urls.py` |
 | runs `python manage.py migrate visual_cms` | database |
 
-A copy of each edited file is saved next to it as `*.visual-cms.bak`. Running the command again changes nothing. If a file has an unusual shape (for example `INSTALLED_APPS` built by code), that step is skipped and the exact lines to add are printed under "Still to do by hand". `django-cors-headers` is needed because the Next.js site and Django run on different ports; if the frontend reaches Django through the same origin (a reverse proxy or a Next.js rewrite), pass `--no-cors` to the Django helper (see below) to skip it.
+A copy of each edited file is saved next to it as `*.storio-editor.bak`. Running the command again changes nothing. If a file has an unusual shape (for example `INSTALLED_APPS` built by code), that step is skipped and the exact lines to add are printed under "Still to do by hand". `django-cors-headers` is needed because the Next.js site and Django run on different ports; if the frontend reaches Django through the same origin (a reverse proxy or a Next.js rewrite), pass `--no-cors` to the Django helper (see below) to skip it.
 
 You can also run the Django part on its own, without the Next.js part:
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"
-python -m visual_cms setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
+pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"
+python -m storio_elements_editor setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
 Then create an editor: any Django user with **staff** status can edit (`python manage.py createsuperuser` makes one).
@@ -598,7 +598,7 @@ adapter: djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers }),
 ```tsx
 // app/admin/layout.tsx
 'use client';
-import { CmsAuthGate } from '@brainicon/visual-cms/admin';
+import { CmsAuthGate } from '@brainicon/storio-elements-editor/admin';
 import { cmsLogin } from '@/cms.config';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -607,7 +607,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 // app/admin/login/page.tsx
 'use client';
-import { CmsLogin } from '@brainicon/visual-cms/admin';
+import { CmsLogin } from '@brainicon/storio-elements-editor/admin';
 import { cmsLogin } from '@/cms.config';
 
 export default function LoginPage() {
@@ -617,7 +617,7 @@ export default function LoginPage() {
 
 Add `<CmsLogoutButton auth={cmsLogin} redirectTo="/admin/login" />` to your admin header. The gate only hides the *screens*: protect your own admin API on the server too (a guard in the browser cannot protect an endpoint).
 
-**Settings** (`VISUAL_CMS` in Django `settings.py`, all optional):
+**Settings** (`STORIO_EDITOR` in Django `settings.py`, all optional):
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -630,13 +630,13 @@ Add `<CmsLogoutButton auth={cmsLogin} redirectTo="/admin/login" />` to your admi
 **Other ways to sign in.**
 
 - **Django's own login page** (same domain only): run `init` with `--auth session`, or remove `cmsAuth` from the config. Editors then log in at the Django admin first and the CMS uses that session.
-- **Your own login system (JWT, SSO…)**: write `can_edit(request)` for Django, set it as `VISUAL_CMS["AUTHORIZE"]`, and send your token with `djangoAdapter({ baseUrl, headers: () => ({ Authorization: \`Bearer ${yourToken()}\` }) })`. A request that carries the library's own token is recognised first; anything else reaches your function with the normal `request`.
+- **Your own login system (JWT, SSO…)**: write `can_edit(request)` for Django, set it as `STORIO_EDITOR["AUTHORIZE"]`, and send your token with `djangoAdapter({ baseUrl, headers: () => ({ Authorization: \`Bearer ${yourToken()}\` }) })`. A request that carries the library's own token is recognised first; anything else reaches your function with the normal `request`.
 
-**Existing project?** Update the package and the npm library ([section 9](#9-updating)), then in `cms.config.ts` add `import { cmsAuth } from '@brainicon/visual-cms/adapters'`, `export const cmsLogin = cmsAuth({ baseUrl: <your API URL> })` and `headers: cmsLogin.headers` in `djangoAdapter(...)`, and wrap the CMS screen in `<CmsAuthGate auth={cmsLogin}>`. `npx visual-cms doctor` checks the result.
+**Existing project?** Update the package and the npm library ([section 9](#9-updating)), then in `cms.config.ts` add `import { cmsAuth } from '@brainicon/storio-elements-editor/adapters'`, `export const cmsLogin = cmsAuth({ baseUrl: <your API URL> })` and `headers: cmsLogin.headers` in `djangoAdapter(...)`, and wrap the CMS screen in `<CmsAuthGate auth={cmsLogin}>`. `npx storio-editor doctor` checks the result.
 
 #### By hand
 
-Install the package (`pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"`), add `"visual_cms"` to `INSTALLED_APPS`, add `path("api/cms/", include("visual_cms.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-visual-cms/README.md](django-visual-cms/README.md). On the frontend run `npx visual-cms init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"`), add `"storio_elements_editor"` to `INSTALLED_APPS`, add `path("api/cms/", include("storio_elements_editor.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-storio-elements-editor/README.md](django-storio-elements-editor/README.md). On the frontend run `npx storio-editor init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -670,7 +670,7 @@ interface CmsStorageAdapter {
 }
 ```
 
-`memoryAdapter()` (in `@brainicon/visual-cms/adapters`) is a short reference implementation.
+`memoryAdapter()` (in `@brainicon/storio-elements-editor/adapters`) is a short reference implementation.
 
 ---
 
@@ -678,15 +678,15 @@ interface CmsStorageAdapter {
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| anything does not work | many possible causes | run `npx visual-cms doctor`: it checks the common ones and says what to fix |
+| anything does not work | many possible causes | run `npx storio-editor doctor`: it checks the common ones and says what to fix |
 | Django: "Failed to save section changes" | your sign-in expired (tokens last 12 hours), or you are not a **staff** user (401), or with `--auth session` the CSRF origin is missing (403) | reload the CMS screen and sign in again; with `--auth session` log in at the Django admin (same host name as the site, `localhost` not `127.0.0.1`) and check `CSRF_TRUSTED_ORIGINS` |
 | the sign-in form says "Invalid username or password" | wrong credentials, or the account is not active | use a Django **staff** account; `python manage.py createsuperuser` makes one |
 | the sign-in form says "This account is not allowed to edit the site" | the account is not staff (or your `AUTHORIZE` function says no) | set `is_staff` on the user in the Django admin |
 | the sign-in form says "Too many failed attempts" | 5 wrong passwords for that username from this address | wait 5 minutes (`LOGIN_LOCKOUT_SECONDS`) |
-| the sign-in form says "Token login is not available on this server" | `django-visual-cms` is older than 0.4 or `TOKEN_LOGIN` is `False` | upgrade the package ([section 9](#9-updating)); `npx visual-cms doctor` says which |
-| `npx visual-cms` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/Public-Site-CMS#v0.6.0` in the project root, then retry |
-| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/Public-Site-CMS#v0.6.0` |
-| the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/visual-cms/dist";` below `@import "tailwindcss";` |
+| the sign-in form says "Token login is not available on this server" | `django-storio-elements-editor` is older than 0.4 or `TOKEN_LOGIN` is `False` | upgrade the package ([section 9](#9-updating)); `npx storio-editor doctor` says which |
+| `npx storio-editor` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/storio-elements-editor#v1.0.0` in the project root, then retry |
+| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/storio-elements-editor#v1.0.0` |
+| the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/storio-elements-editor/dist";` below `@import "tailwindcss";` |
 | the preview shows "Loading…" forever, or is blank | the page's `route` in `cms.config.ts` is wrong, the page throws an error, a redirect catches the preview, or the site blocks being framed | open the route in a normal tab; check `middleware.ts` ([below](#redirects-and-the-preview-iframe)); remove `X-Frame-Options: DENY` |
 | hovering shows no pencil | the block is not wrapped in `<CmsSection>`, `CmsProviders` is missing from the root layout, or Edit Mode is off | wrap the block; check `app/layout.tsx`; turn Edit Mode on in the toolbar |
 | hovering a title or image shows only the section pencil | the value is not wrapped in `<CmsField>`, or the `<CmsField>` is outside its `<CmsSection>` (the browser console warns about this) | wrap the value inside its section ([Edit single fields](#edit-single-fields)) |
@@ -694,11 +694,11 @@ interface CmsStorageAdapter {
 | clicking the pencil says "Section '…' is not configured for this page" | the `sectionKey` is not in that page's `sections` | add `{ key: '…', label: '…' }` to the page in `cms.config.ts` |
 | saving fails with 401 | `authorize()` returned false. The generated one allows editing only under `next dev` | implement your login check ([Case B step 4](#case-b-your-admin-panel-is-part-of-this-nextjs-app)); log in |
 | saving fails with 404 "Unknown page" | the page key is not in `cms.config.ts` `pages` | register the page |
-| saved edits do not show on the site | it was saved as a draft, the page or a CDN caches the HTML, or (with `cacheComponents`) the one-minute cache has not refreshed yet | use **Save & Publish**; check your CDN; wait a minute. Run `npx visual-cms init` again if `components/CmsProviders.tsx` does not use `getAllPageContent` (older installs) |
+| saved edits do not show on the site | it was saved as a draft, the page or a CDN caches the HTML, or (with `cacheComponents`) the one-minute cache has not refreshed yet | use **Save & Publish**; check your CDN; wait a minute. Run `npx storio-editor init` again if `components/CmsProviders.tsx` does not use `getAllPageContent` (older installs) |
 | an uploaded image is broken on the page, and its `/_next/image` request answers `"url" parameter is not allowed` | the page shows it with `next/image`, and Next.js only loads images from hosts you allow | add the Django host to `next.config`: `images: { remotePatterns: [{ protocol: 'https', hostname: 'api.example.com', pathname: '/media/**' }] }`, then rebuild |
 | edits vanish after a deploy | file storage on a host with a temporary disk | use Django or a database adapter ([section 5](#5-before-you-go-live)) |
 | TypeScript error importing a `.json` file | `resolveJsonModule` is off | set `"resolveJsonModule": true` in `tsconfig.json` |
-| `Module not found: @brainicon/visual-cms/...` | the library is not installed, or the install is stale | reinstall it ([section 9](#9-updating)), delete `.next`, restart |
+| `Module not found: @brainicon/storio-elements-editor/...` | the library is not installed, or the install is stale | reinstall it ([section 9](#9-updating)), delete `.next`, restart |
 | `init` says "not a Next.js project", "Pages Router only" or "needs a TypeScript project" | unsupported project type | follow [Other setups](#other-setups-manual) |
 | Django: 403 on save | missing or stale CSRF token | use `djangoAdapter` (not `restAdapter`) and see the CORS/CSRF settings in the Django README |
 | `npm install github:...` fails | `git` is not installed, or no access to github.com | install git and check the network; the repository is public |
@@ -707,7 +707,7 @@ interface CmsStorageAdapter {
 
 ## 8. Reference
 
-### `visual-cms init` options
+### `storio-editor init` options
 
 | Option | Meaning |
 |---|---|
@@ -725,11 +725,11 @@ interface CmsStorageAdapter {
 | `--cwd <dir>` | project folder (default: current folder) |
 | `-h, --help`, `-v, --version` | help, version |
 
-### `visual-cms scan <file>`
+### `storio-editor scan <file>`
 
 Makes an existing page editable ([section 4](#4-make-your-own-pages-editable)). Options: `--page <key>`, `--route <path>`, `--title <text>`, `--component <Name>` (default: the default export), `--add-use-client`, `--dry-run`. It refuses files that already use `usePageContent`, dynamic routes without `--route`, and page keys or content files that already exist.
 
-### `visual-cms add-page <key>`
+### `storio-editor add-page <key>`
 
 Creates an editable page in one step: `content/<key>.json` (default text, one object per section), `components/<Name>View.tsx` (with a `<CmsSection>` per section and a `<CmsField>` per text), `app/<route>/page.tsx` (renders that view; the root layout already loads the saved content), and registers the page in `cms.config.ts`. It refuses to overwrite existing files.
 
@@ -742,7 +742,7 @@ Creates an editable page in one step: `content/<key>.json` (default text, one ob
 
 Afterwards, replace the placeholder markup in the generated view with your own design (keep the `<CmsSection>` and `<CmsField>` wrappers), and put real default text in the JSON file.
 
-### `visual-cms doctor`
+### `storio-editor doctor`
 
 Checks the setup and says exactly what to fix: Next.js and the packages, Tailwind v4 and the `@source` line, `cms.config.ts`, the provider, the CMS screen, and (for Django) whether the API answers, whether Django allows your origin with cookies (CORS), and whether saving is allowed by the preflight. It exits with an error code when something is wrong, so it also works in CI. Options: `--api-url <url>` (check another Django URL), `--frontend-origin <url>`, and `--production` for the deployment checks in [section 5](#deploying-to-production). With the token login it also checks that CORS allows the `Authorization` header and that the server has the sign-in endpoint. It cannot check your username and password: if the sign-in form refuses you, use a Django staff account.
 
@@ -752,13 +752,13 @@ Checks the setup and says exactly what to fix: Next.js and the packages, Tailwin
 
 For a project `init` does not support, or if you prefer to do it by hand. This is what `init` generates.
 
-**1.** Install the library ([Step 1](#step-1-install-the-library-from-github)) and `npm install lucide-react react-hot-toast`. In your global CSS, below `@import "tailwindcss";`, add `@source "../node_modules/@brainicon/visual-cms/dist";` (the path is relative to the CSS file).
+**1.** Install the library ([Step 1](#step-1-install-the-library-from-github)) and `npm install lucide-react react-hot-toast`. In your global CSS, below `@import "tailwindcss";`, add `@source "../node_modules/@brainicon/storio-elements-editor/dist";` (the path is relative to the CSS file).
 
 **2.** `cms.config.ts`:
 
 ```ts
-import { defineCms } from '@brainicon/visual-cms';
-import { restAdapter } from '@brainicon/visual-cms/adapters';
+import { defineCms } from '@brainicon/storio-elements-editor';
+import { restAdapter } from '@brainicon/storio-elements-editor/adapters';
 import home from './content/home.json';
 
 export const cms = defineCms({
@@ -773,13 +773,13 @@ export const cms = defineCms({
 
 ```ts
 // lib/cms-storage.ts
-import { fileStorage } from '@brainicon/visual-cms/next';
+import { fileStorage } from '@brainicon/storio-elements-editor/next';
 export const storage = fileStorage();
 ```
 
 ```ts
 // app/api/cms/[...path]/route.ts
-import { createCmsRouteHandler } from '@brainicon/visual-cms/next';
+import { createCmsRouteHandler } from '@brainicon/storio-elements-editor/next';
 import { storage } from '@/lib/cms-storage';
 import { cms } from '@/cms.config';
 
@@ -795,7 +795,7 @@ export const { GET, PUT, DELETE, POST } = createCmsRouteHandler({
 ```tsx
 // components/CmsProviders.tsx
 'use client';
-import { CmsProvider } from '@brainicon/visual-cms/site';
+import { CmsProvider } from '@brainicon/storio-elements-editor/site';
 import { cms } from '@/cms.config';
 
 export function CmsProviders({ children }: { children: React.ReactNode }) {
@@ -808,7 +808,7 @@ export function CmsProviders({ children }: { children: React.ReactNode }) {
 ```tsx
 // app/admin/cms/page.tsx
 'use client';
-import { CmsStudio } from '@brainicon/visual-cms/admin';
+import { CmsStudio } from '@brainicon/storio-elements-editor/admin';
 import { cms } from '@/cms.config';
 
 export default function CmsPage() {
@@ -867,9 +867,9 @@ There is no schema to write. The editor reads the section's content and picks a 
 | `isCmsPreviewRequest(request, { studioPath? })` | `/next` | let the preview through middleware |
 | `restAdapter`, `djangoAdapter`, `memoryAdapter` | `/adapters` | storage adapters for the browser |
 | `cmsAuth({ baseUrl, storageKey?, storage? })` | `/adapters` | token sign-in for the Django backend: `login`, `logout`, `check`, `getToken`, `headers`. `storage`: `'local'` (default), `'session'` (forgotten when the browser closes), `'memory'` |
-| `defineCms`, types, merge helpers | `@brainicon/visual-cms` | configuration and types |
+| `defineCms`, types, merge helpers | `@brainicon/storio-elements-editor` | configuration and types |
 
-All imports are `@brainicon/visual-cms` plus the path shown (for example `@brainicon/visual-cms/admin`).
+All imports are `@brainicon/storio-elements-editor` plus the path shown (for example `@brainicon/storio-elements-editor/admin`).
 
 ### Security
 
@@ -884,7 +884,7 @@ All imports are `@brainicon/visual-cms` plus the path shown (for example `@brain
 The CMS shows your real pages in an iframe. If your `middleware.ts` redirects some requests (to a login page, an admin host, or by locale), let the preview through:
 
 ```ts
-import { isCmsPreviewRequest } from '@brainicon/visual-cms/next';
+import { isCmsPreviewRequest } from '@brainicon/storio-elements-editor/next';
 
 if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
   // ...your redirect
@@ -898,26 +898,44 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 Install a newer release by its tag, then restart the dev server:
 
 ```bash
-npm install github:MostofaSeum/Public-Site-CMS#v0.6.0     # use the new tag
+npm install github:MostofaSeum/storio-elements-editor#v1.0.0     # use the new tag
 rm -rf .next                                               # PowerShell: Remove-Item -Recurse -Force .next
 ```
 
-With Django, update the Python package too: run `npx visual-cms init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/Public-Site-CMS.git@v0.6.0#subdirectory=django-visual-cms"`.
+With Django, update the Python package too: run `npx storio-editor init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"`.
+
+### Upgrading from `@brainicon/visual-cms`
+
+Version 1.0.0 renamed the library from Visual CMS to **Storio Elements Editor**. Components, the config file, saved content and the database stay the same; only the names below changed.
+
+| Before | Now |
+| --- | --- |
+| `@brainicon/visual-cms` (npm package and imports) | `@brainicon/storio-elements-editor` |
+| `npx visual-cms ...` | `npx storio-editor ...` |
+| `django-visual-cms` (pip package) | `django-storio-elements-editor` |
+| `"visual_cms"` in `INSTALLED_APPS` | `"storio_elements_editor"` |
+| `include("visual_cms.urls")` | `include("storio_elements_editor.urls")` |
+| `VISUAL_CMS = {...}` in settings | `STORIO_EDITOR = {...}` (the old name still works) |
+
+1. `npm uninstall @brainicon/visual-cms`, then install the new tag as shown above.
+2. Replace `@brainicon/visual-cms` with `@brainicon/storio-elements-editor` in every import and in the `@source` line of your global CSS.
+3. With Django: `pip uninstall django-visual-cms`, then run `npx storio-editor init --django-dir <folder>`. It installs the new package and updates `INSTALLED_APPS` and `urls.py` for you. No migration is needed: the existing table and records are kept.
+4. Delete `.next` and restart the dev server.
 
 ### Development
 
 ```bash
-git clone https://github.com/MostofaSeum/Public-Site-CMS.git
-cd Public-Site-CMS
+git clone https://github.com/MostofaSeum/storio-elements-editor.git
+cd storio-elements-editor
 npm install
 npm run typecheck
 npm test
 npm run build
 ```
 
-`dist/` is committed, because installing from GitHub uses it directly (there is no build step on the user's machine). **Run `npm run build` and commit `dist/` together with every source change.** To release: update the version in `package.json`, `package-lock.json`, `django-visual-cms/pyproject.toml`, `django-visual-cms/visual_cms/__init__.py`, both READMEs and `examples/next-demo/package.json`. Run `npm run build`, confirm it exits with code 0 and that every file listed under `exports` exists, stage the build with `git add -A dist`, commit, then tag and push: `git tag vX.Y.Z && git push origin main vX.Y.Z`.
+`dist/` is committed, because installing from GitHub uses it directly (there is no build step on the user's machine). **Run `npm run build` and commit `dist/` together with every source change.** To release: update the version in `package.json`, `package-lock.json`, `django-storio-elements-editor/pyproject.toml`, `django-storio-elements-editor/storio_elements_editor/__init__.py`, both READMEs and `examples/next-demo/package.json`. Run `npm run build`, confirm it exits with code 0 and that every file listed under `exports` exists, stage the build with `git add -A dist`, commit, then tag and push: `git tag vX.Y.Z && git push origin main vX.Y.Z`.
 
-The Django package has its own tests: `cd django-visual-cms && python -m django test tests --settings=tests.settings` (set `PYTHONPATH=.` first).
+The Django package has its own tests: `cd django-storio-elements-editor && python -m django test tests --settings=tests.settings` (set `PYTHONPATH=.` first).
 
 ## License
 

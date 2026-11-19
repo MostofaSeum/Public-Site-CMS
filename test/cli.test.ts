@@ -73,9 +73,9 @@ describe('addImportLine', () => {
 describe('addTailwindSource', () => {
   it('adds @source under the tailwind import and is idempotent', () => {
     const css = '@import "tailwindcss";\n\n:root { --a: 1; }\n';
-    const once = addTailwindSource(css, '../node_modules/@brainicon/visual-cms/dist');
+    const once = addTailwindSource(css, '../node_modules/@brainicon/storio-elements-editor/dist');
     expect(once.status).toBe('changed');
-    expect(once.source).toBe('@import "tailwindcss";\n@source "../node_modules/@brainicon/visual-cms/dist";\n\n:root { --a: 1; }\n');
+    expect(once.source).toBe('@import "tailwindcss";\n@source "../node_modules/@brainicon/storio-elements-editor/dist";\n\n:root { --a: 1; }\n');
     expect(addTailwindSource(once.source, 'x').status).toBe('already');
   });
 
@@ -96,7 +96,7 @@ describe('addGitignoreEntries', () => {
   });
 
   it('handles a file without a trailing newline', () => {
-    expect(addGitignoreEntries('node_modules', ['.cms']).source).toBe('node_modules\n\n# visual-cms content and uploads\n.cms\n');
+    expect(addGitignoreEntries('node_modules', ['.cms']).source).toBe('node_modules\n\n# storio-editor content and uploads\n.cms\n');
   });
 });
 
@@ -163,7 +163,7 @@ describe('runInit', () => {
   };
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-init-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-init-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -189,7 +189,7 @@ describe('runInit', () => {
     }
     expect(files['app/layout.tsx']).toContain('<CmsProviders>{children}</CmsProviders>');
     expect(files['app/layout.tsx']).toContain("from '@/components/CmsProviders'");
-    expect(files['app/globals.css']).toContain('@source "../node_modules/@brainicon/visual-cms/dist";');
+    expect(files['app/globals.css']).toContain('@source "../node_modules/@brainicon/storio-elements-editor/dist";');
     expect(files['.gitignore']).toContain('.cms');
     expect(files['cms.config.ts']).toContain("restAdapter({ baseUrl: '/api/cms' })");
     expect(files['cms.config.ts']).toContain("from '@/content/cms-example.json'");
@@ -198,7 +198,7 @@ describe('runInit', () => {
     expect(report.adminUrl).toBe('/admin/cms');
     expect(report.exampleUrl).toBe('/cms-example');
     // Missing library + peers are reported, and the dev is told about authorize().
-    expect(report.installCommand).toBe('npm install @brainicon/visual-cms lucide-react react-hot-toast');
+    expect(report.installCommand).toBe('npm install @brainicon/storio-elements-editor lucide-react react-hot-toast');
     expect(report.warnings.join(' ')).toContain('authorize()');
   });
 
@@ -239,9 +239,9 @@ describe('runInit', () => {
     expect(fs.existsSync(path.join(dir, 'src/cms.config.ts'))).toBe(true);
     expect(fs.existsSync(path.join(dir, 'src/app/admin/cms/page.tsx'))).toBe(true);
     expect(fs.readFileSync(path.join(dir, 'src/app/layout.tsx'), 'utf8')).toContain("from '@/components/CmsProviders'");
-    expect(fs.readFileSync(path.join(dir, 'src/app/globals.css'), 'utf8')).toContain('@source "../../node_modules/@brainicon/visual-cms/dist";');
+    expect(fs.readFileSync(path.join(dir, 'src/app/globals.css'), 'utf8')).toContain('@source "../../node_modules/@brainicon/storio-elements-editor/dist";');
 
-    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-init-'));
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-init-'));
     try {
       makeProject(other, { alias: false });
       runInit({ ...options(), cwd: other });
@@ -263,7 +263,7 @@ describe('runInit', () => {
     expect(files['lib/cms-storage.ts']).toContain('cms.adapter');
     expect(files).not.toHaveProperty(['app/api/cms/[...path]/route.ts']);
     expect(files).not.toHaveProperty(['app/cms-example/page.tsx']);
-    expect(report.manual.join('\n')).toContain('django-visual-cms');
+    expect(report.manual.join('\n')).toContain('django-storio-elements-editor');
     expect(report.exampleUrl).toBeNull();
   });
 
@@ -327,7 +327,7 @@ describe('runInit', () => {
     makeProject(dir, { tailwind: '^3.4.0' });
     fs.writeFileSync(path.join(dir, 'middleware.ts'), 'export {};\n');
     const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
-    pkg.dependencies = { ...pkg.dependencies, '@brainicon/visual-cms': '0.1.0', 'lucide-react': '1', 'react-hot-toast': '2' };
+    pkg.dependencies = { ...pkg.dependencies, '@brainicon/storio-elements-editor': '0.1.0', 'lucide-react': '1', 'react-hot-toast': '2' };
     fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg));
     const report = runInit(options());
     expect(report.warnings.join(' ')).toContain('Tailwind CSS v3');
@@ -353,14 +353,14 @@ describe('runInit', () => {
   it('picks the package manager from the lockfile', () => {
     makeProject(dir);
     fs.writeFileSync(path.join(dir, 'pnpm-lock.yaml'), '');
-    expect(runInit(options()).installCommand).toBe('pnpm add @brainicon/visual-cms lucide-react react-hot-toast');
+    expect(runInit(options()).installCommand).toBe('pnpm add @brainicon/storio-elements-editor lucide-react react-hot-toast');
   });
 });
 
 describe('findDjangoProject / findPython', () => {
   let root: string;
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-dj-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-dj-'));
   });
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
@@ -392,7 +392,7 @@ describe('findDjangoProject / findPython', () => {
     const found = findPython(path.join(root, 'backend'));
     expect(found.venv).toBe(true);
     expect(found.command).toBe(path.join(root, 'venv', bin));
-    expect(findPython(fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-none-'))).venv).toBe(false);
+    expect(findPython(fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-none-'))).venv).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-/** Source text of the files `visual-cms init` creates. */
+/** Source text of the files `storio-editor init` creates. */
 
 export type Backend = 'files' | 'django';
 
@@ -10,9 +10,9 @@ export function cmsConfig(opts: { backend: Backend; apiUrl: string; example: boo
   const adapterImport =
     opts.backend === 'django'
       ? token
-        ? "import { cmsAuth, djangoAdapter } from '@brainicon/visual-cms/adapters';"
-        : "import { djangoAdapter } from '@brainicon/visual-cms/adapters';"
-      : "import { restAdapter } from '@brainicon/visual-cms/adapters';";
+        ? "import { cmsAuth, djangoAdapter } from '@brainicon/storio-elements-editor/adapters';"
+        : "import { djangoAdapter } from '@brainicon/storio-elements-editor/adapters';"
+      : "import { restAdapter } from '@brainicon/storio-elements-editor/adapters';";
   const adapter =
     opts.backend === 'django'
       ? token
@@ -56,7 +56,7 @@ export const cmsLogin = cmsAuth({ baseUrl: API_URL });
     //   sections: [{ key: 'hero', label: 'Hero' }],
     // },`;
 
-  return `import { defineCms } from '@brainicon/visual-cms';
+  return `import { defineCms } from '@brainicon/storio-elements-editor';
 ${adapterImport}
 ${opts.example ? `import example from '${opts.exampleJsonImport}';\n` : ''}${apiSetup}
 export const cms = defineCms({
@@ -87,7 +87,7 @@ export const exampleContentJson = `{
 `;
 
 export function filesStorage(): string {
-  return `import { fileStorage } from '@brainicon/visual-cms/next';
+  return `import { fileStorage } from '@brainicon/storio-elements-editor/next';
 
 // Edits are saved to .cms/content.json and uploads to public/cms-uploads.
 // Fine for local development and a single server. On read-only or multi-instance
@@ -105,7 +105,7 @@ export const storage = cms.adapter;
 }
 
 export function apiRoute(opts: { storageImport: string; configImport: string }): string {
-  return `import { createCmsRouteHandler } from '@brainicon/visual-cms/next';
+  return `import { createCmsRouteHandler } from '@brainicon/storio-elements-editor/next';
 import { storage } from '${opts.storageImport}';
 import { cms } from '${opts.configImport}';
 
@@ -124,7 +124,7 @@ export const { GET, PUT, DELETE, POST } = createCmsRouteHandler({
 export function providersV1(configImport: string): string {
   return `'use client';
 
-import { CmsProvider } from '@brainicon/visual-cms/site';
+import { CmsProvider } from '@brainicon/storio-elements-editor/site';
 import { cms } from '${configImport}';
 
 export function CmsProviders({ children }: { children: React.ReactNode }) {
@@ -170,7 +170,7 @@ export async function CmsProviders({ children }: { children: React.ReactNode }) 
 }`;
 
   return `${imports}
-import { getAllPageContent } from '@brainicon/visual-cms/next';
+import { getAllPageContent } from '@brainicon/storio-elements-editor/next';
 import { cms } from '${opts.configImport}';
 import { storage } from '${opts.storageImport}';
 import { CmsClientProviders } from '${opts.clientImport}';
@@ -184,7 +184,7 @@ ${loader}
 export function clientProviders(configImport: string): string {
   return `'use client';
 
-import { CmsProvider } from '@brainicon/visual-cms/site';
+import { CmsProvider } from '@brainicon/storio-elements-editor/site';
 import { cms } from '${configImport}';
 
 export function CmsClientProviders({
@@ -207,7 +207,7 @@ export function adminPage(configImport: string, auth?: { mode: AuthMode; backend
   if (auth && auth.backend === 'django' && auth.mode === 'token') {
     return `'use client';
 
-import { CmsAuthGate, CmsStudio } from '@brainicon/visual-cms/admin';
+import { CmsAuthGate, CmsStudio } from '@brainicon/storio-elements-editor/admin';
 import { cms, cmsLogin } from '${configImport}';
 
 // Editors must sign in (Django staff username and password) before the CMS screen shows.
@@ -222,7 +222,7 @@ export default function CmsPage() {
   }
   return `'use client';
 
-import { CmsStudio } from '@brainicon/visual-cms/admin';
+import { CmsStudio } from '@brainicon/storio-elements-editor/admin';
 import { cms } from '${configImport}';
 
 export default function CmsPage() {
@@ -235,7 +235,7 @@ export function adminLayout(opts: { href: string }): string {
   return `'use client';
 
 import Link from 'next/link';
-import { CmsNavButton } from '@brainicon/visual-cms/admin';
+import { CmsNavButton } from '@brainicon/storio-elements-editor/admin';
 
 // A minimal admin shell. If you already have an admin layout, delete this file and
 // put the <CmsNavButton> line into your own menu instead.
@@ -267,7 +267,7 @@ export default function CmsExamplePage() {
 export function exampleView(jsonImport: string): string {
   return `'use client';
 
-import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
 import type example from '${jsonImport}';
 
 type ExampleContent = typeof example;

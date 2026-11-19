@@ -6,7 +6,7 @@ from unittest import mock
 
 from django.test import SimpleTestCase
 
-from visual_cms import setup_cmd as s
+from storio_elements_editor import setup_cmd as s
 
 ORIGIN = "http://localhost:3000"
 
@@ -51,7 +51,7 @@ class InstalledAppsTests(SimpleTestCase):
         text, status = s.patch_installed_apps(SETTINGS_STD)
         self.assertEqual(status, "changed")
         self.assertIn("'django.contrib.auth',  # auth", text)
-        self.assertIn('    "visual_cms",\n]', text)
+        self.assertIn('    "storio_elements_editor",\n]', text)
         compile(text, "settings", "exec")
 
     def test_idempotent(self):
@@ -63,7 +63,7 @@ class InstalledAppsTests(SimpleTestCase):
     def test_one_line_list_and_missing_trailing_comma(self):
         text, status = s.patch_installed_apps("INSTALLED_APPS = ['a', 'b']\n")
         self.assertEqual(status, "changed")
-        self.assertEqual(text, "INSTALLED_APPS = ['a', 'b', \"visual_cms\"]\n")
+        self.assertEqual(text, "INSTALLED_APPS = ['a', 'b', \"storio_elements_editor\"]\n")
         text, _ = s.patch_installed_apps("INSTALLED_APPS = [\n    'a',\n    'b'\n]\n")
         compile(text, "settings", "exec")
 
@@ -80,11 +80,16 @@ class InstalledAppsTests(SimpleTestCase):
         text, status = s.patch_installed_apps(src)
         self.assertEqual(status, "changed")
         compile(text, "settings", "exec")
-        self.assertIn('"visual_cms"', text)
+        self.assertIn('"storio_elements_editor"', text)
 
     def test_apps_config_path_counts_as_installed(self):
-        _, status = s.patch_installed_apps("INSTALLED_APPS = [\n    'visual_cms.apps.VisualCmsConfig',\n]\n")
+        _, status = s.patch_installed_apps("INSTALLED_APPS = [\n    'storio_elements_editor.apps.StorioElementsEditorConfig',\n]\n")
         self.assertEqual(status, "already")
+
+    def test_upgrades_the_app_name_from_before_the_rename(self):
+        text, status = s.patch_installed_apps("INSTALLED_APPS = [\n    'a',\n    'visual_cms.apps.VisualCmsConfig',\n]\n")
+        self.assertEqual(status, "changed")
+        self.assertEqual(text, 'INSTALLED_APPS = [\n    \'a\',\n    "storio_elements_editor",\n]\n')
 
     def test_not_a_list_fails_cleanly(self):
         _, status = s.patch_installed_apps("INSTALLED_APPS = get_apps()\n")
@@ -120,8 +125,13 @@ class UrlsTests(SimpleTestCase):
         text, status = s.patch_urls(URLS_STD)
         self.assertEqual(status, "changed")
         self.assertIn("from django.urls import include, path", text)
-        self.assertIn('path("api/cms/", include("visual_cms.urls")),', text)
+        self.assertIn('path("api/cms/", include("storio_elements_editor.urls")),', text)
         compile(text, "urls", "exec")
+
+    def test_upgrades_the_include_from_before_the_rename(self):
+        text, status = s.patch_urls('urlpatterns = [path("api/cms/", include(\'visual_cms.urls\'))]\n')
+        self.assertEqual(status, "changed")
+        self.assertEqual(text, 'urlpatterns = [path("api/cms/", include("storio_elements_editor.urls"))]\n')
 
     def test_idempotent(self):
         once, _ = s.patch_urls(URLS_STD)
@@ -240,7 +250,7 @@ class ProjectTests(SimpleTestCase):
         report = s.run_setup(root, [ORIGIN], migrate=False)
         self.assertTrue(any("django-cors-headers" in w for w in report.warnings))
         self.assertTrue(any("django-cors-headers" in m for m in report.manual))
-        self.assertIn('"visual_cms"', (root / "proj" / "settings.py").read_text())
+        self.assertIn('"storio_elements_editor"', (root / "proj" / "settings.py").read_text())
 
     def test_no_cors_flag_leaves_cors_alone(self):
         root = make_project()
@@ -253,7 +263,7 @@ class ProjectTests(SimpleTestCase):
         before = (root / "proj" / "settings.py").read_text()
         report = s.run_setup(root, [ORIGIN], dry_run=True)
         self.assertEqual((root / "proj" / "settings.py").read_text(), before)
-        self.assertFalse(list(root.rglob("*.visual-cms.bak")))
+        self.assertFalse(list(root.rglob("*.storio-editor.bak")))
         self.assertTrue(report.done)
 
     def test_full_run_edits_files_and_keeps_backup(self):
@@ -261,13 +271,13 @@ class ProjectTests(SimpleTestCase):
         report = s.run_setup(root, [ORIGIN], migrate=False)
         settings = (root / "proj" / "settings.py").read_text()
         urls = (root / "proj" / "urls.py").read_text()
-        self.assertIn('"visual_cms"', settings)
+        self.assertIn('"storio_elements_editor"', settings)
         self.assertIn(ORIGIN, settings)
-        self.assertIn("visual_cms.urls", urls)
+        self.assertIn("storio_elements_editor.urls", urls)
         self.assertIn("MEDIA_ROOT", settings)
         self.assertIn("static(settings.MEDIA_URL", urls)
-        self.assertEqual((root / "proj" / "settings.py.visual-cms.bak").read_text(), SETTINGS_STD)
-        self.assertEqual((root / "proj" / "urls.py.visual-cms.bak").read_text(), URLS_STD)
+        self.assertEqual((root / "proj" / "settings.py.storio-editor.bak").read_text(), SETTINGS_STD)
+        self.assertEqual((root / "proj" / "urls.py.storio-editor.bak").read_text(), URLS_STD)
         compile(settings, "s", "exec")
         compile(urls, "u", "exec")
         # No corsheaders in this project, so the CORS requirement is reported instead of edited.

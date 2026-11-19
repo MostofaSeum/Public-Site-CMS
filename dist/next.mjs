@@ -4,7 +4,7 @@ import {
   findPage,
   isValidKey,
   mergePageContent
-} from "./chunk-INI5NYLW.mjs";
+} from "./chunk-5VEHKC3A.mjs";
 
 // src/next/createCmsRouteHandler.ts
 function json(body, status = 200) {
@@ -23,7 +23,7 @@ function parseRoute(request) {
 function createCmsRouteHandler(options) {
   const { storage, authorize } = options;
   if (typeof authorize !== "function") {
-    throw new Error('[visual-cms] createCmsRouteHandler needs an "authorize" function.');
+    throw new Error('[storio-editor] createCmsRouteHandler needs an "authorize" function.');
   }
   const allowedPages = options.allowedPages ? new Set(options.allowedPages) : null;
   const maxBodyBytes = options.maxBodyBytes ?? 1024 * 1024;
@@ -230,7 +230,7 @@ function fileStorage(options = {}) {
 // src/next/getPageContent.ts
 async function getPageContent(config, pageKey, options) {
   const page = findPage(config, pageKey);
-  if (!page) throw new Error(`[visual-cms] Unknown page "${pageKey}".`);
+  if (!page) throw new Error(`[storio-editor] Unknown page "${pageKey}".`);
   try {
     const records = await options.storage.listRecords(pageKey, { includeDrafts: options.includeDrafts });
     return mergePageContent(page, records, { includeDrafts: options.includeDrafts });

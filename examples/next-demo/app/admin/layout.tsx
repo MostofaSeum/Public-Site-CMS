@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CmsNavButton } from '@brainicon/visual-cms/admin';
+import { CmsNavButton } from '@brainicon/storio-elements-editor/admin';
 
 // Stand-in for the host app's existing admin panel. The only CMS-specific line
 // is the <CmsNavButton>; protect this route with your own auth.

@@ -1,7 +1,7 @@
 """
-Settings, read from the VISUAL_CMS dict in your Django settings:
+Settings, read from the STORIO_EDITOR dict in your Django settings (the older name VISUAL_CMS also works):
 
-    VISUAL_CMS = {
+    STORIO_EDITOR = {
         "AUTHORIZE": "myproject.cms.can_edit",   # who may edit (default: staff users)
         "ALLOWED_PAGES": ["home", "pricing"],    # restrict page keys (default: any valid key)
         "MAX_BODY_BYTES": 1_048_576,             # largest JSON body for a save
@@ -22,7 +22,7 @@ from django.conf import settings
 from django.utils.module_loading import import_string
 
 DEFAULTS: dict[str, Any] = {
-    "AUTHORIZE": "visual_cms.permissions.is_staff_user",
+    "AUTHORIZE": "storio_elements_editor.permissions.is_staff_user",
     "ALLOWED_PAGES": None,
     "MAX_BODY_BYTES": 1024 * 1024,
     "MAX_UPLOAD_BYTES": 5 * 1024 * 1024,
@@ -36,7 +36,8 @@ DEFAULTS: dict[str, Any] = {
 
 
 def get_setting(name: str) -> Any:
-    user_settings = getattr(settings, "VISUAL_CMS", {}) or {}
+    # VISUAL_CMS is the name used before the rename and is still read.
+    user_settings = getattr(settings, "STORIO_EDITOR", None) or getattr(settings, "VISUAL_CMS", None) or {}
     return user_settings.get(name, DEFAULTS[name])
 
 

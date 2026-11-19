@@ -45,7 +45,7 @@ describe('add-page', () => {
     ...over,
   });
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-addpage-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-addpage-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -156,7 +156,7 @@ describe('addPageEntry', () => {
 describe('doctor', () => {
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-doctor-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-doctor-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -166,7 +166,7 @@ describe('doctor', () => {
   it('flags a project where nothing is set up yet', () => {
     makeProject(dir);
     const failures = titles(checkProject(dir).checks, 'fail').join('|');
-    expect(failures).toMatch(/visual-cms is missing/);
+    expect(failures).toMatch(/storio-elements-editor is missing/);
     expect(failures).toMatch(/does not scan the library/);
     expect(failures).toMatch(/cms.config.ts not found/);
   });
@@ -175,7 +175,7 @@ describe('doctor', () => {
     makeProject(dir);
     fs.writeFileSync(
       path.join(dir, 'package.json'),
-      JSON.stringify({ dependencies: { next: '15.5.0', tailwindcss: '^4', '@brainicon/visual-cms': '0.1.0', 'react-hot-toast': '2', 'lucide-react': '1' } })
+      JSON.stringify({ dependencies: { next: '15.5.0', tailwindcss: '^4', '@brainicon/storio-elements-editor': '0.1.0', 'react-hot-toast': '2', 'lucide-react': '1' } })
     );
     runInit({ cwd: dir, backend: 'django', apiUrl: 'http://localhost:8000/api/cms', adminPath: 'admin/cms', example: true, install: false, dryRun: false, force: false });
     const { checks, djangoBaseUrl } = checkProject(dir);
@@ -197,7 +197,7 @@ describe('doctor', () => {
     });
     expect(down[0].title).toMatch(/Cannot reach Django/);
     const missing = await checkDjango('http://x/api/cms', origin, async () => reply(404));
-    expect(missing[0].fix).toMatch(/visual_cms\.urls/);
+    expect(missing[0].fix).toMatch(/storio_elements_editor\.urls/);
     const noCors = await checkDjango('http://x/api/cms', origin, async () => reply(200));
     expect(titles(noCors, 'fail').join('|')).toMatch(/CORS/);
   });

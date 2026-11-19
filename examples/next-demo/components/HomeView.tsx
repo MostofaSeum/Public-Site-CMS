@@ -1,7 +1,7 @@
 'use client';
 
-import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';
-import { getDynamicIcon } from '@brainicon/visual-cms/icons';
+import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';
+import { getDynamicIcon } from '@brainicon/storio-elements-editor/icons';
 import type homeDefaults from '@/content/home.json';
 
 type HomeContent = typeof homeDefaults;

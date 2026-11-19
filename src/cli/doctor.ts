@@ -11,7 +11,7 @@ export interface Check {
 
 const exists = (p: string) => fs.existsSync(p);
 const read = (p: string) => fs.readFileSync(p, 'utf8');
-const LIB = '@brainicon/visual-cms';
+const LIB = '@brainicon/storio-elements-editor';
 
 function walk(dir: string, match: (file: string) => boolean, out: string[] = [], depth = 0): string[] {
   if (depth > 6) return out;
@@ -69,16 +69,16 @@ export function checkProject(root: string): LocalFindings {
 
   // Tailwind must scan the library, or the CMS screen is unstyled.
   const css = walk(appDir, (f) => f.endsWith('.css')).concat(walk(base, (f) => /globals?\.css$/.test(f)));
-  const withSource = css.find((f) => /@source[^;\n]*visual-cms/.test(read(f)));
+  const withSource = css.find((f) => /@source[^;\n]*storio-elements-editor/.test(read(f)));
   add(
     withSource ? 'ok' : 'fail',
     withSource ? 'Tailwind scans the library (@source line)' : 'Tailwind does not scan the library',
-    withSource ? undefined : 'Add to your global CSS, below @import "tailwindcss":   @source "../node_modules/@brainicon/visual-cms/dist";   (the path is relative to that CSS file)'
+    withSource ? undefined : 'Add to your global CSS, below @import "tailwindcss":   @source "../node_modules/@brainicon/storio-elements-editor/dist";   (the path is relative to that CSS file)'
   );
 
   const config = [path.join(base, 'cms.config.ts'), path.join(root, 'cms.config.ts')].find(exists);
   let djangoBaseUrl: string | null = null;
-  if (!config) add('fail', 'cms.config.ts not found', 'Run:  npx visual-cms init');
+  if (!config) add('fail', 'cms.config.ts not found', 'Run:  npx storio-editor init');
   else {
     add('ok', `Config found (${path.relative(root, config).split(path.sep).join('/')})`);
     const text = read(config);
@@ -87,7 +87,7 @@ export function checkProject(root: string): LocalFindings {
       ? text.match(/(?:baseUrl:|\bAPI_URL\s*=)\s*(?:process\.env\.\w+\s*\?\?\s*)?['"`]([^'"`]+)['"`]/)?.[1] ?? null
       : null;
     if (/\bcmsAuth\(/.test(text)) add('ok', 'Editors sign in with the token login (cmsAuth)');
-    if (!/\bkey:\s*['"]/.test(text)) add('warn', 'No pages are listed in cms.config.ts yet', 'Add one with:  npx visual-cms add-page <name>');
+    if (!/\bkey:\s*['"]/.test(text)) add('warn', 'No pages are listed in cms.config.ts yet', 'Add one with:  npx storio-editor add-page <name>');
   }
 
   const sources = walk(appDir, (f) => /\.(tsx|jsx|ts|js)$/.test(f)).concat(walk(path.join(base, 'components'), (f) => /\.(tsx|jsx)$/.test(f)));
@@ -150,7 +150,7 @@ export function checkProductionFiles(root: string): Check[] {
 
   const providers = [path.join(base, 'components', 'CmsProviders.tsx')].find(exists);
   if (providers && /getAllPageContent/.test(read(providers))) add('ok', 'Content is rendered on the server (search engines see the edited text)');
-  else add('warn', 'Content is only loaded in the browser, so search engines index the default text', 'Run  npx visual-cms init  again: it upgrades components/CmsProviders.tsx to load content on the server.');
+  else add('warn', 'Content is only loaded in the browser, so search engines index the default text', 'Run  npx storio-editor init  again: it upgrades components/CmsProviders.tsx to load content on the server.');
   return checks;
 }
 
@@ -195,7 +195,7 @@ export async function checkProductionApi(
     return checks;
   }
   if (res.status !== 200) {
-    add('fail', `${url}/csrf returned ${res.status}`, res.status === 404 ? 'Add path("api/cms/", include("visual_cms.urls")) to the production urls.py.' : 'Check ALLOWED_HOSTS and the Django logs.');
+    add('fail', `${url}/csrf returned ${res.status}`, res.status === 404 ? 'Add path("api/cms/", include("storio_elements_editor.urls")) to the production urls.py.' : 'Check ALLOWED_HOSTS and the Django logs.');
     return checks;
   }
   add('ok', 'The production API is reachable');
@@ -215,7 +215,7 @@ export async function checkProductionApi(
   }
 
   try {
-    const probe = await fetchFn(`${api.origin}/visual-cms-doctor-missing-page/`);
+    const probe = await fetchFn(`${api.origin}/storio-editor-doctor-missing-page/`);
     const body = probe.text ? await probe.text() : '';
     if (/DEBUG\s*=\s*True/.test(body)) add('fail', 'Django runs with DEBUG = True', 'Set DEBUG = False in production (it shows settings and code to anyone).');
     else add('ok', 'Django does not show debug pages');
@@ -244,7 +244,7 @@ export async function checkDjango(
     return checks;
   }
   if (res.status === 404) {
-    add('fail', `${url}/csrf returned 404`, 'Django does not serve the CMS API. Add path("api/cms/", include("visual_cms.urls")) to urls.py (or run init with --django-dir).');
+    add('fail', `${url}/csrf returned 404`, 'Django does not serve the CMS API. Add path("api/cms/", include("storio_elements_editor.urls")) to urls.py (or run init with --django-dir).');
     return checks;
   }
   if (res.status !== 200) {
@@ -283,7 +283,7 @@ export async function checkDjango(
     try {
       const me = await fetchFn(`${url}/auth/me`, { headers: { Origin: frontendOrigin } });
       if (me.status === 401) add('ok', 'Token login is available on the server');
-      else if (me.status === 404) add('fail', 'The server has no token login (django-visual-cms is too old, or TOKEN_LOGIN is False)', 'Upgrade the package: pip install -U "git+https://github.com/MostofaSeum/Public-Site-CMS.git#subdirectory=django-visual-cms" (or run init with --django-dir), and make sure VISUAL_CMS["TOKEN_LOGIN"] is not False.');
+      else if (me.status === 404) add('fail', 'The server has no token login (django-storio-elements-editor is too old, or TOKEN_LOGIN is False)', 'Upgrade the package: pip install -U "git+https://github.com/MostofaSeum/storio-elements-editor.git#subdirectory=django-storio-elements-editor" (or run init with --django-dir), and make sure STORIO_EDITOR["TOKEN_LOGIN"] is not False.');
       else add('warn', `${url}/auth/me returned ${me.status}`, 'Expected 401 for a visitor who is not signed in.');
     } catch {
       /* already reported unreachable above */

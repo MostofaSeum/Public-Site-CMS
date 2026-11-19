@@ -1,5 +1,5 @@
 /**
- * Pure text helpers used by `visual-cms init` to edit existing project files.
+ * Pure text helpers used by `storio-editor init` to edit existing project files.
  * They never touch the disk, so they are easy to test.
  */
 import path from 'node:path';
@@ -68,7 +68,7 @@ export function wrapLayoutWithProviders(source: string, importSpecifier: string)
 
 /** Add the Tailwind v4 `@source` line that lets Tailwind see the library's class names. */
 export function addTailwindSource(css: string, relativeDistPath: string): EditResult {
-  if (/visual-cms\/dist/.test(css)) return { source: css, status: 'already' };
+  if (/storio-elements-editor\/dist/.test(css)) return { source: css, status: 'already' };
 
   const importMatch = css.match(/@import\s+(["'])tailwindcss\1[^;\n]*;/);
   if (!importMatch || importMatch.index === undefined) {
@@ -95,7 +95,7 @@ export function addGitignoreEntries(text: string, entries: string[]): { source: 
   const eol = eolOf(text);
   const prefix = text.length === 0 || text.endsWith('\n') ? '' : eol;
   return {
-    source: `${text}${prefix}${eol}# visual-cms content and uploads${eol}${added.join(eol)}${eol}`,
+    source: `${text}${prefix}${eol}# storio-editor content and uploads${eol}${added.join(eol)}${eol}`,
     added,
   };
 }

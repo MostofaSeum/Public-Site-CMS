@@ -47,7 +47,7 @@ export function findPython(djangoDir: string): { command: string; venv: boolean 
 
 /** Where the Django package sits relative to this file (works from dist/ and from src/cli/). */
 export function djangoPackageDir(): string | null {
-  for (const rel of [['..', 'django-visual-cms'], ['..', '..', 'django-visual-cms']]) {
+  for (const rel of [['..', 'django-storio-elements-editor'], ['..', '..', 'django-storio-elements-editor']]) {
     const candidate = path.resolve(__dirname, ...rel);
     if (fs.existsSync(path.join(candidate, 'pyproject.toml'))) return candidate;
   }
@@ -63,14 +63,14 @@ export interface DjangoSetupResult {
 }
 
 /**
- * Install django-visual-cms into the project's Python environment and run its setup
+ * Install django-storio-elements-editor into the project's Python environment and run its setup
  * command (settings, urls, migration). Output goes straight to the terminal.
  */
 export function runDjangoSetup(opts: { djangoDir: string; frontendOrigin: string; dryRun: boolean }): DjangoSetupResult {
   const { command, venv } = findPython(opts.djangoDir);
   const pkgDir = djangoPackageDir();
   if (!pkgDir) {
-    return { ok: false, python: command, venv, problem: 'The django-visual-cms folder was not found inside the installed library.' };
+    return { ok: false, python: command, venv, problem: 'The django-storio-elements-editor folder was not found inside the installed library.' };
   }
   const run = (args: string[], env: NodeJS.ProcessEnv = process.env) =>
     spawnSync(command, args, { cwd: opts.djangoDir, stdio: 'inherit', env, shell: false });
@@ -87,11 +87,11 @@ export function runDjangoSetup(opts: { djangoDir: string; frontendOrigin: string
   } else {
     const install = run(['-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', pkgDir]);
     if (install.status !== 0) {
-      return { ok: false, python: command, venv, problem: `pip could not install django-visual-cms from ${pkgDir}.` };
+      return { ok: false, python: command, venv, problem: `pip could not install django-storio-elements-editor from ${pkgDir}.` };
     }
   }
 
-  const args = ['-m', 'visual_cms', 'setup', '--project', opts.djangoDir, '--frontend-origin', opts.frontendOrigin];
+  const args = ['-m', 'storio_elements_editor', 'setup', '--project', opts.djangoDir, '--frontend-origin', opts.frontendOrigin];
   if (opts.dryRun) args.push('--dry-run');
   const setup = run(args, env);
   if (setup.status !== 0) {

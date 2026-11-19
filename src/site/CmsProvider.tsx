@@ -19,7 +19,7 @@ export interface CmsProviderProps {
   config: CmsConfig;
   /**
    * Content already loaded on the server (e.g. with `getPageContent` from
-   * "@brainicon/visual-cms/next"), keyed by page key. Avoids a flash of default content.
+   * "@brainicon/storio-elements-editor/next"), keyed by page key. Avoids a flash of default content.
    */
   initialContent?: Record<string, Record<string, unknown>>;
   children: React.ReactNode;
@@ -45,7 +45,7 @@ export const CmsProvider: React.FC<CmsProviderProps> = ({ config, initialContent
 export function useCmsContext(): CmsContextValue {
   const ctx = useContext(CmsContext);
   if (!ctx) {
-    throw new Error('[visual-cms] Wrap your site in <CmsProvider config={...}> before using CMS hooks.');
+    throw new Error('[storio-editor] Wrap your site in <CmsProvider config={...}> before using CMS hooks.');
   }
   return ctx;
 }
@@ -69,7 +69,7 @@ export function usePageContent<T = Record<string, any>>(
   const { config, initialContent, origins } = useCmsContext();
   const page = findPage(config, pageKey);
   if (!page) {
-    throw new Error(`[visual-cms] Unknown page "${pageKey}". Add it to the "pages" array of your CMS config.`);
+    throw new Error(`[storio-editor] Unknown page "${pageKey}". Add it to the "pages" array of your CMS config.`);
   }
 
   const [content, setContent] = useState<T>(

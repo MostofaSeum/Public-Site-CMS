@@ -5,7 +5,7 @@ interface CmsProviderProps {
     config: CmsConfig;
     /**
      * Content already loaded on the server (e.g. with `getPageContent` from
-     * "@brainicon/visual-cms/next"), keyed by page key. Avoids a flash of default content.
+     * "@brainicon/storio-elements-editor/next"), keyed by page key. Avoids a flash of default content.
      */
     initialContent?: Record<string, Record<string, unknown>>;
     children: React.ReactNode;

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 
-from visual_cms.models import CmsRecord
+from storio_elements_editor.models import CmsRecord
 
 BASE = "/api/cms"
 
@@ -85,16 +85,20 @@ class ApiTests(TestCase):
         self.assertEqual(self.anon.get(f"{BASE}/records?page=bad!key").status_code, 400)
         self.assertEqual(self.anon.post(f"{BASE}/records").status_code, 405)
 
-    @override_settings(VISUAL_CMS={"ALLOWED_PAGES": ["home"]})
+    @override_settings(STORIO_EDITOR={"ALLOWED_PAGES": ["home"]})
     def test_allowed_pages(self):
         self.assertEqual(self.put(self.editor, "blog", "hero", {}).status_code, 404)
         self.assertEqual(self.put(self.editor, "home", "hero", {}).status_code, 200)
 
-    @override_settings(VISUAL_CMS={"MAX_BODY_BYTES": 50})
+    @override_settings(VISUAL_CMS={"ALLOWED_PAGES": ["home"]})
+    def test_settings_name_from_before_the_rename_still_works(self):
+        self.assertEqual(self.put(self.editor, "blog", "hero", {}).status_code, 404)
+
+    @override_settings(STORIO_EDITOR={"MAX_BODY_BYTES": 50})
     def test_body_size_limit(self):
         self.assertEqual(self.put(self.editor, "home", "hero", {"text": "x" * 200}).status_code, 413)
 
-    @override_settings(VISUAL_CMS={"AUTHORIZE": "tests.test_api.can_edit_everything"})
+    @override_settings(STORIO_EDITOR={"AUTHORIZE": "tests.test_api.can_edit_everything"})
     def test_custom_authorize(self):
         self.assertEqual(self.put(self.anon, "home", "hero", {"a": 1}).status_code, 200)
         self.assertIsNone(CmsRecord.objects.get().updated_by)
@@ -135,7 +139,7 @@ class ApiTests(TestCase):
     def test_svg_blocked_by_default(self):
         svg = SimpleUploadedFile("logo.svg", b"<svg/>", content_type="image/svg+xml")
         self.assertEqual(self.editor.post(f"{BASE}/media", {"files": [svg]}).status_code, 400)
-        with self.settings(VISUAL_CMS={"ALLOW_SVG": True}):
+        with self.settings(STORIO_EDITOR={"ALLOW_SVG": True}):
             svg.seek(0)
             self.assertEqual(self.editor.post(f"{BASE}/media", {"files": [svg]}).status_code, 201)
 

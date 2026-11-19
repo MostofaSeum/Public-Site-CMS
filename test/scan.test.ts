@@ -15,7 +15,7 @@ function render(source: string, content: unknown): string {
     if (id === 'react') return React;
     if (id === 'react/jsx-runtime') return require('react/jsx-runtime');
     if (id === 'next/link') return { __esModule: true, default: (p: { href: string; children: React.ReactNode }) => React.createElement('a', { href: p.href }, p.children) };
-    if (id === '@brainicon/visual-cms/site') return { CmsSection: (p: { children: React.ReactNode }) => p.children, CmsField: (p: { children: React.ReactNode }) => p.children, usePageContent: () => content };
+    if (id === '@brainicon/storio-elements-editor/site') return { CmsSection: (p: { children: React.ReactNode }) => p.children, CmsField: (p: { children: React.ReactNode }) => p.children, usePageContent: () => content };
     if (id.endsWith('.json')) return {};
     throw new Error(`unexpected import ${id}`);
   };
@@ -84,7 +84,7 @@ function makeProject(dir: string, page = PAGE, pagePath = ['app', 'page.tsx']) {
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), '{ "compilerOptions": { "resolveJsonModule": true, "paths": { "@/*": ["./*"] } } }');
   fs.writeFileSync(
     path.join(dir, 'cms.config.ts'),
-    "import { defineCms } from '@brainicon/visual-cms';\n\nexport const cms = defineCms({\n  adapter: x,\n  pages: [\n    // none yet\n  ],\n});\n"
+    "import { defineCms } from '@brainicon/storio-elements-editor';\n\nexport const cms = defineCms({\n  adapter: x,\n  pages: [\n    // none yet\n  ],\n});\n"
   );
   // The scan resolves typescript from the project: point it at ours.
   fs.mkdirSync(path.join(dir, 'node_modules'), { recursive: true });
@@ -98,7 +98,7 @@ function makeProject(dir: string, page = PAGE, pagePath = ['app', 'page.tsx']) {
 describe('scan', () => {
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-scan-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-scan-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -131,12 +131,12 @@ describe('scan', () => {
     expect(converted).toContain('<CmsSection sectionKey="header" title="Header" buttonPlacement="fixed">');
     expect(converted).toContain("const cmsText = usePageContent<CmsPageText>('home');");
     expect(converted).toContain('<CmsField path="title" label="Title">{cmsText.hero.title}</CmsField>');
-    expect(converted).toContain("import { CmsField, CmsSection, usePageContent } from '@brainicon/visual-cms/site';");
+    expect(converted).toContain("import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements-editor/site';");
     const config = fs.readFileSync(path.join(dir, 'cms.config.ts'), 'utf8');
     expect(config).toContain("import cmsPageDefaults from '@/content/home.json';");
     expect(config).toContain("key: 'home'");
     expect(config).toContain("{ key: 'features', label: '3. Features' }");
-    expect(fs.readFileSync(`${file}.visual-cms.bak`, 'utf8')).toBe(PAGE);
+    expect(fs.readFileSync(`${file}.storio-editor.bak`, 'utf8')).toBe(PAGE);
   });
 
   it('keeps plain text in elements that cannot hold a field wrapper', () => {

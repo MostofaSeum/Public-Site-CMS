@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Let Tailwind see the class names used by the CMS components. */
-@source "../node_modules/@brainicon/visual-cms/dist";
+@source "../node_modules/@brainicon/storio-elements-editor/dist";
 
 body {
   background: #ffffff;

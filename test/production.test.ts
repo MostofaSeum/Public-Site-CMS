@@ -36,7 +36,7 @@ describe('server rendering of CMS content', () => {
   });
   const read = (...p: string[]) => fs.readFileSync(path.join(dir, ...p), 'utf8');
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-prod-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-prod-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -113,7 +113,7 @@ describe('server rendering of CMS content', () => {
 describe('doctor --production', () => {
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-prodfiles-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-prodfiles-'));
   });
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -135,7 +135,7 @@ describe('doctor --production', () => {
     runInit({ cwd: dir, backend: 'django', apiUrl: 'http://localhost:8000/api/cms', adminPath: 'admin/cms', example: false, install: false, dryRun: false, force: false });
     expect(titles(checkProductionFiles(dir), 'fail')).toBe('');
 
-    const files = fs.mkdtempSync(path.join(os.tmpdir(), 'visual-cms-prodfiles2-'));
+    const files = fs.mkdtempSync(path.join(os.tmpdir(), 'storio-editor-prodfiles2-'));
     makeProject(files);
     runInit({ cwd: files, backend: 'files', apiUrl: '', adminPath: 'admin/cms', example: false, install: false, dryRun: false, force: false });
     const checks = checkProductionFiles(files);
@@ -183,7 +183,7 @@ describe('doctor --production', () => {
     });
     expect(titles(down, 'fail')).toMatch(/Cannot reach/);
     const missing = await checkProductionApi('https://api.example.com/api/cms', 'https://example.com', async () => reply(404));
-    expect(missing.find((c) => c.level === 'fail')?.fix).toMatch(/visual_cms\.urls/);
+    expect(missing.find((c) => c.level === 'fail')?.fix).toMatch(/storio_elements_editor\.urls/);
   });
 
   it('tells sites apart', () => {

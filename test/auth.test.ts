@@ -78,7 +78,7 @@ describe('cmsAuth', () => {
     await expect(make(async () => json(401, { detail: 'Invalid username or password.' })).login('a', 'b')).rejects.toMatchObject({ status: 401, message: 'Invalid username or password.' });
     await expect(make(async () => json(429, { detail: 'Too many failed attempts. Try again in a few minutes.' })).login('a', 'b')).rejects.toMatchObject({ status: 429 });
     await expect(make(async () => json(403, { detail: 'This account is not allowed to edit the site.' })).login('a', 'b')).rejects.toMatchObject({ status: 403 });
-    await expect(make(async () => new Response('<html>', { status: 404 })).login('a', 'b')).rejects.toThrow(/update django-visual-cms/);
+    await expect(make(async () => new Response('<html>', { status: 404 })).login('a', 'b')).rejects.toThrow(/update django-storio-elements-editor/);
     await expect(make(async () => new Response('boom', { status: 500 })).login('a', 'b')).rejects.toThrow(/status 500/);
     const offline = make(async () => {
       throw new TypeError('Failed to fetch');
@@ -243,7 +243,7 @@ describe('init and doctor with the token login', () => {
     const dir = make();
     init(dir);
     const config = read(dir, 'cms.config.ts');
-    expect(config).toContain("import { cmsAuth, djangoAdapter } from '@brainicon/visual-cms/adapters';");
+    expect(config).toContain("import { cmsAuth, djangoAdapter } from '@brainicon/storio-elements-editor/adapters';");
     expect(config).toContain('export const cmsLogin = cmsAuth({ baseUrl: API_URL });');
     expect(config).toContain('djangoAdapter({ baseUrl: API_URL, headers: cmsLogin.headers })');
     const page = read(dir, 'app', 'admin', 'cms', 'page.tsx');

@@ -159,7 +159,7 @@ var CmsProvider = ({ config, initialContent, children }) => {
 function useCmsContext() {
   const ctx = (0, import_react2.useContext)(CmsContext);
   if (!ctx) {
-    throw new Error("[visual-cms] Wrap your site in <CmsProvider config={...}> before using CMS hooks.");
+    throw new Error("[storio-editor] Wrap your site in <CmsProvider config={...}> before using CMS hooks.");
   }
   return ctx;
 }
@@ -170,7 +170,7 @@ function usePageContent(pageKey, options = {}) {
   const { config, initialContent, origins } = useCmsContext();
   const page = findPage(config, pageKey);
   if (!page) {
-    throw new Error(`[visual-cms] Unknown page "${pageKey}". Add it to the "pages" array of your CMS config.`);
+    throw new Error(`[storio-editor] Unknown page "${pageKey}". Add it to the "pages" array of your CMS config.`);
   }
   const [content, setContent] = (0, import_react2.useState)(
     () => options.initialData ?? initialContent[pageKey] ?? mergePageContent(page, [])
@@ -447,7 +447,7 @@ var CmsField = ({ path, label, children }) => {
   );
   (0, import_react5.useEffect)(() => {
     if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
-      console.warn(`[visual-cms] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
+      console.warn(`[storio-editor] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
     }
   }, [section, path]);
   (0, import_react5.useEffect)(() => {

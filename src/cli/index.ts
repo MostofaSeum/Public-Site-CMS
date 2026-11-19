@@ -7,14 +7,14 @@ import { runAddPage } from './addPage';
 import { checkDjango, checkProductionApi, checkProductionFiles, checkProject, summarize, usesTokenAuth, type Check } from './doctor';
 import { runScan } from './scan';
 
-const HELP = `visual-cms: set up @brainicon/visual-cms in a Next.js project
+const HELP = `storio-editor: set up @brainicon/storio-elements-editor in a Next.js project
 
 Usage
-  visual-cms init [options]           Set up the library in this project
-  visual-cms add-page <key> [options] Create a new editable page (content, view, route, config entry)
-  visual-cms scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
+  storio-editor init [options]           Set up the library in this project
+  storio-editor add-page <key> [options] Create a new editable page (content, view, route, config entry)
+  storio-editor scan <file> [options]    Make an existing page editable: moves its texts to content/<page>.json,
                                       wraps sections in <CmsSection> and texts in <CmsField>, registers it (backs up the file)
-  visual-cms doctor [options]         Check the setup and say what to fix
+  storio-editor doctor [options]         Check the setup and say what to fix
 
 scan options
   --page <key>              Page key (default: from the route; "/" is "home")
@@ -40,10 +40,10 @@ doctor options
 init options
   --backend <files|django>  Where content is stored (default: files)
                               files   a JSON file inside this Next.js app
-                              django  a Django API running django-visual-cms
+                              django  a Django API running django-storio-elements-editor
   --api-url <url>           Django API base URL (default: http://localhost:8000/api/cms)
   --django-dir <path>       Folder of your Django project (has manage.py). Also sets up Django:
-                            installs django-visual-cms, edits settings.py and urls.py (with
+                            installs django-storio-elements-editor, edits settings.py and urls.py (with
                             backups), and runs the migration. Implies --backend django
   --frontend-origin <url>   Where this Next.js site runs, allowed by Django (default: http://localhost:3000)
   --auth <token|session>    How editors sign in (django backend, default: token)
@@ -243,7 +243,7 @@ export async function main(argv: string[]): Promise<number> {
     const cwd = typeof flags.get('cwd') === 'string' ? (flags.get('cwd') as string) : process.cwd();
 
     if (command === 'add-page') {
-      if (positionals.length !== 1) throw new CliError('Usage: visual-cms add-page <key>   (for example: visual-cms add-page about)');
+      if (positionals.length !== 1) throw new CliError('Usage: storio-editor add-page <key>   (for example: storio-editor add-page about)');
       const report = runAddPage({
         cwd,
         key: positionals[0],
@@ -265,7 +265,7 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     if (command === 'scan') {
-      if (positionals.length !== 1) throw new CliError('Usage: visual-cms scan <file>   (for example: visual-cms scan src/app/page.tsx)');
+      if (positionals.length !== 1) throw new CliError('Usage: storio-editor scan <file>   (for example: storio-editor scan src/app/page.tsx)');
       const dryRun = flags.has('dry-run');
       const report = runScan({
         cwd,

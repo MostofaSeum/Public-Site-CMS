@@ -1,6 +1,6 @@
 {
-  "name": "@brainicon/visual-cms",
-  "version": "0.6.0",
+  "name": "@brainicon/storio-elements-editor",
+  "version": "1.0.0",
   "description": "Visual headless CMS for React and Next.js: live preview canvas, hover-to-edit sections and a JSON-driven form editor, with pluggable storage.",
   "license": "MIT",
   "author": "Brainicon Technology",
@@ -44,9 +44,9 @@
   "files": [
     "dist",
     "README.md",
-    "django-visual-cms/pyproject.toml",
-    "django-visual-cms/README.md",
-    "django-visual-cms/visual_cms",
+    "django-storio-elements-editor/pyproject.toml",
+    "django-storio-elements-editor/README.md",
+    "django-storio-elements-editor/storio_elements_editor",
     "!**/__pycache__",
     "!**/*.pyc"
   ],
@@ -90,14 +90,14 @@
     "nextjs"
   ],
   "bin": {
-    "visual-cms": "./dist/cli.js"
+    "storio-editor": "./dist/cli.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MostofaSeum/Public-Site-CMS.git"
+    "url": "git+https://github.com/MostofaSeum/storio-elements-editor.git"
   },
-  "homepage": "https://github.com/MostofaSeum/Public-Site-CMS#readme",
+  "homepage": "https://github.com/MostofaSeum/storio-elements-editor#readme",
   "bugs": {
-    "url": "https://github.com/MostofaSeum/Public-Site-CMS/issues"
+    "url": "https://github.com/MostofaSeum/storio-elements-editor/issues"
   }
 }
