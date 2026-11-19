@@ -30,24 +30,25 @@ Safety rules (most important):
 6. Ask me only for things you cannot find out yourself.
 
 Steps:
-1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py). If package.json already lists @brainicon/visual-cms (the old name of this library), follow the README section "Upgrading from @brainicon/visual-cms" instead of steps 2 and 3, then continue with step 4.
+1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py). Then list every page file under app/ or src/app/ (page.tsx, page.jsx or page.js) that visitors open, leaving out the admin area, api/, login and other auth pages, the CMS screen, and error or not-found pages. Write the list down with each page's URL: every page on it must be made editable in step 5. If package.json already lists @brainicon/visual-cms (the old name of this library), follow the README section "Upgrading from @brainicon/visual-cms" instead of steps 2 and 3, then continue with step 4.
 2. Install: npm install github:MostofaSeum/storio-elements-editor#v1.0.0   then check: npx storio-editor --version
-3. Set it up with `npx storio-editor init --yes`:
+3. Set it up with `npx storio-editor init --yes --no-example` (--no-example: this is a real project, so do not create the demo page at /cms-example):
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
    - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
    Do every task listed under "Warnings" and "Still to do by hand" in its output.
 4. Add a link to the CMS screen in the admin panel's menu, in the same style as the other menu items.
-5. Make the pages editable, one page at a time, starting with the homepage:
+5. Make every page on the list from step 1 editable, not only the homepage. Convert them one at a time, homepage first. Do not stop or ask whether to continue after a page; keep going until every page on the list is done. For each page:
    - npx storio-editor scan <page file> --dry-run   then review the list of texts it will move, then run it without --dry-run.
    - If scan says the file is a Server Component: if the page has no server-only code (not async, no metadata export, no database/fs/server imports) re-run with --add-use-client; otherwise move the page's JSX into a new client component file (components/<Name>View.tsx with 'use client'), render it from the page, and scan that file with --page <key> --route <url>.
+   - Dynamic routes ([slug], [id]) show a different item each time. Scan the template file with --route set to one real URL (for example /products/<an existing slug>) so the preview can show it. Make only the fixed text editable (headings, labels, buttons); the item's own data from the database or API stays as it is. If the page has no fixed text, skip it and note why.
    - Review the change with git diff and run the type check. The page must render exactly as before.
    - Required: every small item gets its own pencil. Go through the page from top to bottom. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be wrapped in its own <CmsField>. Scan already does this for static text. For everything it did not move (images, icons, text kept in constants or arrays), add the current value to that section in content/<page>.json, read it with usePageContent, and wrap the element in <CmsField path="<key inside that section>" label="<short name>"> inside its <CmsSection>. Use dots and the list position for repeated items (items.0.title, or items.${index}.title inside .map()). For an icon, store its name in the JSON and draw it through a small map of the icons the page already imports. Put <CmsField> inside <li> and <td>, never around them. Keep the output identical.
    - Leave these without their own pencil: live data from an API, a database or props; alt and placeholder values; and text inside <title>, <option> or <textarea>. Keep every item you skip for the final report, with the reason.
    - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
 6. Run npx storio-editor doctor and fix every FAIL.
-7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a title, an image, an icon and a list item in turn, and confirm each shows its own small pencil and opens a form with only that field. Change the title, Save & Publish, and check the public page shows it. Then reset it. Also hover an empty part of the section and confirm the larger section pencil opens the full form.
+7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a title, an image, an icon and a list item in turn, and confirm each shows its own small pencil and opens a form with only that field. Change the title, Save & Publish, and check the public page shows it. Then reset it. Also hover an empty part of the section and confirm the larger section pencil opens the full form. Then pick every other page in the CMS page list and confirm its preview loads with pencils.
 8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx storio-editor doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
-9. Report to me: what was installed, every file created or edited, the CMS URL, which pages are editable, every visible item left without its own pencil and why, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
+9. Report to me: what was installed, every file created or edited, the CMS URL, a table of every page from the step 1 list with its URL and whether it is editable (and why not), every visible item left without its own pencil and why, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
 ```
 
 ## Contents
@@ -99,7 +100,7 @@ What it does for you:
 | `components/CmsProviders.tsx` | the provider the CMS needs |
 | `app/admin/cms/page.tsx` | the CMS screen |
 | `app/admin/layout.tsx` | a small admin shell with the CMS button, **only if you have no admin area yet** |
-| `app/cms-example/page.tsx`, `components/CmsExampleView.tsx`, `content/cms-example.json` | an example page that shows how a page becomes editable |
+| `app/cms-example/page.tsx`, `components/CmsExampleView.tsx`, `content/cms-example.json` | a demo page that shows how a page becomes editable. In a real project skip it with `--no-example` |
 
 | It edits (small changes you can review in `git diff`) | Change |
 |---|---|
@@ -136,6 +137,8 @@ Or create a brand-new editable page, and check your setup at any time:
 npx storio-editor add-page about          # content/about.json, a view, app/about/page.tsx, and the config entry
 npx storio-editor doctor                  # checks Tailwind, the config, the provider, and the Django API (CORS included)
 ```
+
+Run `scan` on every page file of your site, not only the homepage: each one becomes its own page in the CMS page list. For a dynamic route such as `app/products/[slug]/page.tsx`, add `--route` with one real URL (for example `--route /products/my-product`) so the preview has an item to show; its fixed texts become editable and the item data stays as it is.
 
 Details: [section 4](#4-make-your-own-pages-editable).
 
@@ -307,10 +310,10 @@ Pass when the last command prints a version.
 
 | Situation | Command |
 |---|---|
-| NO_ADMIN or EXTERNAL_ADMIN, files backend | `npx storio-editor init --yes` |
+| NO_ADMIN or EXTERNAL_ADMIN, files backend | `npx storio-editor init --yes --no-example` |
 | NEXT_ADMIN | add `--admin-path "<ADMIN_AREA>/cms"` |
 | Django backend | add `--django-dir <DJANGO_DIR>`, plus `--api-url <API_URL> --frontend-origin <FRONTEND_ORIGIN>` when they differ from the defaults |
-| The developer does not want the example page | add `--no-example` |
+| The developer explicitly asks for the demo page at `/cms-example` | leave out `--no-example` |
 | Package install must be skipped | add `--no-install` and install `lucide-react react-hot-toast` yourself |
 
 Pass when the command exits with code 0 and lists created and modified files. **Every line under "Warnings" and "Still to do by hand" in its output is a task for you:** do it, or report it to the developer. Then run `npx tsc --noEmit`.
@@ -321,14 +324,15 @@ Pass when the command exits with code 0 and lists created and modified files. **
 - **NEXT_ADMIN:** do [Case B](#case-b-your-admin-panel-is-part-of-this-nextjs-app) steps 3 and 4: add the link to `MENU_FILE` in the menu's own style, and (file backend) replace `authorize` using `AUTH_FN`.
 - **EXTERNAL_ADMIN:** do [Case C](#case-c-your-admin-panel-is-a-different-app): add a link to the CMS page in the other admin, and (file backend) replace `authorize` with a check the site can perform.
 
-**Step 6. Make the pages editable.** One page at a time, homepage first:
+**Step 6. Make every page editable.** First list every page file under `app/` or `src/app/` (`page.tsx`, `page.jsx` or `page.js`) that visitors open, leaving out the admin area, `api/`, login and other auth pages, the CMS screen, and error or not-found pages. Write the list down with each page's URL. Every page on it must be converted, not only the homepage: go through them one at a time, homepage first, and do not stop or ask whether to continue until the list is done. For each page:
 
 1. `npx storio-editor scan <page file> --dry-run`. Read the list of texts. It moves only static text and `placeholder`/`alt` attributes; code, state and API data stay as they are.
 2. If it reports a Server Component: when the page has no server-only code (not `async`, no `metadata`/`generateMetadata` export, no database, `fs` or server-only imports), re-run with `--add-use-client`. Otherwise create `components/<Name>View.tsx` with `'use client'`, move the page's JSX into it (keep the server code in the page and pass data as props), render `<NameView />` from the page, and scan the new file with `--page <key> --route <url>`.
 3. Run it without `--dry-run`, then `git diff` and `npx tsc --noEmit`. The page must render the same as before. If anything is wrong, restore the file from `<file>.storio-editor.bak`, remove the page entry from `cms.config.ts` and delete `content/<key>.json`.
 4. Required: give every small item its own pencil. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be inside its own `<CmsField>`. `scan` does this for static text. For images, icons and text kept in constants or arrays, add the current value to that section in `content/<page>.json`, read it with `usePageContent`, and wrap the element in `<CmsField path="..." label="...">` ([Edit single fields](#edit-single-fields)). For an icon, store its name and draw it through a small map of the icons the page already imports. The page must render the same as before.
    Leave these without their own pencil: live data from an API, a database or props; `alt` and `placeholder` values; and text inside `<title>`, `<option>` or `<textarea>`. Note each skipped item and the reason for the report in Step 8.
-5. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
+5. Dynamic routes (`[slug]`, `[id]`) show a different item each time. Scan the template file with `--route` set to one real URL (for example `/products/<an existing slug>`) so the preview can show it. Make only the fixed text editable (headings, labels, buttons); the item's own data from the database or API stays as it is. If the page has no fixed text, skip it and note why for Step 8.
+6. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
 
 **Step 7. Verify.** Pass only when all of these hold (the dev server uses port 3000 unless the project says otherwise):
 
@@ -340,9 +344,9 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000<ADMIN_URL>"   # 20
 curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/"             # 200
 ```
 
-If you have a browser tool: open the CMS URL (with Django, sign in with a staff account on the form it shows), confirm the preview loads, hover a text, an image, an icon and a list item in turn, confirm each small pencil opens a form with only that field, change the text, **Save & Publish**, check the public page, then reset it. Stop the dev server you started.
+If you have a browser tool: open the CMS URL (with Django, sign in with a staff account on the form it shows), confirm the preview loads, hover a text, an image, an icon and a list item in turn, confirm each small pencil opens a form with only that field, change the text, **Save & Publish**, check the public page, then reset it. Then pick every other page in the CMS page list and confirm its preview loads with pencils. Without a browser tool, `curl` each converted page's URL and expect 200. Stop the dev server you started.
 
-**Step 8. Report to the developer.** Say what was created and edited, the CMS URL, where the menu link was added, which pages are editable, every visible item left without its own pencil and why, and what is still theirs to do: the real login check for the file backend if you could not add it, a staff user for Django, and a database-backed storage before deploying to a serverless host ([Before you go live](#5-before-you-go-live)).
+**Step 8. Report to the developer.** Say what was created and edited, the CMS URL, where the menu link was added, a table of every page from the Step 6 list with its URL and whether it is editable (and why not), every visible item left without its own pencil and why, and what is still theirs to do: the real login check for the file backend if you could not add it, a staff user for Django, and a database-backed storage before deploying to a serverless host ([Before you go live](#5-before-you-go-live)).
 
 **Common mistakes to avoid**
 
