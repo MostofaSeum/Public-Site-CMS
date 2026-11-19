@@ -10,6 +10,8 @@ REST API used by @brainicon/storio-elements-editor (restAdapter / djangoAdapter)
     GET    csrf                        -> {csrfToken} (and sets the CSRF cookie)
     POST   auth/login                  body {username, password} -> {token, expiresIn, user}
     GET    auth/me                     -> {user}, or 401 when the request may not edit
+    GET    collections/<key>/items     -> [{id, label}]  (see collection_views.py)
+    GET    collections/<key>/items/<id> and PUT with {values}
 
 Editors are recognised by a staff session cookie or by ``Authorization: Bearer <token>``.
 """

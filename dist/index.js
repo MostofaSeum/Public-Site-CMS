@@ -25,10 +25,13 @@ __export(src_exports, {
   PREVIEW_PARAM: () => PREVIEW_PARAM,
   buildPreviewUrl: () => buildPreviewUrl,
   defineCms: () => defineCms,
+  fillRoute: () => fillRoute,
   findPage: () => findPage,
   getSectionDetail: () => getSectionDetail,
   getSectionKeys: () => getSectionKeys,
+  groupPageOf: () => groupPageOf,
   isCmsMessage: () => isCmsMessage,
+  isDynamicRoute: () => isDynamicRoute,
   isValidKey: () => isValidKey,
   listManagedSections: () => listManagedSections,
   listenForCmsMessages: () => listenForCmsMessages,
@@ -36,6 +39,8 @@ __export(src_exports, {
   originOf: () => originOf,
   postCmsMessage: () => postCmsMessage,
   publicUrl: () => publicUrl,
+  recordPagesOf: () => recordPagesOf,
+  topLevelPages: () => topLevelPages,
   trustedOrigins: () => trustedOrigins
 });
 module.exports = __toCommonJS(src_exports);
@@ -58,6 +63,14 @@ function defineCms(config) {
     if (!page.route.startsWith("/")) {
       throw new Error(`[storio-editor] Page "${page.key}" route must start with "/".`);
     }
+    if (page.collection !== void 0 && !isValidKey(page.collection)) {
+      throw new Error(`[storio-editor] Invalid collection "${page.collection}" on page "${page.key}".`);
+    }
+    if (/\[[^\]]+\]/.test(page.route) && !page.collection) {
+      throw new Error(
+        `[storio-editor] Page "${page.key}" has the route "${page.route}", which shows one record at a time. Add collection: "<key>" so the studio can list the records.`
+      );
+    }
     const sectionKeys = /* @__PURE__ */ new Set();
     for (const section of page.sections) {
       if (!isValidKey(section.key)) {
@@ -67,6 +80,17 @@ function defineCms(config) {
         throw new Error(`[storio-editor] Duplicate section key "${section.key}" on page "${page.key}".`);
       }
       sectionKeys.add(section.key);
+    }
+  }
+  for (const page of config.pages) {
+    if (!page.parent) continue;
+    const parent = config.pages.find((p) => p.key === page.parent);
+    if (!parent) throw new Error(`[storio-editor] Page "${page.key}" has the parent "${page.parent}", which is not a page.`);
+    if (parent.parent) {
+      throw new Error(`[storio-editor] Page "${page.key}": its parent "${parent.key}" has a parent itself. Use one level only.`);
+    }
+    if (!page.collection) {
+      throw new Error(`[storio-editor] Page "${page.key}" has a parent, so it must show records: add collection: "<key>".`);
     }
   }
   return config;
@@ -135,7 +159,7 @@ function getSectionDetail(page, sectionKey, record) {
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -144,7 +168,9 @@ var CMS_MESSAGE = {
   /** studio -> iframe: unsaved form content to render immediately. */
   DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW",
   /** studio -> iframe: content was saved or reset, fetch it again. */
-  CONTENT_UPDATED: "CMS_CONTENT_UPDATED"
+  CONTENT_UPDATED: "CMS_CONTENT_UPDATED",
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: "CMS_ITEM_DRAFT"
 };
 var PREVIEW_PARAM = "cms_preview";
 var EDIT_MODE_PARAM = "cms_edit_mode";
@@ -206,6 +232,25 @@ function buildPreviewUrl(route, options = {}) {
   if (options.cacheBust !== void 0) params.push(`t=${encodeURIComponent(String(options.cacheBust))}`);
   return `${base}${base.includes("?") ? "&" : "?"}${params.join("&")}`;
 }
+
+// src/core/collections.ts
+var BRACKET = /\[(?:\.\.\.)?([A-Za-z0-9_]+)\]/g;
+function isDynamicRoute(route) {
+  return /\[[^\]]+\]/.test(route);
+}
+function fillRoute(route, item) {
+  return route.replace(BRACKET, (_, name) => encodeURIComponent(item.params?.[name] ?? item.id));
+}
+function topLevelPages(config) {
+  return config.pages.filter((p) => !p.parent);
+}
+function groupPageOf(config, page) {
+  return page.parent && config.pages.find((p) => p.key === page.parent) || page;
+}
+function recordPagesOf(config, group) {
+  const children = config.pages.filter((p) => p.parent === group.key && p.collection);
+  return group.collection ? [group, ...children] : children;
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   CMS_MESSAGE,
@@ -213,10 +258,13 @@ function buildPreviewUrl(route, options = {}) {
   PREVIEW_PARAM,
   buildPreviewUrl,
   defineCms,
+  fillRoute,
   findPage,
   getSectionDetail,
   getSectionKeys,
+  groupPageOf,
   isCmsMessage,
+  isDynamicRoute,
   isValidKey,
   listManagedSections,
   listenForCmsMessages,
@@ -224,5 +272,7 @@ function buildPreviewUrl(route, options = {}) {
   originOf,
   postCmsMessage,
   publicUrl,
+  recordPagesOf,
+  topLevelPages,
   trustedOrigins
 });

@@ -8,7 +8,7 @@ Trailing slashes are optional, so APPEND_SLASH never redirects a PUT or DELETE.
 
 from django.urls import re_path
 
-from . import views
+from . import collection_views, views
 
 app_name = "storio_elements_editor"
 
@@ -21,4 +21,10 @@ urlpatterns = [
     re_path(r"^csrf/?$", views.csrf, name="csrf"),
     re_path(r"^auth/login/?$", views.auth_login, name="auth-login"),
     re_path(r"^auth/me/?$", views.auth_me, name="auth-me"),
+    re_path(rf"^collections/(?P<collection>{KEY})/items/?$", collection_views.collection_items, name="collection-items"),
+    re_path(
+        rf"^collections/(?P<collection>{KEY})/items/(?P<item_id>[^/]{{1,200}})/?$",
+        collection_views.collection_item,
+        name="collection-item",
+    ),
 ]

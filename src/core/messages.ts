@@ -3,7 +3,7 @@
  * the preview iframe. Names are part of the public protocol; keep them stable.
  */
 export const CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: 'CMS_EDIT_SECTION',
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: 'SCROLL_TO_SECTION',
@@ -13,6 +13,8 @@ export const CMS_MESSAGE = {
   DRAFT_PREVIEW: 'CMS_DRAFT_PREVIEW',
   /** studio -> iframe: content was saved or reset, fetch it again. */
   CONTENT_UPDATED: 'CMS_CONTENT_UPDATED',
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: 'CMS_ITEM_DRAFT',
 } as const;
 
 /** Query flag that marks a page as loaded inside the studio. */
@@ -21,11 +23,20 @@ export const PREVIEW_PARAM = 'cms_preview';
 export const EDIT_MODE_PARAM = 'cms_edit_mode';
 
 export type CmsMessage =
-  | { type: typeof CMS_MESSAGE.EDIT_SECTION; sectionKey: string; title?: string; fieldPath?: string }
+  | {
+      type: typeof CMS_MESSAGE.EDIT_SECTION;
+      sectionKey: string;
+      title?: string;
+      fieldPath?: string;
+      /** Set when the field belongs to a collection record instead of a section. */
+      collection?: string;
+      item?: string;
+    }
   | { type: typeof CMS_MESSAGE.SCROLL_TO_SECTION; sectionKey: string }
   | { type: typeof CMS_MESSAGE.SET_EDIT_MODE; enabled: boolean }
   | { type: typeof CMS_MESSAGE.DRAFT_PREVIEW; page: string; sectionKey: string; draftContent: unknown }
-  | { type: typeof CMS_MESSAGE.CONTENT_UPDATED };
+  | { type: typeof CMS_MESSAGE.CONTENT_UPDATED }
+  | { type: typeof CMS_MESSAGE.ITEM_DRAFT; collection: string; item: string; values: Record<string, unknown> | null };
 
 const MESSAGE_TYPES = new Set<string>(Object.values(CMS_MESSAGE));
 

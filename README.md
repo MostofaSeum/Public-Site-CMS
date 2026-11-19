@@ -6,6 +6,7 @@
 - a **live preview** of the real page, at desktop, tablet or mobile size,
 - a **pencil "Edit" button** that appears when they hover any section of the preview,
 - an optional **small pencil for each title, subtitle, image or icon**, which opens only that one field,
+- **database pages** such as blog posts or products (`[slug]` or `[id]` routes): a second menu lists the records, and their title, summary or image is saved straight to your own database,
 - a **form editor** for that section or field, built automatically from the content,
 - changes shown in the preview **as they type**, then saved, published, or reset to the default.
 
@@ -31,7 +32,7 @@ Safety rules (most important):
 
 Steps:
 1. Check the project: Next.js App Router (app/ or src/app/), TypeScript, Tailwind CSS v4, Node 18.18+. Find the admin panel (folders like admin, dashboard, or a route group like (admin)), and find out whether there is a Django backend (a folder with manage.py). Then list every page file under app/ or src/app/ (page.tsx, page.jsx or page.js) that visitors open, leaving out the admin area, api/, login and other auth pages, the CMS screen, and error or not-found pages. Write the list down with each page's URL: every page on it must be made editable in step 5. If package.json already lists @brainicon/visual-cms (the old name of this library), follow the README section "Upgrading from @brainicon/visual-cms" instead of steps 2 and 3, then continue with step 4.
-2. Install: npm install github:MostofaSeum/storio-elements-editor#v1.0.0   then check: npx storio-editor --version
+2. Install: npm install github:MostofaSeum/storio-elements-editor#v1.1.0   then check: npx storio-editor --version
 3. Set it up with `npx storio-editor init --yes --no-example` (--no-example: this is a real project, so do not create the demo page at /cms-example):
    - with Django: add --django-dir <folder with manage.py> (and --api-url / --frontend-origin if the ports are not 8000 / 3000). This also sets up Django: package, settings, urls, CORS, migration.
    - if the admin panel lives under app/, add --admin-path "<admin folder>/cms" so the CMS screen sits behind the admin login.
@@ -40,13 +41,13 @@ Steps:
 5. Make every page on the list from step 1 editable, not only the homepage. Convert them one at a time, homepage first. Do not stop or ask whether to continue after a page; keep going until every page on the list is done. For each page:
    - npx storio-editor scan <page file> --dry-run   then review the list of texts it will move, then run it without --dry-run.
    - If scan says the file is a Server Component: if the page has no server-only code (not async, no metadata export, no database/fs/server imports) re-run with --add-use-client; otherwise move the page's JSX into a new client component file (components/<Name>View.tsx with 'use client'), render it from the page, and scan that file with --page <key> --route <url>.
-   - Dynamic routes ([slug], [id]) show a different item each time. Scan the template file with --route set to one real URL (for example /products/<an existing slug>) so the preview can show it. Make only the fixed text editable (headings, labels, buttons); the item's own data from the database or API stays as it is. If the page has no fixed text, skip it and note why.
+   - Dynamic routes ([slug], [id]) show one database record at a time (a blog post, a product). Follow the README section "Pages with [slug] or [id]": add a collection for that data to the CMS API route (list, get and save, written with the project's own data functions, refreshing the page's cache after a save; with Django add it to STORIO_EDITOR["COLLECTIONS"] instead), scan the template with --route <the route with brackets> --collection <key> --page <key> (add --parent <list page key> when a list page exists), and wrap each visible record field in <CmsField collection="<key>" item={<record id>} path="<field>">, also on the list page (for example each post title). Fixed text of the template (headings, labels, buttons) stays page content.
    - Review the change with git diff and run the type check. The page must render exactly as before.
-   - Required: every small item gets its own pencil. Go through the page from top to bottom. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be wrapped in its own <CmsField>. Scan already does this for static text. For everything it did not move (images, icons, text kept in constants or arrays), add the current value to that section in content/<page>.json, read it with usePageContent, and wrap the element in <CmsField path="<key inside that section>" label="<short name>"> inside its <CmsSection>. Use dots and the list position for repeated items (items.0.title, or items.${index}.title inside .map()). For an icon, store its name in the JSON and draw it through a small map of the icons the page already imports. Put <CmsField> inside <li> and <td>, never around them. Keep the output identical.
-   - Leave these without their own pencil: live data from an API, a database or props; alt and placeholder values; and text inside <title>, <option> or <textarea>. Keep every item you skip for the final report, with the reason.
+   - Required: every small item gets its own pencil. Go through the page from top to bottom. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be wrapped in its own <CmsField>. Scan already does this for static text. For everything it did not move (images, icons, text kept in constants or arrays), add the current value to that section in content/<page>.json, read it with usePageContent, and wrap the element in <CmsField path="<key inside that section>" label="<short name>"> inside its <CmsSection>. Use dots and the list position for repeated items (items.0.title, or items.${index}.title inside .map()). For an icon, store its name in the JSON and list every icon the site may show in `icons: { ... }` of defineCms in cms.config.ts (reuse the site's own icon list or registry if it has one), so the icon picker offers exactly the icons the site can draw; draw it with the site's own icon component or <CmsIcon name={...} />. Put <CmsField> inside <li> and <td>, never around them. Keep the output identical.
+   - Leave these without their own pencil: data that cannot be saved back (a third-party API, computed values, props of shared components); alt and placeholder values; and text inside <title>, <option> or <textarea>. Keep every item you skip for the final report, with the reason.
    - Optional: where scan turned hand-written repeated cards into separate fields, you may turn them into an array in the JSON plus a .map() in the code, so editors can add and remove items. Keep the output identical.
 6. Run npx storio-editor doctor and fix every FAIL.
-7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a title, an image, an icon and a list item in turn, and confirm each shows its own small pencil and opens a form with only that field. Change the title, Save & Publish, and check the public page shows it. Then reset it. Also hover an empty part of the section and confirm the larger section pencil opens the full form. Then pick every other page in the CMS page list and confirm its preview loads with pencils.
+7. Start the dev server and open the CMS screen. With Django the screen shows a sign-in form: sign in with a Django staff account (python manage.py createsuperuser makes one). Hover a title, an image, an icon and a list item in turn, and confirm each shows its own small pencil and opens a form with only that field. Pick an icon the page did not use before and confirm the preview shows exactly that icon. For a page with records, pick a record in the second menu and confirm its fields open as a database record. Change the title, Save & Publish, and check the public page shows it. Then reset it. Also hover an empty part of the section and confirm the larger section pencil opens the full form. Then pick every other page in the CMS page list and confirm its preview loads with pencils.
 8. Production: make sure the API URL comes from NEXT_PUBLIC_CMS_API_URL (init generates this), and tell me to run  npx storio-editor doctor --production --frontend-origin <site URL> --api-url <API URL>  before deploying (README section 5, "Deploying to production").
 9. Report to me: what was installed, every file created or edited, the CMS URL, a table of every page from the step 1 list with its URL and whether it is editable (and why not), every visible item left without its own pencil and why, and anything I still have to do (for example the real login check for saving, a staff user, or production settings).
 ```
@@ -74,13 +75,13 @@ Steps:
 In your Next.js project:
 
 ```bash
-npm install github:MostofaSeum/storio-elements-editor#v1.0.0
+npm install github:MostofaSeum/storio-elements-editor#v1.1.0
 ```
 
-`#v1.0.0` pins a released version (see the repository's tags). You import it as `@brainicon/storio-elements-editor`. Check that it worked:
+`#v1.1.0` pins a released version (see the repository's tags). You import it as `@brainicon/storio-elements-editor`. Check that it worked:
 
 ```bash
-npx storio-editor --version     # prints 1.0.0
+npx storio-editor --version     # prints 1.1.0
 ```
 
 ### Step 2. Run the setup command
@@ -138,7 +139,7 @@ npx storio-editor add-page about          # content/about.json, a view, app/abou
 npx storio-editor doctor                  # checks Tailwind, the config, the provider, and the Django API (CORS included)
 ```
 
-Run `scan` on every page file of your site, not only the homepage: each one becomes its own page in the CMS page list. For a dynamic route such as `app/products/[slug]/page.tsx`, add `--route` with one real URL (for example `--route /products/my-product`) so the preview has an item to show; its fixed texts become editable and the item data stays as it is.
+Run `scan` on every page file of your site, not only the homepage: each one becomes its own page in the CMS page list. A dynamic route such as `app/blog/[slug]/page.tsx` shows records from your database: see [Pages with [slug] or [id]](#pages-with-slug-or-id) to make both its fixed text and each record's own fields editable.
 
 Details: [section 4](#4-make-your-own-pages-editable).
 
@@ -300,7 +301,7 @@ Copy the prompt from [the top of this README](#let-your-ai-agent-do-it) into you
 **Step 3. Install the library.**
 
 ```bash
-npm install github:MostofaSeum/storio-elements-editor#v1.0.0
+npm install github:MostofaSeum/storio-elements-editor#v1.1.0
 npx storio-editor --version
 ```
 
@@ -329,9 +330,9 @@ Pass when the command exits with code 0 and lists created and modified files. **
 1. `npx storio-editor scan <page file> --dry-run`. Read the list of texts. It moves only static text and `placeholder`/`alt` attributes; code, state and API data stay as they are.
 2. If it reports a Server Component: when the page has no server-only code (not `async`, no `metadata`/`generateMetadata` export, no database, `fs` or server-only imports), re-run with `--add-use-client`. Otherwise create `components/<Name>View.tsx` with `'use client'`, move the page's JSX into it (keep the server code in the page and pass data as props), render `<NameView />` from the page, and scan the new file with `--page <key> --route <url>`.
 3. Run it without `--dry-run`, then `git diff` and `npx tsc --noEmit`. The page must render the same as before. If anything is wrong, restore the file from `<file>.storio-editor.bak`, remove the page entry from `cms.config.ts` and delete `content/<key>.json`.
-4. Required: give every small item its own pencil. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be inside its own `<CmsField>`. `scan` does this for static text. For images, icons and text kept in constants or arrays, add the current value to that section in `content/<page>.json`, read it with `usePageContent`, and wrap the element in `<CmsField path="..." label="...">` ([Edit single fields](#edit-single-fields)). For an icon, store its name and draw it through a small map of the icons the page already imports. The page must render the same as before.
-   Leave these without their own pencil: live data from an API, a database or props; `alt` and `placeholder` values; and text inside `<title>`, `<option>` or `<textarea>`. Note each skipped item and the reason for the report in Step 8.
-5. Dynamic routes (`[slug]`, `[id]`) show a different item each time. Scan the template file with `--route` set to one real URL (for example `/products/<an existing slug>`) so the preview can show it. Make only the fixed text editable (headings, labels, buttons); the item's own data from the database or API stays as it is. If the page has no fixed text, skip it and note why for Step 8.
+4. Required: give every small item its own pencil. Every visible title, subtitle, paragraph, button or link label, image, logo, icon, and every field of a repeated card or list item must be inside its own `<CmsField>`. `scan` does this for static text. For images, icons and text kept in constants or arrays, add the current value to that section in `content/<page>.json`, read it with `usePageContent`, and wrap the element in `<CmsField path="..." label="...">` ([Edit single fields](#edit-single-fields)). For an icon, store its name and list every icon the site may show in `icons` of `defineCms` (reuse the site's own icon registry if it has one), so the picker only offers icons the site can draw; draw it with the site's own icon component or `<CmsIcon name={...} />` ([Icons](#icons)). The page must render the same as before.
+   Leave these without their own pencil: data that cannot be saved back (a third-party API, computed values, props of shared components); `alt` and `placeholder` values; and text inside `<title>`, `<option>` or `<textarea>`. Note each skipped item and the reason for the report in Step 8.
+5. Dynamic routes (`[slug]`, `[id]`) show one database record at a time. Do [Pages with [slug] or [id]](#pages-with-slug-or-id): add a collection to the CMS API route using the project's own data functions (Django: `STORIO_EDITOR["COLLECTIONS"]`), scan the template with `--route <route with brackets> --collection <key> --page <key>` (plus `--parent <list page key>` when there is a list page), and wrap each visible record field, on the record page and on the list page, in `<CmsField collection item path>`. If the data cannot be saved back (for example it comes from a third-party API), make only the fixed text editable and note why for Step 8.
 6. Optional: blocks written out by hand several times (for example four copied cards) became separate fields. You may turn them into an array in the JSON plus a `.map()` in the code, so editors can add and remove items. Keep the output identical.
 
 **Step 7. Verify.** Pass only when all of these hold (the dev server uses port 3000 unless the project says otherwise):
@@ -446,7 +447,7 @@ Tips:
 
 - `CmsSection` adds nothing for visitors. The outline and pencil only appear inside the CMS preview.
 - Each `sectionKey` must match a `key` in that page's `sections`.
-- Give list items an `id`. Name image fields like `image`, `logo`, `avatar` or `src` to get the image picker, and icon fields like `icon` to get the icon picker. To draw the chosen icon on the page, either map the names you offer to icons you import yourself (small bundle, recommended: `const ICONS = { Zap, Server }` then `ICONS[item.icon] ?? Zap`), or use `getDynamicIcon(name)` from `@brainicon/storio-elements-editor/icons`, which can draw any icon but adds the whole lucide icon set (about 0.9 MB) to your public bundle.
+- Give list items an `id`. Name image fields like `image`, `logo`, `avatar` or `src` to get the image picker, and icon fields like `icon` to get the icon picker. List the icons your site can draw in `icons` of `defineCms`, so the picker never offers one the page cannot show ([Icons](#icons)).
 - For sticky headers or banners, use `<CmsSection buttonPlacement="fixed">` so the pencil is not hidden.
 - To let editors control the page's SEO, add a `seo` section (`title`, `description`, `keywords`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `twitterCard`, `robots`) and use `getPageMetadata(cms, 'home', { storage })` in `generateMetadata`.
 - With the Django backend, use `import { storage } from '@/lib/cms-storage'` the same way; `init` already generates it for Django.
@@ -478,6 +479,98 @@ import { CmsField, CmsSection, usePageContent } from '@brainicon/storio-elements
 - Put `<CmsField>` inside list and table elements (`<li>`, `<td>`), not around them. `<option>`, `<title>` and `<textarea>` only allow plain text, so edit those with the section pencil.
 - Saving a field saves its section, so no storage or API change is needed.
 - Moving to another field of the same section keeps unsaved edits. Leaving the section or page with unsaved edits asks for confirmation first.
+
+### Icons
+
+The icon picker must offer only icons your site can draw, or an editor can pick one that never shows up. List them once in `cms.config.ts`, by the name stored in the content:
+
+```ts
+import { Rocket, Sparkles, Terminal, Zap } from 'lucide-react';
+
+export const cms = defineCms({
+  icons: { Rocket, Sparkles, Terminal, Zap },   // or your site's own icon registry
+  // ...
+});
+```
+
+Draw the chosen icon with your own icon component (if it uses the same registry) or with `<CmsIcon>`:
+
+```tsx
+import { CmsField, CmsIcon } from '@brainicon/storio-elements-editor/site';
+
+<CmsField path="icon" label="Icon"><CmsIcon name={hero.icon} className="size-6" /></CmsField>
+```
+
+Without `icons` the picker offers a built-in list of popular lucide icons, which your page must then be able to draw (for example with `getDynamicIcon(name)` from `/icons`, which adds the whole lucide set to your bundle).
+
+### Pages with [slug] or [id]
+
+A page like `app/blog/[slug]/page.tsx` shows one record of your database at a time: one file, many pages (`/blog/school`, `/blog/college`). The CMS can edit both parts of it:
+
+| What | Example | Where it is saved | One edit changes |
+|---|---|---|---|
+| the record's own fields | a post's title, summary, cover | your database row, through your own code | that one post |
+| fixed text of the template | the "Related posts" heading | CMS content, like any page | every post |
+
+In the CMS, picking **Blog** in the page menu shows a second menu: **Blog home** (the list page) and every post. Picking a post previews it, and its fields open as a **database record** with one **Save** button (it goes live at once). Post titles shown on the list page can be edited from Blog home too.
+
+**1. Serve the records from the CMS API route.** Write `list`, `get` and `save` with your own data functions. Only signed-in editors (your `authorize`) can call them, and only the fields `get` returns can be saved, each keeping its type:
+
+```ts
+// app/api/cms/[...path]/route.ts
+import { revalidateTag } from 'next/cache';
+import { listAllPosts, getPostBySlug, updatePostFields } from '@/server/blog/repository';
+
+export const { GET, PUT, DELETE, POST } = createCmsRouteHandler({
+  storage,
+  authorize,
+  collections: {
+    blog: {
+      list: async () => (await listAllPosts()).map((p) => ({ id: p.slug, label: p.title })),
+      get: async (slug) => {
+        const post = await getPostBySlug(slug);
+        return post ? { title: post.title, summary: post.summary, cover: post.cover ?? '' } : null;
+      },
+      save: async (slug, values) => {
+        await updatePostFields(slug, values);  // values only holds keys returned by get
+        revalidateTag('blog');                  // refresh the cached public pages
+      },
+    },
+  },
+});
+```
+
+With **Django**, no code is needed: list the model in settings ([details](django-storio-elements-editor/README.md#pages-with-slug-or-id)):
+
+```python
+STORIO_EDITOR = {
+    "COLLECTIONS": {
+        "blog": {"model": "blog.Post", "lookup": "slug", "label": "title", "fields": ["title", "summary"]},
+    },
+}
+```
+
+**2. Register the page** with its route in brackets, the collection, and (when it has a list page) its parent. `scan` does this for you: `npx storio-editor scan app/blog/[slug]/page.tsx --page blog-post --collection blog --parent blog` (for a Server Component, move the JSX into a client view first and scan that file with `--route /blog/[slug]`). By hand:
+
+```ts
+{ key: 'blog-post', title: 'Blog post', route: '/blog/[slug]', collection: 'blog', parent: 'blog',
+  defaults: blogPostDefaults, sections: [{ key: 'extras', label: 'Extras' }] },
+```
+
+`[slug]` is filled with the record id. When the URL needs other values, return them from `list` as `params`, e.g. `{ id: '7', label: 'Shoes', params: { category: 'shop' } }` for `/[category]/[id]`.
+
+**3. Wrap the record's fields** wherever they appear, with the record's id. This works in Server Components too, and visitors get no extra HTML:
+
+```tsx
+// app/blog/[slug]/page.tsx
+<h1><CmsField collection="blog" item={post.slug} path="title">{post.title}</CmsField></h1>
+<p><CmsField collection="blog" item={post.slug} path="summary">{post.summary}</CmsField></p>
+
+// app/blog/page.tsx (the list): each post title opens that post's record
+<CmsField collection="blog" item={post.slug} path="title">{post.title}</CmsField>
+```
+
+Plain text follows the editor's typing in the preview; images and other content update when the record is saved. In a client component, `useCollectionItem('blog', post.slug, post)` returns the post with the unsaved edits applied, for live previews of anything.
 
 ---
 
@@ -573,7 +666,7 @@ A copy of each edited file is saved next to it as `*.storio-editor.bak`. Running
 You can also run the Django part on its own, without the Next.js part:
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"
+pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.1.0#subdirectory=django-storio-elements-editor"
 python -m storio_elements_editor setup --project <folder with manage.py> --frontend-origin http://localhost:3000 [--dry-run] [--no-cors] [--no-migrate]
 ```
 
@@ -641,7 +734,7 @@ Add `<CmsLogoutButton auth={cmsLogin} redirectTo="/admin/login" />` to your admi
 
 #### By hand
 
-Install the package (`pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"`), add `"storio_elements_editor"` to `INSTALLED_APPS`, add `path("api/cms/", include("storio_elements_editor.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-storio-elements-editor/README.md](django-storio-elements-editor/README.md). On the frontend run `npx storio-editor init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
+Install the package (`pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.1.0#subdirectory=django-storio-elements-editor"`), add `"storio_elements_editor"` to `INSTALLED_APPS`, add `path("api/cms/", include("storio_elements_editor.urls"))` to the root `urls.py`, run `python manage.py migrate`, and configure CORS and `CSRF_TRUSTED_ORIGINS` as described in [django-storio-elements-editor/README.md](django-storio-elements-editor/README.md). On the frontend run `npx storio-editor init --backend django --api-url https://api.example.com/api/cms`. This generates `cms.config.ts` with `djangoAdapter`, which sends the editor's token (or Django session cookie) and handles Django's CSRF token. No Next.js API route or `fileStorage` is created.
 
 ### Your own backend
 
@@ -655,6 +748,9 @@ Any server that implements these endpoints works with `restAdapter({ baseUrl })`
 | DELETE | `/records/:page/:section` | `204` |
 | GET | `/media` | `MediaItem[]` |
 | POST | `/media` | multipart `files` → `{ items: MediaItem[] }` |
+| GET | `/collections/:key/items` | `[{ id, label, params? }]` (editors only) |
+| GET | `/collections/:key/items/:id` | the record's editable values, `404` if missing (editors only) |
+| PUT | `/collections/:key/items/:id` | body `{ values }` → the record's values after saving (editors only) |
 
 ```ts
 type SectionRecord = { page: string; sectionKey: string; content: unknown;
@@ -689,13 +785,16 @@ interface CmsStorageAdapter {
 | the sign-in form says "This account is not allowed to edit the site" | the account is not staff (or your `AUTHORIZE` function says no) | set `is_staff` on the user in the Django admin |
 | the sign-in form says "Too many failed attempts" | 5 wrong passwords for that username from this address | wait 5 minutes (`LOGIN_LOCKOUT_SECONDS`) |
 | the sign-in form says "Token login is not available on this server" | `django-storio-elements-editor` is older than 0.4 or `TOKEN_LOGIN` is `False` | upgrade the package ([section 9](#9-updating)); `npx storio-editor doctor` says which |
-| `npx storio-editor` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/storio-elements-editor#v1.0.0` in the project root, then retry |
-| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/storio-elements-editor#v1.0.0` |
+| `npx storio-editor` tries to download something, or says not found | the library is not installed in this project, or you are in the wrong folder | run `npm install github:MostofaSeum/storio-elements-editor#v1.1.0` in the project root, then retry |
+| "Invalid hook call", or `Cannot read properties of null (reading 'useState')` | two copies of React, usually from linking a local clone of the library (`npm link`, `file:` path) | install from GitHub instead: remove `node_modules/@brainicon`, then `npm install github:MostofaSeum/storio-elements-editor#v1.1.0` |
 | the CMS screen has no styling | the Tailwind `@source` line is missing or points to the wrong place, or Tailwind is v3 | open the CSS file your root layout imports; it must contain `@source "…/node_modules/@brainicon/storio-elements-editor/dist";` below `@import "tailwindcss";` |
 | the preview shows "Loading…" forever, or is blank | the page's `route` in `cms.config.ts` is wrong, the page throws an error, a redirect catches the preview, or the site blocks being framed | open the route in a normal tab; check `middleware.ts` ([below](#redirects-and-the-preview-iframe)); remove `X-Frame-Options: DENY` |
 | hovering shows no pencil | the block is not wrapped in `<CmsSection>`, `CmsProviders` is missing from the root layout, or Edit Mode is off | wrap the block; check `app/layout.tsx`; turn Edit Mode on in the toolbar |
 | hovering a title or image shows only the section pencil | the value is not wrapped in `<CmsField>`, or the `<CmsField>` is outside its `<CmsSection>` (the browser console warns about this) | wrap the value inside its section ([Edit single fields](#edit-single-fields)) |
 | a small pencil opens the whole section and says "This field could not be found" | the `path` does not match that section's content, or the list item was deleted | use the key from `content/<page>.json`, for example `title` or `items.0.title` |
+| an icon picked in the CMS shows as a different icon on the page | the page draws icons from its own list, and the picker offered one that is not in it | add `icons` with that list to `defineCms` ([Icons](#icons)) |
+| the second menu says "could not load" or "no records yet" for a [slug] page | the API route has no collection with that key, `list` threw, or the editor is not signed in | add it to `collections` of `createCmsRouteHandler` (Django: `COLLECTIONS`), and check the server log |
+| saving a record fails with "'…' cannot be edited" | the form sent a field that `get` does not return | return every field you want editable from `get` |
 | clicking the pencil says "Section '…' is not configured for this page" | the `sectionKey` is not in that page's `sections` | add `{ key: '…', label: '…' }` to the page in `cms.config.ts` |
 | saving fails with 401 | `authorize()` returned false. The generated one allows editing only under `next dev` | implement your login check ([Case B step 4](#case-b-your-admin-panel-is-part-of-this-nextjs-app)); log in |
 | saving fails with 404 "Unknown page" | the page key is not in `cms.config.ts` `pages` | register the page |
@@ -732,7 +831,7 @@ interface CmsStorageAdapter {
 
 ### `storio-editor scan <file>`
 
-Makes an existing page editable ([section 4](#4-make-your-own-pages-editable)). Options: `--page <key>`, `--route <path>`, `--title <text>`, `--component <Name>` (default: the default export), `--add-use-client`, `--dry-run`. It refuses files that already use `usePageContent`, dynamic routes without `--route`, and page keys or content files that already exist.
+Makes an existing page editable ([section 4](#4-make-your-own-pages-editable)). Options: `--page <key>`, `--route <path>`, `--title <text>`, `--component <Name>` (default: the default export), `--add-use-client`, `--collection <key>` and `--parent <page key>` (for [slug] or [id] pages, see [Pages with [slug] or [id]](#pages-with-slug-or-id)), `--dry-run`. It refuses files that already use `usePageContent`, [slug] or [id] routes without `--collection`, and page keys or content files that already exist.
 
 ### `storio-editor add-page <key>`
 
@@ -840,7 +939,8 @@ There is no schema to write. The editor reads the section's content and picks a 
 
 | Option | Purpose |
 |---|---|
-| `pages` | pages, routes, sections and defaults |
+| `pages` | pages, routes, sections and defaults. A [slug] page adds `collection` (and `parent`, the key of its list page) |
+| `icons` | the icons your site can draw, by name; the icon picker offers exactly these ([Icons](#icons)) |
 | `adapter` | where content is read from and saved to |
 | `title` | heading of the CMS screen |
 | `publicSiteUrl` | site base URL when the CMS runs on another origin |
@@ -863,11 +963,14 @@ There is no schema to write. The editor reads the section's content and picks a 
 | `usePageContent(pageKey, { initialData? })` | `/site` | read a page's content, with live preview in the CMS |
 | `<CmsSection sectionKey title activeOnPath? buttonPlacement?>` | `/site` | make a block editable |
 | `<CmsField path label?>` | `/site` | give one value inside a `<CmsSection>` its own pencil |
-| `getDynamicIcon(name)` | `/icons` | draw any icon chosen in the icon picker (adds the whole lucide icon set to your bundle) |
+| `<CmsField collection item path label?>` | `/site` | give one field of a database record its own pencil ([Pages with [slug] or [id]](#pages-with-slug-or-id)) |
+| `useCollectionItem(collection, id, values)` | `/site` | a record's values with the editor's unsaved changes applied, in the preview |
+| `<CmsIcon name fallback? …props>` | `/site` | draw an icon from `icons` of your config ([Icons](#icons)) |
+| `getDynamicIcon(name)` | `/icons` | draw any lucide icon by name (adds the whole lucide icon set to your bundle) |
 | `getPageContent(config, pageKey, { storage })` | `/next` | load a page's content on the server |
 | `getAllPageContent(config, { storage })` | `/next` | load every page's content on the server, for `<CmsProvider initialContent>` (used by the generated `CmsProviders`) |
 | `getPageMetadata(config, pageKey, { storage, fallback? })` | `/next` | build Next.js metadata from the `seo` section |
-| `createCmsRouteHandler({ storage, authorize, … })` | `/next` | the API route |
+| `createCmsRouteHandler({ storage, authorize, collections?, … })` | `/next` | the API route; `collections` serves records of [slug] pages |
 | `fileStorage()` | `/next` | JSON-file storage |
 | `isCmsPreviewRequest(request, { studioPath? })` | `/next` | let the preview through middleware |
 | `restAdapter`, `djangoAdapter`, `memoryAdapter` | `/adapters` | storage adapters for the browser |
@@ -903,11 +1006,11 @@ if (!isCmsPreviewRequest(request, { studioPath: '/admin/cms' })) {
 Install a newer release by its tag, then restart the dev server:
 
 ```bash
-npm install github:MostofaSeum/storio-elements-editor#v1.0.0     # use the new tag
+npm install github:MostofaSeum/storio-elements-editor#v1.1.0     # use the new tag
 rm -rf .next                                               # PowerShell: Remove-Item -Recurse -Force .next
 ```
 
-With Django, update the Python package too: run `npx storio-editor init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"`.
+With Django, update the Python package too: run `npx storio-editor init --django-dir <folder>` again (it reinstalls the copy shipped in the package and changes nothing else), or `pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.1.0#subdirectory=django-storio-elements-editor"`.
 
 ### Upgrading from `@brainicon/visual-cms`
 

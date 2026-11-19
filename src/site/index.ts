@@ -4,4 +4,7 @@ export { CmsSection } from './CmsSection';
 export type { CmsSectionProps } from './CmsSection';
 export { CmsField } from './CmsField';
 export type { CmsFieldProps } from './CmsField';
+export { CmsIcon } from './CmsIcon';
+export { useCollectionItem } from './itemDrafts';
+export type { CmsIconProps } from './CmsIcon';
 export { isCmsPreview, useCmsEditMode } from './preview';

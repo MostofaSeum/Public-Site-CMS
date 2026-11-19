@@ -88,6 +88,21 @@ function restAdapter(options) {
     },
     async deleteRecord(page, sectionKey) {
       await request(`/records/${enc(page)}/${enc(sectionKey)}`, { method: "DELETE" }, true);
+    },
+    async listItems(collection) {
+      const data = await request(`/collections/${enc(collection)}/items`);
+      return Array.isArray(data) ? data : [];
+    },
+    async getItem(collection, id) {
+      return request(`/collections/${enc(collection)}/items/${enc(id)}`, {}, true);
+    },
+    async saveItem(collection, id, values) {
+      const data = await request(`/collections/${enc(collection)}/items/${enc(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ values })
+      });
+      if (!data) throw new CmsRequestError("Empty response from server", 500);
+      return data;
     }
   };
   if (options.media !== false) {

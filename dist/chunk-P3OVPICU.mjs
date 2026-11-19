@@ -39,7 +39,7 @@ function getSectionDetail(page, sectionKey, record) {
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -48,7 +48,9 @@ var CMS_MESSAGE = {
   /** studio -> iframe: unsaved form content to render immediately. */
   DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW",
   /** studio -> iframe: content was saved or reset, fetch it again. */
-  CONTENT_UPDATED: "CMS_CONTENT_UPDATED"
+  CONTENT_UPDATED: "CMS_CONTENT_UPDATED",
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: "CMS_ITEM_DRAFT"
 };
 var PREVIEW_PARAM = "cms_preview";
 var EDIT_MODE_PARAM = "cms_edit_mode";
@@ -98,6 +100,32 @@ function listenForCmsMessages(handler, options) {
   return () => window.removeEventListener("message", listener);
 }
 
+// src/core/paths.ts
+function parseFieldPath(path) {
+  return path.split(".").map((part) => /^\d+$/.test(part) ? Number(part) : part);
+}
+function getAtPath(data, path) {
+  let current = data;
+  for (const part of path) {
+    if (current === null || typeof current !== "object") return void 0;
+    if (Array.isArray(current) && typeof part !== "number") return void 0;
+    if (!Object.prototype.hasOwnProperty.call(current, part)) return void 0;
+    current = current[part];
+  }
+  return current;
+}
+function publicUrl(route, publicSiteUrl) {
+  if (!publicSiteUrl) return route;
+  return `${publicSiteUrl.replace(/\/+$/, "")}${route.startsWith("/") ? route : `/${route}`}`;
+}
+function buildPreviewUrl(route, options = {}) {
+  const base = publicUrl(route, options.publicSiteUrl);
+  const params = [`${PREVIEW_PARAM}=1`];
+  if (options.editMode) params.push(`${EDIT_MODE_PARAM}=1`);
+  if (options.cacheBust !== void 0) params.push(`t=${encodeURIComponent(String(options.cacheBust))}`);
+  return `${base}${base.includes("?") ? "&" : "?"}${params.join("&")}`;
+}
+
 export {
   findPage,
   mergePageContent,
@@ -108,5 +136,9 @@ export {
   originOf,
   trustedOrigins,
   postCmsMessage,
-  listenForCmsMessages
+  listenForCmsMessages,
+  parseFieldPath,
+  getAtPath,
+  publicUrl,
+  buildPreviewUrl
 };

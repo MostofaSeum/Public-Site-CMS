@@ -1,5 +1,28 @@
-import type { CmsStorageAdapter } from '../core/types';
+import type { CmsStorageAdapter, CollectionItemSummary } from '../core/types';
 import { isValidKey } from '../core/defineCms';
+
+/**
+ * Loads and saves the records of one collection (blog posts, products...) with your own code,
+ * for pages with a [slug] or [id] route. Every call is made only for authorised editors.
+ */
+export interface CmsCollectionHandler {
+  /** Every record the studio may open: id, a name for the menu, and route params if needed. */
+  list(request: Request): CollectionItemSummary[] | Promise<CollectionItemSummary[]>;
+  /**
+   * The editable values of one record, e.g. { title, summary, cover }, or null when it does not
+   * exist. Only the keys returned here can be saved, and each keeps its type.
+   */
+  get(id: string, request: Request): Record<string, unknown> | null | undefined | Promise<Record<string, unknown> | null | undefined>;
+  /**
+   * Save the changed values (a subset of what `get` returned). Refresh any cache your pages use
+   * here, e.g. revalidateTag("blog"). Return the saved values, or nothing to have `get` called again.
+   */
+  save(
+    id: string,
+    values: Record<string, unknown>,
+    request: Request
+  ): void | Record<string, unknown> | Promise<void | Record<string, unknown>>;
+}
 
 export interface CmsRouteHandlerOptions {
   /** Server-side storage, e.g. `fileStorage()` or your own database adapter. */
@@ -15,6 +38,8 @@ export interface CmsRouteHandlerOptions {
   allowedPages?: string[];
   /** Largest accepted JSON body in bytes. Defaults to 1 MB. */
   maxBodyBytes?: number;
+  /** Collections whose records the studio can edit, by the key used in a page's `collection`. */
+  collections?: Record<string, CmsCollectionHandler>;
 }
 
 type Handler = (request: Request) => Promise<Response>;
@@ -28,12 +53,43 @@ function json(body: unknown, status = 200): Response {
 
 const error = (status: number, detail: string) => json({ detail }, status);
 
-/** Path segments after the "records" or "media" keyword of the request URL. */
-function parseRoute(request: Request): { resource: 'records' | 'media' | null; rest: string[] } {
-  const segments = new URL(request.url).pathname.split('/').filter(Boolean).map(decodeURIComponent);
-  const index = segments.findIndex((s) => s === 'records' || s === 'media');
+type Resource = 'records' | 'media' | 'collections';
+const RESOURCES = new Set<string>(['records', 'media', 'collections']);
+
+/** Path segments after the "records", "media" or "collections" keyword of the request URL. */
+function parseRoute(request: Request): { resource: Resource | null; rest: string[] } {
+  let segments: string[];
+  try {
+    segments = new URL(request.url).pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return { resource: null, rest: [] };
+  }
+  const index = segments.findIndex((s) => RESOURCES.has(s));
   if (index === -1) return { resource: null, rest: [] };
-  return { resource: segments[index] as 'records' | 'media', rest: segments.slice(index + 1) };
+  return { resource: segments[index] as Resource, rest: segments.slice(index + 1) };
+}
+
+const kindOf = (value: unknown) => (value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value);
+
+/**
+ * Keeps only values the record already has, with the same type (null may become a string and
+ * back). Returns an error message for anything else.
+ */
+export function pickEditableValues(
+  current: Record<string, unknown>,
+  incoming: unknown
+): { values: Record<string, unknown> } | { error: string } {
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return { error: "Field 'values' must be an object." };
+  const values: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(incoming as Record<string, unknown>)) {
+    if (!Object.prototype.hasOwnProperty.call(current, key)) return { error: `'${key}' cannot be edited.` };
+    const was = kindOf(current[key]);
+    const now = kindOf(value);
+    const nullable = (was === 'null' && now === 'string') || (was === 'string' && now === 'null');
+    if (was !== now && !nullable) return { error: `'${key}' must stay a ${was}.` };
+    values[key] = value;
+  }
+  return { values };
 }
 
 /**
@@ -67,6 +123,36 @@ export function createCmsRouteHandler(options: CmsRouteHandlerOptions): {
     return null;
   };
 
+  const collections = options.collections ?? {};
+
+  /** The handler for ".../collections/:key/items[/:id]", or the error response. */
+  const findCollection = (rest: string[]): { handler: CmsCollectionHandler } | { response: Response } => {
+    if ((rest.length !== 2 && rest.length !== 3) || rest[1] !== 'items') return { response: error(404, 'Not found.') };
+    const [key] = rest;
+    const handler = isValidKey(key) && Object.prototype.hasOwnProperty.call(collections, key) ? collections[key] : undefined;
+    if (!handler) return { response: error(404, `Unknown collection '${key}'. Add it to "collections" of createCmsRouteHandler.`) };
+    if (rest.length === 3 && (rest[2].length === 0 || rest[2].length > 200)) return { response: error(400, 'Invalid record id.') };
+    return { handler };
+  };
+
+  const collectionFailure = (err: unknown) => {
+    console.error('[storio-editor] collection handler failed', err);
+    return error(500, 'The record could not be loaded or saved. See the server log.');
+  };
+
+  const readJson = async (request: Request): Promise<{ body: Record<string, unknown> } | { response: Response }> => {
+    const length = Number(request.headers.get('content-length') ?? 0);
+    if (length > maxBodyBytes) return { response: error(413, 'Content too large.') };
+    try {
+      const text = await request.text();
+      if (text.length > maxBodyBytes) return { response: error(413, 'Content too large.') };
+      const body = JSON.parse(text);
+      return { body: body && typeof body === 'object' ? body : {} };
+    } catch {
+      return { response: error(400, 'Body must be JSON.') };
+    }
+  };
+
   const isAuthorized = async (request: Request) => {
     try {
       return Boolean(await authorize(request));
@@ -83,6 +169,19 @@ export function createCmsRouteHandler(options: CmsRouteHandlerOptions): {
       if (!(await isAuthorized(request))) return error(401, 'Not authorised.');
       if (!storage.listMedia) return json([]);
       return json(await storage.listMedia());
+    }
+
+    if (resource === 'collections') {
+      if (!(await isAuthorized(request))) return error(401, 'Not authorised.');
+      const found = findCollection(rest);
+      if ('response' in found) return found.response;
+      try {
+        if (rest.length === 2) return json(await found.handler.list(request));
+        const item = await found.handler.get(rest[2], request);
+        return item ? json(item) : error(404, 'Record not found.');
+      } catch (err) {
+        return collectionFailure(err);
+      }
     }
 
     if (resource !== 'records') return error(404, 'Not found.');
@@ -113,6 +212,25 @@ export function createCmsRouteHandler(options: CmsRouteHandlerOptions): {
 
   const PUT: Handler = async (request) => {
     const { resource, rest } = parseRoute(request);
+    if (resource === 'collections') {
+      if (!(await isAuthorized(request))) return error(401, 'Not authorised.');
+      if (rest.length !== 3) return error(404, 'Not found.');
+      const found = findCollection(rest);
+      if ('response' in found) return found.response;
+      const read = await readJson(request);
+      if ('response' in read) return read.response;
+      const id = rest[2];
+      try {
+        const current = await found.handler.get(id, request);
+        if (!current) return error(404, 'Record not found.');
+        const picked = pickEditableValues(current, read.body.values);
+        if ('error' in picked) return error(400, picked.error);
+        const saved = await found.handler.save(id, picked.values, request);
+        return json(saved ?? (await found.handler.get(id, request)) ?? { ...current, ...picked.values });
+      } catch (err) {
+        return collectionFailure(err);
+      }
+    }
     if (resource !== 'records' || rest.length !== 2) return error(404, 'Not found.');
     if (!(await isAuthorized(request))) return error(401, 'Not authorised.');
 

@@ -22,11 +22,13 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var site_exports = {};
 __export(site_exports, {
   CmsField: () => CmsField,
+  CmsIcon: () => CmsIcon,
   CmsProvider: () => CmsProvider,
   CmsSection: () => CmsSection,
   isCmsPreview: () => isCmsPreview,
   useCmsConfig: () => useCmsConfig,
   useCmsEditMode: () => useCmsEditMode,
+  useCollectionItem: () => useCollectionItem,
   usePageContent: () => usePageContent
 });
 module.exports = __toCommonJS(site_exports);
@@ -58,7 +60,7 @@ function mergePageContent(page, records, options = {}) {
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -67,7 +69,9 @@ var CMS_MESSAGE = {
   /** studio -> iframe: unsaved form content to render immediately. */
   DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW",
   /** studio -> iframe: content was saved or reset, fetch it again. */
-  CONTENT_UPDATED: "CMS_CONTENT_UPDATED"
+  CONTENT_UPDATED: "CMS_CONTENT_UPDATED",
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: "CMS_ITEM_DRAFT"
 };
 var PREVIEW_PARAM = "cms_preview";
 var EDIT_MODE_PARAM = "cms_edit_mode";
@@ -402,9 +406,76 @@ var CmsSection = ({
 };
 
 // src/site/CmsField.tsx
-var import_react5 = require("react");
+var import_react6 = require("react");
 var import_react_dom2 = require("react-dom");
 var import_lucide_react2 = require("lucide-react");
+
+// src/core/paths.ts
+function parseFieldPath(path) {
+  return path.split(".").map((part) => /^\d+$/.test(part) ? Number(part) : part);
+}
+function getAtPath(data, path) {
+  let current = data;
+  for (const part of path) {
+    if (current === null || typeof current !== "object") return void 0;
+    if (Array.isArray(current) && typeof part !== "number") return void 0;
+    if (!Object.prototype.hasOwnProperty.call(current, part)) return void 0;
+    current = current[part];
+  }
+  return current;
+}
+
+// src/site/itemDrafts.ts
+var import_react5 = require("react");
+var drafts = /* @__PURE__ */ new Map();
+var listeners = /* @__PURE__ */ new Set();
+var stopListening = null;
+var listeningFor = "";
+var keyOf = (collection, item) => `${collection}\0${item}`;
+function notify() {
+  listeners.forEach((listener) => listener());
+}
+function ensureListening(origins) {
+  if (typeof window === "undefined" || window.parent === window || origins.length === 0) return;
+  const key = origins.join("|");
+  if (key === listeningFor) return;
+  stopListening?.();
+  listeningFor = key;
+  stopListening = listenForCmsMessages(
+    (message) => {
+      if (message.type !== CMS_MESSAGE.ITEM_DRAFT) return;
+      const draftKey = keyOf(message.collection, String(message.item));
+      if (message.values) drafts.set(draftKey, message.values);
+      else drafts.delete(draftKey);
+      notify();
+    },
+    { origins, source: () => window.parent }
+  );
+}
+function subscribe(listener) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+function useItemDraft(collection, item) {
+  const { origins } = useCmsContext();
+  const originsKey = origins.join("|");
+  (0, import_react5.useEffect)(() => {
+    ensureListening(origins);
+  }, [originsKey]);
+  return (0, import_react5.useSyncExternalStore)(
+    subscribe,
+    () => drafts.get(keyOf(collection, item)),
+    () => void 0
+  );
+}
+function useCollectionItem(collection, item, values) {
+  const draft = useItemDraft(collection, String(item));
+  return draft ? { ...values, ...draft } : values;
+}
+
+// src/site/CmsField.tsx
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var PENCIL_SIZE = 30;
 var WINDOW_MARGIN2 = 4;
@@ -414,17 +485,14 @@ function labelFromPath(path) {
   const words = name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
-var CmsField = ({ path, label, children }) => {
-  const section = (0, import_react5.useContext)(CmsSectionContext);
-  const wrapperRef = (0, import_react5.useRef)(null);
-  const pencilRef = (0, import_react5.useRef)(null);
-  const [isHovered, setIsHovered] = (0, import_react5.useState)(false);
-  const [box, setBox] = (0, import_react5.useState)(null);
-  const isEditMode = Boolean(section?.isEditMode);
+var FieldFrame = ({ path, name, isEditMode, onOpen, children }) => {
+  const wrapperRef = (0, import_react6.useRef)(null);
+  const pencilRef = (0, import_react6.useRef)(null);
+  const [isHovered, setIsHovered] = (0, import_react6.useState)(false);
+  const [box, setBox] = (0, import_react6.useState)(null);
   const showControls = isEditMode && isHovered;
-  const name = label ?? labelFromPath(path);
-  const hideTimer = (0, import_react5.useRef)(void 0);
-  const hideNow = (0, import_react5.useCallback)(() => {
+  const hideTimer = (0, import_react6.useRef)(void 0);
+  const hideNow = (0, import_react6.useCallback)(() => {
     clearTimeout(hideTimer.current);
     setIsHovered(false);
     releaseFieldHover(hideNow);
@@ -438,19 +506,14 @@ var CmsField = ({ path, label, children }) => {
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(hideNow, HIDE_DELAY_MS);
   };
-  (0, import_react5.useEffect)(
+  (0, import_react6.useEffect)(
     () => () => {
       clearTimeout(hideTimer.current);
       releaseFieldHover(hideNow);
     },
     [hideNow]
   );
-  (0, import_react5.useEffect)(() => {
-    if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
-      console.warn(`[storio-editor] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
-    }
-  }, [section, path]);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react6.useEffect)(() => {
     if (!showControls) {
       setBox(null);
       return;
@@ -471,16 +534,12 @@ var CmsField = ({ path, label, children }) => {
     measure();
     return () => cancelAnimationFrame(frame);
   }, [showControls]);
-  if (!section || !isEditMode) return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children });
-  const openField = (e) => {
+  if (!isEditMode) return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children });
+  const open = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (window.parent === window) return;
-    postCmsMessage(
-      window.parent,
-      { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: section.sectionKey, title: name, fieldPath: path },
-      section.origins
-    );
+    onOpen();
   };
   const handleMouseOver = (e) => {
     const target = e.target;
@@ -498,7 +557,7 @@ var CmsField = ({ path, label, children }) => {
       ref: wrapperRef,
       "data-cms-field": path,
       style: { display: "contents" },
-      onClick: openField,
+      onClick: open,
       onMouseOver: handleMouseOver,
       onMouseLeave: hideSoon,
       children: [
@@ -529,7 +588,7 @@ var CmsField = ({ path, label, children }) => {
                 ref: pencilRef,
                 type: "button",
                 "data-cms-field-button": path,
-                onClick: openField,
+                onClick: open,
                 title: `Edit ${name}`,
                 "aria-label": `Edit ${name}`,
                 style: {
@@ -560,13 +619,95 @@ var CmsField = ({ path, label, children }) => {
     }
   );
 };
+var SectionField = ({ path, label, children }) => {
+  const section = (0, import_react6.useContext)(CmsSectionContext);
+  const name = label ?? labelFromPath(path);
+  (0, import_react6.useEffect)(() => {
+    if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
+      console.warn(`[storio-editor] <CmsField path="${path}"> must be placed inside a <CmsSection>, or given collection and item.`);
+    }
+  }, [section, path]);
+  if (!section) return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children });
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+    FieldFrame,
+    {
+      path,
+      name,
+      isEditMode: section.isEditMode,
+      onOpen: () => postCmsMessage(
+        window.parent,
+        { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: section.sectionKey, title: name, fieldPath: path },
+        section.origins
+      ),
+      children
+    }
+  );
+};
+var RecordField = ({
+  path,
+  label,
+  collection,
+  item,
+  children
+}) => {
+  const { origins } = useCmsContext();
+  const isEditMode = useCmsEditMode(origins);
+  const draft = useItemDraft(collection, item);
+  const name = label ?? labelFromPath(path);
+  let content = children;
+  if (draft && (typeof children === "string" || typeof children === "number")) {
+    const value = getAtPath(draft, parseFieldPath(path));
+    if (typeof value === "string" || typeof value === "number") content = value;
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+    FieldFrame,
+    {
+      path,
+      name,
+      isEditMode,
+      onOpen: () => postCmsMessage(
+        window.parent,
+        { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: "", title: name, fieldPath: path, collection, item },
+        origins
+      ),
+      children: content
+    }
+  );
+};
+var CmsField = ({ collection, item, ...props }) => {
+  if (collection && item !== void 0 && item !== null && item !== "") {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(RecordField, { ...props, collection, item: String(item) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(SectionField, { ...props });
+};
+
+// src/site/CmsIcon.tsx
+var import_jsx_runtime4 = require("react/jsx-runtime");
+var warned = /* @__PURE__ */ new Set();
+var CmsIcon = ({ name, fallback, ...props }) => {
+  const icons = useCmsConfig().icons;
+  const Icon = name && icons?.[name] || fallback;
+  if (!Icon) {
+    if (name && !warned.has(name)) {
+      warned.add(name);
+      console.warn(
+        icons ? `[storio-editor] <CmsIcon name="${name}">: "${name}" is not in the icons of your CMS config.` : "[storio-editor] <CmsIcon> needs an `icons` map in defineCms({ ... })."
+      );
+    }
+    return null;
+  }
+  const Component = Icon;
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Component, { "aria-hidden": "true", ...props });
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   CmsField,
+  CmsIcon,
   CmsProvider,
   CmsSection,
   isCmsPreview,
   useCmsConfig,
   useCmsEditMode,
+  useCollectionItem,
   usePageContent
 });

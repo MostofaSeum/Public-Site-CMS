@@ -22,6 +22,8 @@ scan options
   --title <text>            Page name shown in the CMS
   --component <Name>        Component to convert (default: the default export)
   --add-use-client          Add "use client" to a page that has no server-only code
+  --collection <key>        For a [slug] or [id] page: the collection whose records it shows
+  --parent <page key>       For a [slug] or [id] page: the list page it belongs to (e.g. blog)
   --dry-run                 Show the texts it would move, change nothing
 
 add-page options
@@ -71,7 +73,7 @@ function parseArgs(argv: string[]): Parsed {
   const flags = new Map<string, string | true>();
   let command: string | null = null;
   const positionals: string[] = [];
-  const valueFlags = new Set(['backend', 'api-url', 'admin-path', 'cwd', 'django-dir', 'frontend-origin', 'title', 'route', 'sections', 'page', 'component', 'auth']);
+  const valueFlags = new Set(['backend', 'api-url', 'admin-path', 'cwd', 'django-dir', 'frontend-origin', 'title', 'route', 'sections', 'page', 'component', 'auth', 'collection', 'parent']);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '-y') flags.set('yes', true);
@@ -275,6 +277,8 @@ export async function main(argv: string[]): Promise<number> {
         title: flags.get('title') as string | undefined,
         component: flags.get('component') as string | undefined,
         addUseClient: flags.has('add-use-client'),
+        collection: flags.get('collection') as string | undefined,
+        parent: flags.get('parent') as string | undefined,
         dryRun,
       });
       console.log('');

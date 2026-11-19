@@ -1,7 +1,25 @@
-import { C as CmsStorageAdapter, a as CmsConfig } from './types-B3IuU7DM.js';
+import { d as CollectionItemSummary, C as CmsStorageAdapter, a as CmsConfig } from './types-Dz7fHJXe.js';
 import { Metadata } from 'next';
 import 'react';
 
+/**
+ * Loads and saves the records of one collection (blog posts, products...) with your own code,
+ * for pages with a [slug] or [id] route. Every call is made only for authorised editors.
+ */
+interface CmsCollectionHandler {
+    /** Every record the studio may open: id, a name for the menu, and route params if needed. */
+    list(request: Request): CollectionItemSummary[] | Promise<CollectionItemSummary[]>;
+    /**
+     * The editable values of one record, e.g. { title, summary, cover }, or null when it does not
+     * exist. Only the keys returned here can be saved, and each keeps its type.
+     */
+    get(id: string, request: Request): Record<string, unknown> | null | undefined | Promise<Record<string, unknown> | null | undefined>;
+    /**
+     * Save the changed values (a subset of what `get` returned). Refresh any cache your pages use
+     * here, e.g. revalidateTag("blog"). Return the saved values, or nothing to have `get` called again.
+     */
+    save(id: string, values: Record<string, unknown>, request: Request): void | Record<string, unknown> | Promise<void | Record<string, unknown>>;
+}
 interface CmsRouteHandlerOptions {
     /** Server-side storage, e.g. `fileStorage()` or your own database adapter. */
     storage: CmsStorageAdapter;
@@ -16,6 +34,8 @@ interface CmsRouteHandlerOptions {
     allowedPages?: string[];
     /** Largest accepted JSON body in bytes. Defaults to 1 MB. */
     maxBodyBytes?: number;
+    /** Collections whose records the studio can edit, by the key used in a page's `collection`. */
+    collections?: Record<string, CmsCollectionHandler>;
 }
 type Handler = (request: Request) => Promise<Response>;
 /**
@@ -110,4 +130,4 @@ declare function isCmsPreviewRequest(request: {
     studioPath?: string;
 }): boolean;
 
-export { type CmsRouteHandlerOptions, type FileStorageOptions, type PageSeoConfig, buildPageMetadata, createCmsRouteHandler, fileStorage, getAllPageContent, getPageContent, getPageMetadata, isCmsPreviewRequest };
+export { type CmsCollectionHandler, type CmsRouteHandlerOptions, type FileStorageOptions, type PageSeoConfig, buildPageMetadata, createCmsRouteHandler, fileStorage, getAllPageContent, getPageContent, getPageMetadata, isCmsPreviewRequest };

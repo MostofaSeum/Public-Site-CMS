@@ -1,5 +1,5 @@
-import { a as CmsConfig, P as PageDef, S as SectionRecord, b as SectionDetail, c as SectionMetadata } from './types-B3IuU7DM.mjs';
-export { C as CmsStorageAdapter, d as CmsWidgets, e as CodeValue, f as CodeWidgetProps, g as CollectionLimit, I as IconComponent, h as ImagePreset, i as ImagePresetCategory, L as ListOptions, M as MediaItem, j as SaveRecordInput, k as SectionDef } from './types-B3IuU7DM.mjs';
+import { a as CmsConfig, P as PageDef, S as SectionRecord, b as SectionDetail, c as SectionMetadata, d as CollectionItemSummary } from './types-Dz7fHJXe.mjs';
+export { C as CmsStorageAdapter, e as CmsWidgets, f as CodeValue, g as CodeWidgetProps, h as CollectionLimit, I as IconComponent, i as ImagePreset, j as ImagePresetCategory, L as ListOptions, M as MediaItem, k as SaveRecordInput, l as SectionDef } from './types-Dz7fHJXe.mjs';
 import 'react';
 
 /** True for keys safe to use as page or section identifiers in storage and URLs. */
@@ -33,7 +33,7 @@ declare function getSectionDetail<T = unknown>(page: PageDef, sectionKey: string
  * the preview iframe. Names are part of the public protocol; keep them stable.
  */
 declare const CMS_MESSAGE: {
-    /** iframe -> studio: a section's or a single field's edit button was clicked. */
+    /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
     readonly EDIT_SECTION: "CMS_EDIT_SECTION";
     /** studio -> iframe: scroll to and highlight a section. */
     readonly SCROLL_TO_SECTION: "SCROLL_TO_SECTION";
@@ -43,6 +43,8 @@ declare const CMS_MESSAGE: {
     readonly DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW";
     /** studio -> iframe: content was saved or reset, fetch it again. */
     readonly CONTENT_UPDATED: "CMS_CONTENT_UPDATED";
+    /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+    readonly ITEM_DRAFT: "CMS_ITEM_DRAFT";
 };
 /** Query flag that marks a page as loaded inside the studio. */
 declare const PREVIEW_PARAM = "cms_preview";
@@ -53,6 +55,9 @@ type CmsMessage = {
     sectionKey: string;
     title?: string;
     fieldPath?: string;
+    /** Set when the field belongs to a collection record instead of a section. */
+    collection?: string;
+    item?: string;
 } | {
     type: typeof CMS_MESSAGE.SCROLL_TO_SECTION;
     sectionKey: string;
@@ -66,6 +71,11 @@ type CmsMessage = {
     draftContent: unknown;
 } | {
     type: typeof CMS_MESSAGE.CONTENT_UPDATED;
+} | {
+    type: typeof CMS_MESSAGE.ITEM_DRAFT;
+    collection: string;
+    item: string;
+    values: Record<string, unknown> | null;
 };
 declare function isCmsMessage(data: unknown): data is CmsMessage;
 /** Origin of a URL, or null when it cannot be parsed. */
@@ -93,4 +103,21 @@ declare function buildPreviewUrl(route: string, options?: {
     cacheBust?: number | string;
 }): string;
 
-export { CMS_MESSAGE, CmsConfig, type CmsMessage, EDIT_MODE_PARAM, PREVIEW_PARAM, PageDef, SectionDetail, SectionMetadata, SectionRecord, buildPreviewUrl, defineCms, findPage, getSectionDetail, getSectionKeys, isCmsMessage, isValidKey, listManagedSections, listenForCmsMessages, mergePageContent, originOf, postCmsMessage, publicUrl, trustedOrigins };
+/** True for routes with a [param] segment, such as "/blog/[slug]". */
+declare function isDynamicRoute(route: string): boolean;
+/**
+ * The public URL of one record: each [name] in the route is replaced by `item.params[name]`,
+ * or by the id when there is no such param. "/blog/[slug]" + { id: "school" } -> "/blog/school".
+ */
+declare function fillRoute(route: string, item: Pick<CollectionItemSummary, 'id' | 'params'>): string;
+/** Pages shown in the studio's page menu: every page that does not belong to a parent page. */
+declare function topLevelPages(config: Pick<CmsConfig, 'pages'>): PageDef[];
+/** The top-level page a page is listed under (itself when it has no parent). */
+declare function groupPageOf(config: Pick<CmsConfig, 'pages'>, page: PageDef): PageDef;
+/**
+ * The pages whose records appear in the record menu of a top-level page: its children with a
+ * collection, plus the page itself when it shows records.
+ */
+declare function recordPagesOf(config: Pick<CmsConfig, 'pages'>, group: PageDef): PageDef[];
+
+export { CMS_MESSAGE, CmsConfig, type CmsMessage, CollectionItemSummary, EDIT_MODE_PARAM, PREVIEW_PARAM, PageDef, SectionDetail, SectionMetadata, SectionRecord, buildPreviewUrl, defineCms, fillRoute, findPage, getSectionDetail, getSectionKeys, groupPageOf, isCmsMessage, isDynamicRoute, isValidKey, listManagedSections, listenForCmsMessages, mergePageContent, originOf, postCmsMessage, publicUrl, recordPagesOf, topLevelPages, trustedOrigins };

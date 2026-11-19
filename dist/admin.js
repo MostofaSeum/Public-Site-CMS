@@ -57,7 +57,7 @@ var import_react = require("react");
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -66,7 +66,9 @@ var CMS_MESSAGE = {
   /** studio -> iframe: unsaved form content to render immediately. */
   DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW",
   /** studio -> iframe: content was saved or reset, fetch it again. */
-  CONTENT_UPDATED: "CMS_CONTENT_UPDATED"
+  CONTENT_UPDATED: "CMS_CONTENT_UPDATED",
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: "CMS_ITEM_DRAFT"
 };
 var PREVIEW_PARAM = "cms_preview";
 var EDIT_MODE_PARAM = "cms_edit_mode";
@@ -140,6 +142,25 @@ function useStudio() {
 var import_react7 = __toESM(require("react"));
 var import_lucide_react6 = require("lucide-react");
 var import_react_hot_toast4 = __toESM(require("react-hot-toast"));
+
+// src/core/collections.ts
+var BRACKET = /\[(?:\.\.\.)?([A-Za-z0-9_]+)\]/g;
+function isDynamicRoute(route) {
+  return /\[[^\]]+\]/.test(route);
+}
+function fillRoute(route, item) {
+  return route.replace(BRACKET, (_, name) => encodeURIComponent(item.params?.[name] ?? item.id));
+}
+function topLevelPages(config) {
+  return config.pages.filter((p) => !p.parent);
+}
+function groupPageOf(config, page) {
+  return page.parent && config.pages.find((p) => p.key === page.parent) || page;
+}
+function recordPagesOf(config, group) {
+  const children = config.pages.filter((p) => p.parent === group.key && p.collection);
+  return group.collection ? [group, ...children] : children;
+}
 
 // src/core/merge.ts
 function clone(value) {
@@ -552,6 +573,9 @@ var VisualImagePicker = ({
         }));
         setBackendMedia((prev) => [...newUploadedItems, ...prev]);
         setSelectedPhoto(items[0].url);
+        setSearchQuery("");
+        setSelectedCategory("uploaded");
+        setActiveTab("presets");
         import_react_hot_toast2.default.success(`Successfully uploaded ${items.length} image(s)!`);
         return;
       }
@@ -1016,7 +1040,8 @@ var VisualIconPicker = ({
   value,
   onChange,
   label,
-  fieldId
+  fieldId,
+  icons
 }) => {
   const [isOpen, setIsOpen] = (0, import_react5.useState)(false);
   const [search, setSearch] = (0, import_react5.useState)("");
@@ -1025,18 +1050,24 @@ var VisualIconPicker = ({
   (0, import_react5.useEffect)(() => {
     setMounted(true);
   }, []);
+  const catalog = (0, import_react5.useMemo)(
+    () => icons ? Object.keys(icons).map((name) => ({ name, category: "Site icons" })) : POPULAR_ICONS,
+    [icons]
+  );
+  const resolveIcon = (name) => icons ? icons[name] ?? getDynamicIcon(name) : getDynamicIcon(name);
   const categories = (0, import_react5.useMemo)(() => {
-    const set = new Set(POPULAR_ICONS.map((i) => i.category));
-    return ["all", ...Array.from(set)];
-  }, []);
+    const set = new Set(catalog.map((i) => i.category));
+    return set.size > 1 ? ["all", ...Array.from(set)] : [];
+  }, [catalog]);
   const filteredIcons = (0, import_react5.useMemo)(() => {
-    return POPULAR_ICONS.filter((item) => {
+    return catalog.filter((item) => {
       const matchCat = activeCategory === "all" || item.category === activeCategory;
       const matchSearch = !search.trim() || item.name.toLowerCase().includes(search.trim().toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [search, activeCategory]);
-  const CurrentIcon = getDynamicIcon(value || "Sparkles");
+  }, [catalog, search, activeCategory]);
+  const CurrentIcon = resolveIcon(value || "Sparkles");
+  const isUnknownSiteIcon = Boolean(icons && value && !icons[value]);
   const modalContent = isOpen ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
     "div",
     {
@@ -1052,7 +1083,7 @@ var VisualIconPicker = ({
               /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2.5", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0" }),
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { className: "text-sm font-bold text-white", children: "Choose Lucide Icon" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { className: "text-sm font-bold text-white", children: icons ? "Choose Icon" : "Choose Lucide Icon" }),
                   /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "text-[11px] text-slate-400", children: [
                     "Select an icon for ",
                     /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "font-mono text-purple-300", children: label || fieldId })
@@ -1096,7 +1127,7 @@ var VisualIconPicker = ({
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "p-4 overflow-y-auto max-h-[55vh] custom-scrollbar", children: [
               /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3", children: filteredIcons.map((item) => {
-                const IconComp = getDynamicIcon(item.name);
+                const IconComp = resolveIcon(item.name);
                 const isSelected = (value || "").toLowerCase() === item.name.toLowerCase();
                 return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
                   "button",
@@ -1140,7 +1171,7 @@ var VisualIconPicker = ({
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "w-9 h-9 rounded-lg bg-purple-950/60 border border-purple-800/50 flex items-center justify-center text-purple-300 shrink-0 shadow-inner", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(CurrentIcon, { className: "w-5 h-5" }) }),
         /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "min-w-0", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "text-xs font-semibold text-white font-mono truncate", children: value || "None selected" }),
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "text-[10px] text-slate-400 truncate", children: "Lucide icon" })
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: `text-[10px] truncate ${isUnknownSiteIcon ? "text-amber-400" : "text-slate-400"}`, children: isUnknownSiteIcon ? "The site cannot draw this icon. Pick another." : icons ? "Site icon" : "Lucide icon" })
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
@@ -1180,8 +1211,10 @@ var SectionEditorForm = ({
   transform,
   focusPath,
   onClearFocus,
-  onDirtyChange
+  onDirtyChange,
+  mode = "section"
 }) => {
+  const isRecord = mode === "record";
   const { config } = useStudio();
   const collectionLimits = config.collectionLimits ?? {};
   const CodeWidget = config.widgets?.code;
@@ -1337,11 +1370,12 @@ var SectionEditorForm = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onSave(formData, published);
+      await onSave(formData, isRecord ? true : published);
       setIsDirty(false);
-      import_react_hot_toast3.default.success(published ? "Section saved and published" : "Section saved as draft");
-    } catch {
-      import_react_hot_toast3.default.error("Failed to save section changes");
+      import_react_hot_toast3.default.success(isRecord ? "Saved. The page shows it now." : published ? "Section saved and published" : "Section saved as draft");
+    } catch (err) {
+      const detail = err instanceof Error && err.message ? `: ${err.message}` : "";
+      import_react_hot_toast3.default.error(isRecord ? `Could not save this record${detail}` : "Failed to save section changes");
     } finally {
       setIsSaving(false);
     }
@@ -1417,7 +1451,8 @@ var SectionEditorForm = ({
             value,
             onChange: (newIcon) => handleFieldChange(path, newIcon),
             label: key,
-            fieldId
+            fieldId,
+            icons: config.icons
           }
         ) }, fieldId);
       }
@@ -1626,7 +1661,14 @@ var SectionEditorForm = ({
       /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "p-3 flex items-center justify-between gap-2 border-b border-purple-500/20", children: [
         /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center gap-2 min-w-0", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h2", { className: "text-sm font-bold text-white capitalize truncate", children: sectionLabel || sectionKey.replace(/([A-Z])/g, " $1") }),
-          hasCustomOverride ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 font-medium", children: [
+          isRecord ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "span",
+            {
+              className: "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 shrink-0 font-medium",
+              title: "Saving writes this record to the site's database and the page shows it right away.",
+              children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: "Database record" })
+            }
+          ) : hasCustomOverride ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 font-medium", children: [
             /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_lucide_react5.CheckCircle2, { className: "w-3 h-3 text-emerald-400 shrink-0" }),
             /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: "Custom" })
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 shrink-0 font-medium", children: [
@@ -1643,7 +1685,7 @@ var SectionEditorForm = ({
             className: `inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${isSaving ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/60" : "bg-purple-600 hover:bg-purple-500 text-white shadow-md active:scale-95"}`,
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_lucide_react5.Save, { className: "w-3.5 h-3.5 shrink-0" }),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: isSaving ? "Saving..." : published ? "Save & Publish" : "Save Draft" })
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: isSaving ? "Saving..." : isRecord ? "Save" : published ? "Save & Publish" : "Save Draft" })
             ]
           }
         )
@@ -1674,7 +1716,7 @@ var SectionEditorForm = ({
               children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_lucide_react5.Code, { className: "w-3.5 h-3.5 text-emerald-400" })
             }
           ),
-          hasCustomOverride && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          hasCustomOverride && !isRecord && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
             "button",
             {
               type: "button",
@@ -1689,7 +1731,7 @@ var SectionEditorForm = ({
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "bg-slate-900/80 border border-purple-500/20 rounded-xl p-3 sm:p-4 space-y-3", children: [
-      focusPath && !isFocused && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { role: "status", className: "text-xs rounded-lg px-3 py-2 bg-amber-950/40 border border-amber-700/60 text-amber-200", children: "This field could not be found, so the whole section is shown." }),
+      focusPath && !isFocused && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { role: "status", className: "text-xs rounded-lg px-3 py-2 bg-amber-950/40 border border-amber-700/60 text-amber-200", children: isRecord ? "This field could not be found, so every field of the record is shown." : "This field could not be found, so the whole section is shown." }),
       isFocused && focusSegments ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { ref: focusAreaRef, className: "space-y-3", children: [
         /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between gap-2 pb-2 border-b border-purple-500/20", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "text-[11px] font-semibold text-purple-200", children: "Editing one field" }),
@@ -1699,7 +1741,7 @@ var SectionEditorForm = ({
               type: "button",
               onClick: onClearFocus,
               className: "text-[11px] font-semibold px-2.5 py-1 rounded-lg text-purple-200 bg-purple-600/25 hover:bg-purple-600/45 border border-purple-500/40 transition-colors",
-              children: "Show all fields in this section"
+              children: isRecord ? "Show all fields of this record" : "Show all fields in this section"
             }
           )
         ] }),
@@ -1777,6 +1819,7 @@ var SectionEditorForm = ({
 
 // src/admin/CanvasEditor.tsx
 var import_jsx_runtime7 = require("react/jsx-runtime");
+var RECORD_SECTION = ":record";
 var DEVICE_VIEWPORTS = {
   desktop: { label: "Desktop", width: 1280, icon: import_lucide_react6.Monitor },
   tablet: { label: "Tablet", width: 768, icon: import_lucide_react6.Tablet },
@@ -1794,12 +1837,29 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   const [iframeKey, setIframeKey] = (0, import_react7.useState)(0);
   const [isLoadingIframe, setIsLoadingIframe] = (0, import_react7.useState)(true);
   const pageDef = findPage(config, activePage);
-  const availableSections = pageDef?.sections ?? [];
+  const groupPage = pageDef ? groupPageOf(config, pageDef) : void 0;
+  const recordPages = groupPage ? recordPagesOf(config, groupPage) : [];
+  const [activeItem, setActiveItem] = (0, import_react7.useState)(null);
+  const [itemsByPage, setItemsByPage] = (0, import_react7.useState)({});
+  const [recordDetail, setRecordDetail] = (0, import_react7.useState)(null);
+  const [isLoadingRecord, setIsLoadingRecord] = (0, import_react7.useState)(false);
+  const [recordTarget, setRecordTarget] = (0, import_react7.useState)(null);
+  const isRecordOpen = Boolean(recordTarget);
+  const availableSections = import_react7.default.useMemo(() => {
+    const sections = pageDef?.sections ?? [];
+    if (!recordTarget) return sections;
+    const owner = config.pages.find((p) => p.collection === recordTarget.collection);
+    return [{ key: RECORD_SECTION, label: `${owner?.title ?? recordTarget.collection}: ${recordTarget.label}`, icon: import_lucide_react6.Database }, ...sections];
+  }, [pageDef, recordTarget, config.pages]);
   const [activeSectionKey, setActiveSectionKey] = (0, import_react7.useState)(availableSections[0]?.key ?? "");
   const [activeFieldPath, setActiveFieldPath] = (0, import_react7.useState)(null);
   const hasUnsavedEdits = (0, import_react7.useRef)(false);
   const activeSectionRef = (0, import_react7.useRef)(activeSectionKey);
   activeSectionRef.current = activeSectionKey;
+  const recordTargetRef = (0, import_react7.useRef)(recordTarget);
+  recordTargetRef.current = recordTarget;
+  const itemsRef = (0, import_react7.useRef)(itemsByPage);
+  itemsRef.current = itemsByPage;
   const [sectionDetail, setSectionDetail] = (0, import_react7.useState)(null);
   const [isLoadingDetail, setIsLoadingDetail] = (0, import_react7.useState)(false);
   const [isSectionListOpen, setIsSectionListOpen] = (0, import_react7.useState)(false);
@@ -1844,9 +1904,10 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
       clearTimeout(timeout);
     };
   }, [isLoadingIframe, iframeKey]);
-  const currentRoute = pageDef?.route || "/";
-  const activePageTitle = pageDef?.title || activePage;
-  const activePageIcon = pageDef?.icon || import_lucide_react6.Layers;
+  const currentRoute = pageDef ? pageDef.collection && activeItem ? fillRoute(pageDef.route, activeItem) : pageDef.route : "/";
+  const isWaitingForRecord = isDynamicRoute(currentRoute);
+  const activePageTitle = groupPage?.title || activePage;
+  const activePageIcon = groupPage?.icon || import_lucide_react6.Layers;
   const iframeSrc = buildPreviewUrl(currentRoute, {
     publicSiteUrl: config.publicSiteUrl,
     editMode: isEditModeActive,
@@ -1868,11 +1929,96 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   const changePage = (pageKey) => {
     if (!confirmLeavingSection()) return;
     setActiveFieldPath(null);
+    setActiveItem(null);
+    setRecordTarget(null);
+    setRecordDetail(null);
     setActivePage(pageKey);
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
     if (onPageChange) onPageChange(pageKey);
   };
+  const changeRecord = (value) => {
+    if (!groupPage || !confirmLeavingSection()) return;
+    setActiveFieldPath(null);
+    setRecordDetail(null);
+    if (value === "home") {
+      setActiveItem(null);
+      setRecordTarget(null);
+      setActivePage(groupPage.key);
+    } else {
+      const separator = value.indexOf("::");
+      const pageKey = value.slice(0, separator);
+      const id = value.slice(separator + 2);
+      const state = itemsByPage[pageKey];
+      const item = state?.status === "ready" ? state.items.find((i) => i.id === id) : void 0;
+      const recordPage = findPage(config, pageKey);
+      if (!item || !recordPage?.collection) return;
+      setActivePage(pageKey);
+      setActiveItem(item);
+      setRecordTarget({ collection: recordPage.collection, id: item.id, label: item.label });
+      setActiveSectionKey(RECORD_SECTION);
+    }
+    setIsLoadingIframe(true);
+    setIframeKey(Date.now());
+  };
+  const recordPagesKey = recordPages.map((p) => `${p.key}:${p.collection}`).join("|");
+  (0, import_react7.useEffect)(() => {
+    for (const page of recordPages) {
+      const collection = page.collection;
+      if (!adapter.listItems) {
+        setItemsByPage((prev) => ({
+          ...prev,
+          [page.key]: { status: "error", message: "The storage adapter cannot list records (it has no listItems)." }
+        }));
+        continue;
+      }
+      setItemsByPage((prev) => prev[page.key]?.status === "ready" ? prev : { ...prev, [page.key]: { status: "loading" } });
+      adapter.listItems(collection).then((items) => setItemsByPage((prev) => ({ ...prev, [page.key]: { status: "ready", items } }))).catch(
+        (err) => setItemsByPage((prev) => ({
+          ...prev,
+          [page.key]: {
+            status: "error",
+            message: err instanceof Error && err.message ? err.message : `Could not load the records of "${collection}".`
+          }
+        }))
+      );
+    }
+  }, [recordPagesKey, adapter]);
+  (0, import_react7.useEffect)(() => {
+    if (!pageDef?.collection || activeItem) return;
+    const state = itemsByPage[pageDef.key];
+    if (state?.status === "ready" && state.items.length > 0) {
+      setActiveItem(state.items[0]);
+      setRecordTarget({ collection: pageDef.collection, id: state.items[0].id, label: state.items[0].label });
+      setActiveSectionKey(RECORD_SECTION);
+      setIsLoadingIframe(true);
+      setIframeKey(Date.now());
+    }
+  }, [pageDef, activeItem, itemsByPage]);
+  const loadRecord = (0, import_react7.useCallback)(
+    async (collection, id) => {
+      if (!adapter.getItem) {
+        import_react_hot_toast4.default.error("The storage adapter cannot load records (it has no getItem).");
+        return;
+      }
+      setIsLoadingRecord(true);
+      try {
+        const values = await adapter.getItem(collection, id);
+        if (!values) throw new Error("This record was not found.");
+        setRecordDetail({ collection, id, values });
+      } catch (err) {
+        setRecordDetail(null);
+        import_react_hot_toast4.default.error(err instanceof Error && err.message ? err.message : "Could not load this record.");
+      } finally {
+        setIsLoadingRecord(false);
+      }
+    },
+    [adapter]
+  );
+  (0, import_react7.useEffect)(() => {
+    if (!recordTarget) return;
+    loadRecord(recordTarget.collection, recordTarget.id);
+  }, [recordTarget, loadRecord]);
   const toggleEditMode = () => {
     const next = !isEditModeActive;
     setIsEditModeActive(next);
@@ -1904,7 +2050,7 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
   (0, import_react7.useEffect)(() => {
     if (!pageDef) return;
     const isSectionValid = availableSections.some((section) => section.key === activeSectionKey);
-    if (activeSectionKey && isSectionValid) {
+    if (activeSectionKey && isSectionValid && activeSectionKey !== RECORD_SECTION) {
       loadSectionData(pageDef, activeSectionKey);
     }
   }, [activePage, activeSectionKey, loadSectionData]);
@@ -1913,13 +2059,31 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
     setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
     setIsSectionListOpen(false);
-    sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
+    if (sectionKey !== RECORD_SECTION) sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
   (0, import_react7.useEffect)(() => {
     if (origins.length === 0) return;
     return listenForCmsMessages(
       (message) => {
-        if (message.type !== CMS_MESSAGE.EDIT_SECTION || !message.sectionKey) return;
+        if (message.type !== CMS_MESSAGE.EDIT_SECTION) return;
+        if (message.collection) {
+          const id = String(message.item ?? "");
+          if (!id || !config.pages.some((p) => p.collection === message.collection)) {
+            import_react_hot_toast4.default.error(`No page in the CMS config shows the collection "${message.collection}".`);
+            return;
+          }
+          const current = recordTargetRef.current;
+          const isSameRecord = current?.collection === message.collection && current.id === id;
+          if (!(isSameRecord && activeSectionRef.current === RECORD_SECTION) && !confirmLeavingSection()) return;
+          if (!isSameRecord) {
+            const listed = Object.values(itemsRef.current).flatMap((state) => state.status === "ready" ? state.items : []).find((item) => item.id === id);
+            setRecordTarget({ collection: message.collection, id, label: listed?.label ?? message.title ?? id });
+          }
+          setActiveFieldPath(message.fieldPath ?? null);
+          setActiveSectionKey(RECORD_SECTION);
+          return;
+        }
+        if (!message.sectionKey) return;
         if (!availableSections.some((s) => s.key === message.sectionKey)) {
           import_react_hot_toast4.default.error(`Section '${message.sectionKey}' is not configured for this page`);
           return;
@@ -1961,6 +2125,23 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
       draftContent
     });
   };
+  const handleSaveRecord = async (content) => {
+    if (!recordDetail || !adapter.saveItem) throw new Error("The storage adapter cannot save records (it has no saveItem).");
+    const values = await adapter.saveItem(recordDetail.collection, recordDetail.id, content);
+    setRecordDetail({ ...recordDetail, values });
+    sendToPreview({ type: CMS_MESSAGE.ITEM_DRAFT, collection: recordDetail.collection, item: recordDetail.id, values: null });
+    setIsLoadingIframe(true);
+    setIframeKey(Date.now());
+  };
+  const handleRecordDraft = (draft) => {
+    if (!recordDetail) return;
+    sendToPreview({
+      type: CMS_MESSAGE.ITEM_DRAFT,
+      collection: recordDetail.collection,
+      item: recordDetail.id,
+      values: draft
+    });
+  };
   const handleRefreshPreview = () => {
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
@@ -1986,21 +2167,56 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
             ")"
           ] })
         ] }),
-        config.pages.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        topLevelPages(config).length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
           "select",
           {
-            value: activePage,
+            value: groupPage?.key ?? activePage,
             onChange: (e) => {
               if (e.target.value) changePage(e.target.value);
             },
             "aria-label": "Page to edit",
             className: "text-xs px-2.5 py-1.5 rounded-xl bg-slate-950 border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate",
-            children: config.pages.map((p) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("option", { value: p.key, children: [
+            children: topLevelPages(config).map((p) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("option", { value: p.key, children: [
               p.title,
               " (",
-              p.route,
+              p.collection ? p.route.replace(/\/\[[^\]]+\].*$/, "") || "/" : p.route,
               ")"
             ] }, p.key))
+          }
+        ),
+        groupPage && recordPages.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+          "select",
+          {
+            value: pageDef?.collection && activeItem ? `${pageDef.key}::${activeItem.id}` : "home",
+            onChange: (e) => changeRecord(e.target.value),
+            "aria-label": `Page of ${groupPage.title} to edit`,
+            className: "text-xs px-2.5 py-1.5 rounded-xl bg-slate-950 border border-sky-500/40 text-sky-200 focus:outline-none focus:border-sky-400 max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate",
+            children: [
+              !groupPage.collection && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("option", { value: "home", children: [
+                groupPage.title,
+                " home (",
+                groupPage.route,
+                ")"
+              ] }),
+              groupPage.collection && !activeItem && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("option", { value: "home", children: "Pick a record" }),
+              recordPages.map((rp) => {
+                const state = itemsByPage[rp.key];
+                const options = !state || state.status === "loading" ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("option", { disabled: true, value: `${rp.key}::loading`, children: [
+                  "Loading ",
+                  rp.title,
+                  "..."
+                ] }) : state.status === "error" ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("option", { disabled: true, value: `${rp.key}::error`, children: [
+                  rp.title,
+                  ": could not load (",
+                  state.message,
+                  ")"
+                ] }) : state.items.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("option", { disabled: true, value: `${rp.key}::none`, children: [
+                  rp.title,
+                  ": no records yet"
+                ] }) : state.items.map((item) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("option", { value: `${rp.key}::${item.id}`, children: item.label }, item.id));
+                return recordPages.length > 1 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("optgroup", { label: rp.title, children: options }, rp.key) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_react7.default.Fragment, { children: options }, rp.key);
+              })
+            ]
           }
         )
       ] }),
@@ -2129,7 +2345,32 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "rounded-2xl bg-slate-900/80 border border-purple-500/20 p-3 sm:p-4 shadow-xl", children: isLoadingDetail ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "h-64 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "rounded-2xl bg-slate-900/80 border border-purple-500/20 p-3 sm:p-4 shadow-xl", children: activeSectionKey === RECORD_SECTION && isRecordOpen ? isLoadingRecord ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "h-64 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react6.Loader2, { className: "w-6 h-6 animate-spin text-sky-400" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Loading record..." })
+        ] }) : recordDetail && recordDetail.id === recordTarget?.id && recordDetail.collection === recordTarget?.collection ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          SectionEditorForm,
+          {
+            mode: "record",
+            page: activePage,
+            sectionKey: `${recordDetail.collection}:${recordDetail.id}`,
+            sectionLabel: recordTarget?.label,
+            pagePath: currentRoute,
+            focusPath: activeFieldPath,
+            onClearFocus: () => setActiveFieldPath(null),
+            onDirtyChange: (dirty) => {
+              hasUnsavedEdits.current = dirty;
+            },
+            initialData: recordDetail.values,
+            hasCustomOverride: false,
+            isPublished: true,
+            updatedAt: null,
+            updatedBy: null,
+            onSave: handleSaveRecord,
+            onReset: async () => void 0,
+            onChangeDraft: handleRecordDraft
+          }
+        ) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "p-8 text-center text-xs text-slate-400", children: "This record could not be loaded." }) : isLoadingDetail ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "h-64 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs", children: [
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_lucide_react6.Loader2, { className: "w-6 h-6 animate-spin text-purple-400" }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: "Loading section form..." })
         ] }) : sectionDetail && sectionDetail.sectionKey === activeSectionKey && sectionDetail.page === activePage ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
@@ -2223,7 +2464,7 @@ var CanvasEditor = ({ initialPage, onPageChange }) => {
                         className: `shrink-0 transition-all duration-200 overflow-hidden shadow-2xl border ${device === "mobile" ? "border-slate-700 bg-slate-900 rounded-[38px] p-2 ring-8 ring-slate-800" : device === "tablet" ? "border-slate-700 bg-slate-900 rounded-[28px] p-2 ring-4 ring-slate-800" : "border-slate-800 bg-white rounded-xl"}`,
                         children: [
                           device === "mobile" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "w-24 h-4 bg-slate-800 rounded-full mx-auto mb-1 flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "w-2 h-2 rounded-full bg-slate-900" }) }),
-                          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+                          isWaitingForRecord ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "w-full h-full flex items-center justify-center bg-slate-900 text-xs text-slate-400 p-6 text-center", children: "Pick a record in the menu next to the page name to preview it." }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
                             "iframe",
                             {
                               ref: iframeRef,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { C as CmsConfig } from './types-Df7jmywN.js';
+import { C as CmsConfig } from './types-BQH8Zo3g.js';
 
 interface CmsStudioProps {
     config: CmsConfig;

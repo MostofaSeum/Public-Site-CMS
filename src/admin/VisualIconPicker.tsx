@@ -2,12 +2,15 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Check, X } from 'lucide-react';
 import { POPULAR_ICONS, getDynamicIcon } from './dynamicIcon';
+import type { IconComponent } from '../core/types';
 
 interface VisualIconPickerProps {
   value: string;
   onChange: (newIconName: string) => void;
   label?: string;
   fieldId?: string;
+  /** The site's own icons (config.icons). When given, only these are offered. */
+  icons?: Record<string, IconComponent>;
 }
 
 export const VisualIconPicker: React.FC<VisualIconPickerProps> = ({
@@ -15,6 +18,7 @@ export const VisualIconPicker: React.FC<VisualIconPickerProps> = ({
   onChange,
   label,
   fieldId,
+  icons,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -25,21 +29,30 @@ export const VisualIconPicker: React.FC<VisualIconPickerProps> = ({
     setMounted(true);
   }, []);
 
+  // The site's own icons when configured, so a picked icon always renders on the site.
+  const catalog = useMemo(
+    () => (icons ? Object.keys(icons).map((name) => ({ name, category: 'Site icons' })) : POPULAR_ICONS),
+    [icons]
+  );
+  const resolveIcon = (name: string): React.ComponentType<{ className?: string }> =>
+    icons ? icons[name] ?? getDynamicIcon(name) : getDynamicIcon(name);
+
   const categories = useMemo(() => {
-    const set = new Set(POPULAR_ICONS.map((i) => i.category));
-    return ['all', ...Array.from(set)];
-  }, []);
+    const set = new Set(catalog.map((i) => i.category));
+    return set.size > 1 ? ['all', ...Array.from(set)] : [];
+  }, [catalog]);
 
   const filteredIcons = useMemo(() => {
-    return POPULAR_ICONS.filter((item) => {
+    return catalog.filter((item) => {
       const matchCat = activeCategory === 'all' || item.category === activeCategory;
       const matchSearch =
         !search.trim() || item.name.toLowerCase().includes(search.trim().toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [search, activeCategory]);
+  }, [catalog, search, activeCategory]);
 
-  const CurrentIcon = getDynamicIcon(value || 'Sparkles');
+  const CurrentIcon = resolveIcon(value || 'Sparkles');
+  const isUnknownSiteIcon = Boolean(icons && value && !icons[value]);
 
   const modalContent = isOpen ? (
     <div
@@ -56,7 +69,7 @@ export const VisualIconPicker: React.FC<VisualIconPickerProps> = ({
             <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Choose Lucide Icon</h3>
+              <h3 className="text-sm font-bold text-white">{icons ? 'Choose Icon' : 'Choose Lucide Icon'}</h3>
               <p className="text-[11px] text-slate-400">
                 Select an icon for <span className="font-mono text-purple-300">{label || fieldId}</span>
               </p>
@@ -107,7 +120,7 @@ export const VisualIconPicker: React.FC<VisualIconPickerProps> = ({
         <div className="p-4 overflow-y-auto max-h-[55vh] custom-scrollbar">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {filteredIcons.map((item) => {
-              const IconComp = getDynamicIcon(item.name);
+              const IconComp = resolveIcon(item.name);
               const isSelected = (value || '').toLowerCase() === item.name.toLowerCase();
 
               return (
@@ -171,7 +184,9 @@ export const VisualIconPicker: React.FC<VisualIconPickerProps> = ({
             <div className="text-xs font-semibold text-white font-mono truncate">
               {value || 'None selected'}
             </div>
-            <div className="text-[10px] text-slate-400 truncate">Lucide icon</div>
+            <div className={`text-[10px] truncate ${isUnknownSiteIcon ? 'text-amber-400' : 'text-slate-400'}`}>
+              {isUnknownSiteIcon ? 'The site cannot draw this icon. Pick another.' : icons ? 'Site icon' : 'Lucide icon'}
+            </div>
           </div>
         </div>
 

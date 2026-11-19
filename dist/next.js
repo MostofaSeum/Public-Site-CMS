@@ -57,11 +57,31 @@ function json(body, status = 200) {
   });
 }
 var error = (status, detail) => json({ detail }, status);
+var RESOURCES = /* @__PURE__ */ new Set(["records", "media", "collections"]);
 function parseRoute(request) {
-  const segments = new URL(request.url).pathname.split("/").filter(Boolean).map(decodeURIComponent);
-  const index = segments.findIndex((s) => s === "records" || s === "media");
+  let segments;
+  try {
+    segments = new URL(request.url).pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return { resource: null, rest: [] };
+  }
+  const index = segments.findIndex((s) => RESOURCES.has(s));
   if (index === -1) return { resource: null, rest: [] };
   return { resource: segments[index], rest: segments.slice(index + 1) };
+}
+var kindOf = (value) => value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+function pickEditableValues(current, incoming) {
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) return { error: "Field 'values' must be an object." };
+  const values = {};
+  for (const [key, value] of Object.entries(incoming)) {
+    if (!Object.prototype.hasOwnProperty.call(current, key)) return { error: `'${key}' cannot be edited.` };
+    const was = kindOf(current[key]);
+    const now = kindOf(value);
+    const nullable = was === "null" && now === "string" || was === "string" && now === "null";
+    if (was !== now && !nullable) return { error: `'${key}' must stay a ${was}.` };
+    values[key] = value;
+  }
+  return { values };
 }
 function createCmsRouteHandler(options) {
   const { storage, authorize } = options;
@@ -77,6 +97,31 @@ function createCmsRouteHandler(options) {
     if (allowedPages && !allowedPages.has(page)) return error(404, `Unknown page '${page}'.`);
     return null;
   };
+  const collections = options.collections ?? {};
+  const findCollection = (rest) => {
+    if (rest.length !== 2 && rest.length !== 3 || rest[1] !== "items") return { response: error(404, "Not found.") };
+    const [key] = rest;
+    const handler = isValidKey(key) && Object.prototype.hasOwnProperty.call(collections, key) ? collections[key] : void 0;
+    if (!handler) return { response: error(404, `Unknown collection '${key}'. Add it to "collections" of createCmsRouteHandler.`) };
+    if (rest.length === 3 && (rest[2].length === 0 || rest[2].length > 200)) return { response: error(400, "Invalid record id.") };
+    return { handler };
+  };
+  const collectionFailure = (err) => {
+    console.error("[storio-editor] collection handler failed", err);
+    return error(500, "The record could not be loaded or saved. See the server log.");
+  };
+  const readJson = async (request) => {
+    const length = Number(request.headers.get("content-length") ?? 0);
+    if (length > maxBodyBytes) return { response: error(413, "Content too large.") };
+    try {
+      const text = await request.text();
+      if (text.length > maxBodyBytes) return { response: error(413, "Content too large.") };
+      const body = JSON.parse(text);
+      return { body: body && typeof body === "object" ? body : {} };
+    } catch {
+      return { response: error(400, "Body must be JSON.") };
+    }
+  };
   const isAuthorized = async (request) => {
     try {
       return Boolean(await authorize(request));
@@ -91,6 +136,18 @@ function createCmsRouteHandler(options) {
       if (!await isAuthorized(request)) return error(401, "Not authorised.");
       if (!storage.listMedia) return json([]);
       return json(await storage.listMedia());
+    }
+    if (resource === "collections") {
+      if (!await isAuthorized(request)) return error(401, "Not authorised.");
+      const found = findCollection(rest);
+      if ("response" in found) return found.response;
+      try {
+        if (rest.length === 2) return json(await found.handler.list(request));
+        const item = await found.handler.get(rest[2], request);
+        return item ? json(item) : error(404, "Record not found.");
+      } catch (err) {
+        return collectionFailure(err);
+      }
     }
     if (resource !== "records") return error(404, "Not found.");
     const includeDrafts = url.searchParams.get("drafts") === "1" && await isAuthorized(request);
@@ -114,6 +171,25 @@ function createCmsRouteHandler(options) {
   };
   const PUT = async (request) => {
     const { resource, rest } = parseRoute(request);
+    if (resource === "collections") {
+      if (!await isAuthorized(request)) return error(401, "Not authorised.");
+      if (rest.length !== 3) return error(404, "Not found.");
+      const found = findCollection(rest);
+      if ("response" in found) return found.response;
+      const read = await readJson(request);
+      if ("response" in read) return read.response;
+      const id = rest[2];
+      try {
+        const current = await found.handler.get(id, request);
+        if (!current) return error(404, "Record not found.");
+        const picked = pickEditableValues(current, read.body.values);
+        if ("error" in picked) return error(400, picked.error);
+        const saved = await found.handler.save(id, picked.values, request);
+        return json(saved ?? await found.handler.get(id, request) ?? { ...current, ...picked.values });
+      } catch (err) {
+        return collectionFailure(err);
+      }
+    }
     if (resource !== "records" || rest.length !== 2) return error(404, "Not found.");
     if (!await isAuthorized(request)) return error(401, "Not authorised.");
     const [page, sectionKey] = rest;
@@ -342,7 +418,7 @@ async function getPageMetadata(config, pageKey, options) {
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -351,7 +427,9 @@ var CMS_MESSAGE = {
   /** studio -> iframe: unsaved form content to render immediately. */
   DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW",
   /** studio -> iframe: content was saved or reset, fetch it again. */
-  CONTENT_UPDATED: "CMS_CONTENT_UPDATED"
+  CONTENT_UPDATED: "CMS_CONTENT_UPDATED",
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: "CMS_ITEM_DRAFT"
 };
 var PREVIEW_PARAM = "cms_preview";
 var EDIT_MODE_PARAM = "cms_edit_mode";

@@ -13,3 +13,4 @@ export {
 } from './core/messages';
 export type { CmsMessage } from './core/messages';
 export { publicUrl, buildPreviewUrl } from './core/paths';
+export { fillRoute, isDynamicRoute, topLevelPages, groupPageOf, recordPagesOf } from './core/collections';

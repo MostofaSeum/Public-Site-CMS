@@ -23,8 +23,23 @@ export interface PageDef {
   key: string;
   /** Title shown in the studio. */
   title: string;
-  /** Public route rendered in the preview iframe, e.g. "/" or "/pricing". */
+  /**
+   * Public route rendered in the preview iframe, e.g. "/" or "/pricing". A page that shows one
+   * record of a collection uses brackets, e.g. "/blog/[slug]", together with `collection`.
+   */
   route: string;
+  /**
+   * For a page that shows one record of a collection (a [slug] or [id] route): the collection key
+   * served by your CMS API (`collections` of createCmsRouteHandler, or COLLECTIONS in Django).
+   * The studio then lists the records, and fields wrapped in
+   * <CmsField collection item path> edit the record itself.
+   */
+  collection?: string;
+  /**
+   * Key of the page this one belongs to, e.g. "blog" for "blog-post". The studio lists this
+   * page's records in a second menu next to the parent page instead of in the page menu.
+   */
+  parent?: string;
   icon?: IconComponent;
   /** Editable sections, in the order they appear in the studio. */
   sections: SectionDef[];
@@ -78,6 +93,25 @@ export interface CmsStorageAdapter {
   uploadMedia?(files: File[]): Promise<MediaItem[]>;
   /** Optional: enables the media-library tab of the image picker. */
   listMedia?(): Promise<MediaItem[]>;
+  /** Optional: the records of a collection, for pages with a [slug] or [id] route. */
+  listItems?(collection: string): Promise<CollectionItemSummary[]>;
+  /** Optional: the editable values of one record, or null when it does not exist. */
+  getItem?(collection: string, id: string): Promise<Record<string, unknown> | null>;
+  /** Optional: save changed values of one record. Returns the record's values after saving. */
+  saveItem?(collection: string, id: string, values: Record<string, unknown>): Promise<Record<string, unknown>>;
+}
+
+/** One record of a collection, as listed in the studio's record menu. */
+export interface CollectionItemSummary {
+  /** Identifier used to load and save the record (a slug or a database id). */
+  id: string;
+  /** Name shown in the record menu, e.g. the post title. */
+  label: string;
+  /**
+   * Values for the brackets of the page route, e.g. { slug: "school" } for "/blog/[slug]".
+   * A bracket without a value here uses the id.
+   */
+  params?: Record<string, string>;
 }
 
 /** Cap on how many items an array field may hold, to protect a layout. */
@@ -133,6 +167,13 @@ export interface CmsConfig {
   publicSiteUrl?: string;
   /** Extra origins allowed to exchange preview messages with the studio. */
   allowedOrigins?: string[];
+  /**
+   * The icons your site can draw, by the name stored in the content (for example the
+   * registry your own <Icon name> component uses). When set, the icon picker offers exactly
+   * these, so every icon an editor picks also renders on the site. `<CmsIcon>` draws from it.
+   * Without it the picker offers a built-in list of popular lucide-react icons.
+   */
+  icons?: Record<string, IconComponent>;
   /**
    * Item limits for array fields. Keys are tried in this order:
    * "page.section.path", "page.path", "section.path", "page.section".

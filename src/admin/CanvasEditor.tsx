@@ -13,10 +13,12 @@ import {
   ChevronDown,
   Pencil,
   Eye,
+  Database,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { PageDef, SectionDetail } from '../core/types';
+import type { CollectionItemSummary, PageDef, SectionDef, SectionDetail } from '../core/types';
 import { findPage } from '../core/defineCms';
+import { fillRoute, groupPageOf, isDynamicRoute, recordPagesOf, topLevelPages } from '../core/collections';
 import { getSectionDetail } from '../core/merge';
 import { CMS_MESSAGE, listenForCmsMessages, postCmsMessage } from '../core/messages';
 import { buildPreviewUrl, publicUrl } from '../core/paths';
@@ -24,6 +26,24 @@ import { SectionEditorForm } from './SectionEditorForm';
 import { useStudio } from './StudioContext';
 
 type DeviceMode = 'desktop' | 'tablet' | 'mobile';
+
+/** Section-list key of the "fields of this record" entry. Not a valid section key, so it never collides. */
+const RECORD_SECTION = ':record';
+
+type ItemsState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; items: CollectionItemSummary[] };
+
+interface RecordDetail {
+  collection: string;
+  id: string;
+  values: Record<string, unknown>;
+}
+
+/** The record whose fields the form edits. It can differ from the page in the preview (a post title on the blog list). */
+interface RecordTarget {
+  collection: string;
+  id: string;
+  label: string;
+}
 
 // Responsive viewport scale configurations.
 // Desktop renders at a full 1280px inside the preview iframe and is scaled down with a
@@ -60,13 +80,31 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
 
   // Active section currently open in the left editor
   const pageDef: PageDef | undefined = findPage(config, activePage);
-  const availableSections = pageDef?.sections ?? [];
+  const groupPage = pageDef ? groupPageOf(config, pageDef) : undefined;
+  const recordPages = groupPage ? recordPagesOf(config, groupPage) : [];
+  // The record (blog post, product...) open on a [slug] or [id] page.
+  const [activeItem, setActiveItem] = useState<CollectionItemSummary | null>(null);
+  const [itemsByPage, setItemsByPage] = useState<Record<string, ItemsState>>({});
+  const [recordDetail, setRecordDetail] = useState<RecordDetail | null>(null);
+  const [isLoadingRecord, setIsLoadingRecord] = useState(false);
+  const [recordTarget, setRecordTarget] = useState<RecordTarget | null>(null);
+  const isRecordOpen = Boolean(recordTarget);
+  const availableSections: SectionDef[] = React.useMemo(() => {
+    const sections = pageDef?.sections ?? [];
+    if (!recordTarget) return sections;
+    const owner = config.pages.find((p) => p.collection === recordTarget.collection);
+    return [{ key: RECORD_SECTION, label: `${owner?.title ?? recordTarget.collection}: ${recordTarget.label}`, icon: Database }, ...sections];
+  }, [pageDef, recordTarget, config.pages]);
   const [activeSectionKey, setActiveSectionKey] = useState<string>(availableSections[0]?.key ?? '');
   // The single field opened with its own pencil. Null shows the whole section.
   const [activeFieldPath, setActiveFieldPath] = useState<string | null>(null);
   const hasUnsavedEdits = useRef(false);
   const activeSectionRef = useRef(activeSectionKey);
   activeSectionRef.current = activeSectionKey;
+  const recordTargetRef = useRef(recordTarget);
+  recordTargetRef.current = recordTarget;
+  const itemsRef = useRef(itemsByPage);
+  itemsRef.current = itemsByPage;
   const [sectionDetail, setSectionDetail] = useState<SectionDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   // The section list starts folded so the form gets the room; the header opens it.
@@ -121,9 +159,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
     };
   }, [isLoadingIframe, iframeKey]);
 
-  const currentRoute = pageDef?.route || '/';
-  const activePageTitle = pageDef?.title || activePage;
-  const activePageIcon = pageDef?.icon || Layers;
+  const currentRoute = pageDef ? (pageDef.collection && activeItem ? fillRoute(pageDef.route, activeItem) : pageDef.route) : '/';
+  // A [slug] page cannot be shown until a record is picked.
+  const isWaitingForRecord = isDynamicRoute(currentRoute);
+  const activePageTitle = groupPage?.title || activePage;
+  const activePageIcon = groupPage?.icon || Layers;
 
   const iframeSrc = buildPreviewUrl(currentRoute, {
     publicSiteUrl: config.publicSiteUrl,
@@ -150,11 +190,109 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
   const changePage = (pageKey: string) => {
     if (!confirmLeavingSection()) return;
     setActiveFieldPath(null);
+    setActiveItem(null);
+    setRecordTarget(null);
+    setRecordDetail(null);
     setActivePage(pageKey);
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
     if (onPageChange) onPageChange(pageKey);
   };
+
+  /** Open one record (value "<pageKey>::<id>"), or the group page itself (value "home"). */
+  const changeRecord = (value: string) => {
+    if (!groupPage || !confirmLeavingSection()) return;
+    setActiveFieldPath(null);
+    setRecordDetail(null);
+    if (value === 'home') {
+      setActiveItem(null);
+      setRecordTarget(null);
+      setActivePage(groupPage.key);
+    } else {
+      const separator = value.indexOf('::');
+      const pageKey = value.slice(0, separator);
+      const id = value.slice(separator + 2);
+      const state = itemsByPage[pageKey];
+      const item = state?.status === 'ready' ? state.items.find((i) => i.id === id) : undefined;
+      const recordPage = findPage(config, pageKey);
+      if (!item || !recordPage?.collection) return;
+      setActivePage(pageKey);
+      setActiveItem(item);
+      setRecordTarget({ collection: recordPage.collection, id: item.id, label: item.label });
+      setActiveSectionKey(RECORD_SECTION);
+    }
+    setIsLoadingIframe(true);
+    setIframeKey(Date.now());
+  };
+
+  // Load the records of every [slug] page listed under the current page.
+  const recordPagesKey = recordPages.map((p) => `${p.key}:${p.collection}`).join('|');
+  useEffect(() => {
+    for (const page of recordPages) {
+      const collection = page.collection as string;
+      if (!adapter.listItems) {
+        setItemsByPage((prev) => ({
+          ...prev,
+          [page.key]: { status: 'error', message: 'The storage adapter cannot list records (it has no listItems).' },
+        }));
+        continue;
+      }
+      setItemsByPage((prev) => (prev[page.key]?.status === 'ready' ? prev : { ...prev, [page.key]: { status: 'loading' } }));
+      adapter
+        .listItems(collection)
+        .then((items) => setItemsByPage((prev) => ({ ...prev, [page.key]: { status: 'ready', items } })))
+        .catch((err: unknown) =>
+          setItemsByPage((prev) => ({
+            ...prev,
+            [page.key]: {
+              status: 'error',
+              message: err instanceof Error && err.message ? err.message : `Could not load the records of "${collection}".`,
+            },
+          }))
+        );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordPagesKey, adapter]);
+
+  // A page that only shows records opens its first record.
+  useEffect(() => {
+    if (!pageDef?.collection || activeItem) return;
+    const state = itemsByPage[pageDef.key];
+    if (state?.status === 'ready' && state.items.length > 0) {
+      setActiveItem(state.items[0]);
+      setRecordTarget({ collection: pageDef.collection, id: state.items[0].id, label: state.items[0].label });
+      setActiveSectionKey(RECORD_SECTION);
+      setIsLoadingIframe(true);
+      setIframeKey(Date.now());
+    }
+  }, [pageDef, activeItem, itemsByPage]);
+
+  // Load the open record's values for the form.
+  const loadRecord = useCallback(
+    async (collection: string, id: string) => {
+      if (!adapter.getItem) {
+        toast.error('The storage adapter cannot load records (it has no getItem).');
+        return;
+      }
+      setIsLoadingRecord(true);
+      try {
+        const values = await adapter.getItem(collection, id);
+        if (!values) throw new Error('This record was not found.');
+        setRecordDetail({ collection, id, values });
+      } catch (err) {
+        setRecordDetail(null);
+        toast.error(err instanceof Error && err.message ? err.message : 'Could not load this record.');
+      } finally {
+        setIsLoadingRecord(false);
+      }
+    },
+    [adapter]
+  );
+
+  useEffect(() => {
+    if (!recordTarget) return;
+    loadRecord(recordTarget.collection, recordTarget.id);
+  }, [recordTarget, loadRecord]);
 
   const toggleEditMode = () => {
     const next = !isEditModeActive;
@@ -197,7 +335,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
   useEffect(() => {
     if (!pageDef) return;
     const isSectionValid = availableSections.some((section) => section.key === activeSectionKey);
-    if (activeSectionKey && isSectionValid) {
+    if (activeSectionKey && isSectionValid && activeSectionKey !== RECORD_SECTION) {
       loadSectionData(pageDef, activeSectionKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -209,7 +347,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
     setActiveFieldPath(null);
     setActiveSectionKey(sectionKey);
     setIsSectionListOpen(false);
-    sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
+    if (sectionKey !== RECORD_SECTION) sendToPreview({ type: CMS_MESSAGE.SCROLL_TO_SECTION, sectionKey });
   };
 
   // Listen for CMS_EDIT_SECTION when a section's edit button is clicked in the preview
@@ -217,7 +355,27 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
     if (origins.length === 0) return;
     return listenForCmsMessages(
       (message) => {
-        if (message.type !== CMS_MESSAGE.EDIT_SECTION || !message.sectionKey) return;
+        if (message.type !== CMS_MESSAGE.EDIT_SECTION) return;
+        if (message.collection) {
+          const id = String(message.item ?? '');
+          if (!id || !config.pages.some((p) => p.collection === message.collection)) {
+            toast.error(`No page in the CMS config shows the collection "${message.collection}".`);
+            return;
+          }
+          const current = recordTargetRef.current;
+          const isSameRecord = current?.collection === message.collection && current.id === id;
+          if (!(isSameRecord && activeSectionRef.current === RECORD_SECTION) && !confirmLeavingSection()) return;
+          if (!isSameRecord) {
+            const listed = Object.values(itemsRef.current)
+              .flatMap((state) => (state.status === 'ready' ? state.items : []))
+              .find((item) => item.id === id);
+            setRecordTarget({ collection: message.collection, id, label: listed?.label ?? message.title ?? id });
+          }
+          setActiveFieldPath(message.fieldPath ?? null);
+          setActiveSectionKey(RECORD_SECTION);
+          return;
+        }
+        if (!message.sectionKey) return;
         if (!availableSections.some((s) => s.key === message.sectionKey)) {
           toast.error(`Section '${message.sectionKey}' is not configured for this page`);
           return;
@@ -270,6 +428,26 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
     });
   };
 
+  const handleSaveRecord = async (content: unknown) => {
+    if (!recordDetail || !adapter.saveItem) throw new Error('The storage adapter cannot save records (it has no saveItem).');
+    const values = await adapter.saveItem(recordDetail.collection, recordDetail.id, content as Record<string, unknown>);
+    setRecordDetail({ ...recordDetail, values });
+    sendToPreview({ type: CMS_MESSAGE.ITEM_DRAFT, collection: recordDetail.collection, item: recordDetail.id, values: null });
+    // The page reads records on the server, so load it again to show the saved values.
+    setIsLoadingIframe(true);
+    setIframeKey(Date.now());
+  };
+
+  const handleRecordDraft = (draft: unknown) => {
+    if (!recordDetail) return;
+    sendToPreview({
+      type: CMS_MESSAGE.ITEM_DRAFT,
+      collection: recordDetail.collection,
+      item: recordDetail.id,
+      values: draft as Record<string, unknown>,
+    });
+  };
+
   const handleRefreshPreview = () => {
     setIsLoadingIframe(true);
     setIframeKey(Date.now());
@@ -298,20 +476,56 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
             <span className="text-[10px] font-mono opacity-70 text-purple-300">({currentRoute})</span>
           </div>
 
-          {config.pages.length > 1 && (
+          {topLevelPages(config).length > 1 && (
             <select
-              value={activePage}
+              value={groupPage?.key ?? activePage}
               onChange={(e) => {
                 if (e.target.value) changePage(e.target.value);
               }}
               aria-label="Page to edit"
               className="text-xs px-2.5 py-1.5 rounded-xl bg-slate-950 border border-purple-500/30 text-purple-200 focus:outline-none focus:border-purple-400 max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate"
             >
-              {config.pages.map((p) => (
+              {topLevelPages(config).map((p) => (
                 <option key={p.key} value={p.key}>
-                  {p.title} ({p.route})
+                  {p.title} ({p.collection ? p.route.replace(/\/\[[^\]]+\].*$/, '') || '/' : p.route})
                 </option>
               ))}
+            </select>
+          )}
+
+          {groupPage && recordPages.length > 0 && (
+            <select
+              value={pageDef?.collection && activeItem ? `${pageDef.key}::${activeItem.id}` : 'home'}
+              onChange={(e) => changeRecord(e.target.value)}
+              aria-label={`Page of ${groupPage.title} to edit`}
+              className="text-xs px-2.5 py-1.5 rounded-xl bg-slate-950 border border-sky-500/40 text-sky-200 focus:outline-none focus:border-sky-400 max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate"
+            >
+              {!groupPage.collection && <option value="home">{groupPage.title} home ({groupPage.route})</option>}
+              {groupPage.collection && !activeItem && <option value="home">Pick a record</option>}
+              {recordPages.map((rp) => {
+                const state = itemsByPage[rp.key];
+                const options =
+                  !state || state.status === 'loading' ? (
+                    <option disabled value={`${rp.key}::loading`}>Loading {rp.title}...</option>
+                  ) : state.status === 'error' ? (
+                    <option disabled value={`${rp.key}::error`}>{rp.title}: could not load ({state.message})</option>
+                  ) : state.items.length === 0 ? (
+                    <option disabled value={`${rp.key}::none`}>{rp.title}: no records yet</option>
+                  ) : (
+                    state.items.map((item) => (
+                      <option key={item.id} value={`${rp.key}::${item.id}`}>
+                        {item.label}
+                      </option>
+                    ))
+                  );
+                return recordPages.length > 1 ? (
+                  <optgroup key={rp.key} label={rp.title}>
+                    {options}
+                  </optgroup>
+                ) : (
+                  <React.Fragment key={rp.key}>{options}</React.Fragment>
+                );
+              })}
             </select>
           )}
         </div>
@@ -465,7 +679,37 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
 
           {/* Form area for the active section */}
           <div className="rounded-2xl bg-slate-900/80 border border-purple-500/20 p-3 sm:p-4 shadow-xl">
-            {isLoadingDetail ? (
+            {activeSectionKey === RECORD_SECTION && isRecordOpen ? (
+              isLoadingRecord ? (
+                <div className="h-64 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                  <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
+                  <span>Loading record...</span>
+                </div>
+              ) : recordDetail && recordDetail.id === recordTarget?.id && recordDetail.collection === recordTarget?.collection ? (
+                <SectionEditorForm
+                  mode="record"
+                  page={activePage}
+                  sectionKey={`${recordDetail.collection}:${recordDetail.id}`}
+                  sectionLabel={recordTarget?.label}
+                  pagePath={currentRoute}
+                  focusPath={activeFieldPath}
+                  onClearFocus={() => setActiveFieldPath(null)}
+                  onDirtyChange={(dirty) => {
+                    hasUnsavedEdits.current = dirty;
+                  }}
+                  initialData={recordDetail.values}
+                  hasCustomOverride={false}
+                  isPublished
+                  updatedAt={null}
+                  updatedBy={null}
+                  onSave={handleSaveRecord}
+                  onReset={async () => undefined}
+                  onChangeDraft={handleRecordDraft}
+                />
+              ) : (
+                <div className="p-8 text-center text-xs text-slate-400">This record could not be loaded.</div>
+              )
+            ) : isLoadingDetail ? (
               <div className="h-64 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
                 <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
                 <span>Loading section form...</span>
@@ -586,6 +830,11 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
                       </div>
                     )}
 
+                    {isWaitingForRecord ? (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-xs text-slate-400 p-6 text-center">
+                        Pick a record in the menu next to the page name to preview it.
+                      </div>
+                    ) : (
                     <iframe
                       ref={iframeRef}
                       src={iframeSrc}
@@ -594,6 +843,7 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ initialPage, onPageC
                       style={{ border: 'none' }}
                       onLoad={() => setIsLoadingIframe(false)}
                     />
+                    )}
                   </div>
                 </div>
               );

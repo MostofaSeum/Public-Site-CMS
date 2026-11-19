@@ -5,7 +5,7 @@ import { getAtPath, parseFieldPath } from '../src/core/paths';
 import { isCmsMessage, CMS_MESSAGE } from '../src/core/messages';
 import { defineCms } from '../src/core/defineCms';
 import { memoryAdapter } from '../src/adapters/memory';
-import { CmsField, CmsProvider, CmsSection } from '../src/site';
+import { CmsField, CmsIcon, CmsProvider, CmsSection, useCollectionItem } from '../src/site';
 
 const content = { title: 'Hi', image: '', items: [{ title: 'One', tags: ['a', 'b'] }], on: false, count: 0 };
 
@@ -56,5 +56,35 @@ describe('CmsField', () => {
 
   it('sends the field path with the existing edit message', () => {
     expect(isCmsMessage({ type: CMS_MESSAGE.EDIT_SECTION, sectionKey: 'hero', fieldPath: 'items.0.title' })).toBe(true);
+  });
+
+  it('adds nothing for visitors around a record field, inside or outside a section', () => {
+    const record = React.createElement(CmsField, { collection: 'blog', item: 'school', path: 'title' }, 'School');
+    expect(renderToStaticMarkup(React.createElement(CmsProvider, { config }, record))).toBe('School');
+    const inSection = React.createElement(CmsSection, { sectionKey: 'hero', title: 'Hero' }, record);
+    expect(renderToStaticMarkup(React.createElement(CmsProvider, { config }, inSection))).toBe('School');
+  });
+
+  it('gives visitors the loaded record values unchanged', () => {
+    const Show = () => React.createElement('b', null, useCollectionItem('blog', 'school', { title: 'School' }).title);
+    expect(renderToStaticMarkup(React.createElement(CmsProvider, { config }, React.createElement(Show)))).toBe('<b>School</b>');
+  });
+});
+
+describe('CmsIcon', () => {
+  const Star = (props: { className?: string }) => React.createElement('svg', { 'data-icon': 'star', className: props.className });
+  const withIcons = defineCms({ adapter: memoryAdapter(), pages: [], icons: { Star } });
+
+  it('draws the named icon from the config, and nothing for unknown names', () => {
+    const icon = React.createElement(CmsIcon, { name: 'Star', className: 'size-6' });
+    expect(renderToStaticMarkup(React.createElement(CmsProvider, { config: withIcons }, icon))).toBe('<svg data-icon="star" class="size-6"></svg>');
+    const unknown = React.createElement(CmsIcon, { name: 'Terminal' });
+    const warn = console.warn;
+    console.warn = () => undefined;
+    try {
+      expect(renderToStaticMarkup(React.createElement(CmsProvider, { config: withIcons }, unknown))).toBe('');
+    } finally {
+      console.warn = warn;
+    }
   });
 });

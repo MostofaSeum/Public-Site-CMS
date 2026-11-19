@@ -16,6 +16,14 @@ function defineCms(config) {
     if (!page.route.startsWith("/")) {
       throw new Error(`[storio-editor] Page "${page.key}" route must start with "/".`);
     }
+    if (page.collection !== void 0 && !isValidKey(page.collection)) {
+      throw new Error(`[storio-editor] Invalid collection "${page.collection}" on page "${page.key}".`);
+    }
+    if (/\[[^\]]+\]/.test(page.route) && !page.collection) {
+      throw new Error(
+        `[storio-editor] Page "${page.key}" has the route "${page.route}", which shows one record at a time. Add collection: "<key>" so the studio can list the records.`
+      );
+    }
     const sectionKeys = /* @__PURE__ */ new Set();
     for (const section of page.sections) {
       if (!isValidKey(section.key)) {
@@ -25,6 +33,17 @@ function defineCms(config) {
         throw new Error(`[storio-editor] Duplicate section key "${section.key}" on page "${page.key}".`);
       }
       sectionKeys.add(section.key);
+    }
+  }
+  for (const page of config.pages) {
+    if (!page.parent) continue;
+    const parent = config.pages.find((p) => p.key === page.parent);
+    if (!parent) throw new Error(`[storio-editor] Page "${page.key}" has the parent "${page.parent}", which is not a page.`);
+    if (parent.parent) {
+      throw new Error(`[storio-editor] Page "${page.key}": its parent "${parent.key}" has a parent itself. Use one level only.`);
+    }
+    if (!page.collection) {
+      throw new Error(`[storio-editor] Page "${page.key}" has a parent, so it must show records: add collection: "<key>".`);
     }
   }
   return config;
@@ -93,7 +112,7 @@ function getSectionDetail(page, sectionKey, record) {
 
 // src/core/messages.ts
 var CMS_MESSAGE = {
-  /** iframe -> studio: a section's or a single field's edit button was clicked. */
+  /** iframe -> studio: a section's, a single field's or a record field's edit button was clicked. */
   EDIT_SECTION: "CMS_EDIT_SECTION",
   /** studio -> iframe: scroll to and highlight a section. */
   SCROLL_TO_SECTION: "SCROLL_TO_SECTION",
@@ -102,7 +121,9 @@ var CMS_MESSAGE = {
   /** studio -> iframe: unsaved form content to render immediately. */
   DRAFT_PREVIEW: "CMS_DRAFT_PREVIEW",
   /** studio -> iframe: content was saved or reset, fetch it again. */
-  CONTENT_UPDATED: "CMS_CONTENT_UPDATED"
+  CONTENT_UPDATED: "CMS_CONTENT_UPDATED",
+  /** studio -> iframe: unsaved values of a collection record, to render immediately. */
+  ITEM_DRAFT: "CMS_ITEM_DRAFT"
 };
 var PREVIEW_PARAM = "cms_preview";
 var EDIT_MODE_PARAM = "cms_edit_mode";

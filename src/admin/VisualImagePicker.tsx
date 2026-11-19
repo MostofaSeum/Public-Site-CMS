@@ -151,6 +151,10 @@ export const VisualImagePicker: React.FC<VisualImagePickerProps> = ({
 
         setBackendMedia((prev) => [...newUploadedItems, ...prev]);
         setSelectedPhoto(items[0].url);
+        // Go back to the gallery, filtered to uploads, so the editor sees the new photo selected.
+        setSearchQuery('');
+        setSelectedCategory('uploaded');
+        setActiveTab('presets');
         toast.success(`Successfully uploaded ${items.length} image(s)!`);
         return;
       }

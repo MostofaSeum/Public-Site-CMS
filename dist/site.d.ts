@@ -1,5 +1,5 @@
 import React from 'react';
-import { C as CmsConfig } from './types-Df7jmywN.js';
+import { C as CmsConfig, I as IconComponent } from './types-BQH8Zo3g.js';
 
 interface CmsProviderProps {
     config: CmsConfig;
@@ -56,24 +56,56 @@ declare const CmsSection: React.FC<CmsSectionProps>;
 
 interface CmsFieldProps {
     /**
-     * Where the value lives inside the section's content, in dot form:
-     * "title", "image", "items.0.title". It can also point to a whole object or list ("items.0").
+     * Where the value lives, in dot form: "title", "image", "items.0.title". Inside a section it is
+     * a path in the section's content; with `collection` it is a field of the record. It can also
+     * point to a whole object or list ("items.0").
      */
     path: string;
     /** Name shown on the pencil button. Default: made from the path. */
     label?: string;
+    /**
+     * Edit a field of a collection record (a blog post, a product...) instead of section content.
+     * Use the collection key of the page, e.g. "blog", together with `item`.
+     */
+    collection?: string;
+    /** The record's id, the same id your collection handler's `get` and `save` receive. */
+    item?: string | number;
     children: React.ReactNode;
 }
 /**
  * CmsField
  *
- * Gives one value of a section its own pencil, so an editor can change just the title, the
- * image or the icon. Place it inside a <CmsSection>.
+ * Gives one value its own pencil, so an editor can change just the title, the image or the icon.
+ * Place it inside a <CmsSection> for page content, or give it `collection` and `item` to edit a
+ * field of a database record (a blog post, a product) on a [slug] or [id] page.
  *
  * Visitors get the children only, with no extra element. In the studio preview the wrapper uses
  * `display: contents`, so it does not affect the page layout.
  */
 declare const CmsField: React.FC<CmsFieldProps>;
+
+interface CmsIconProps {
+    /** Icon name saved in the content, a key of `icons` in your CMS config. */
+    name: string | undefined;
+    /** Drawn when the name is not in `icons`. Default: nothing. */
+    fallback?: IconComponent;
+    className?: string;
+    [prop: string]: unknown;
+}
+/**
+ * Draws an editable icon by name from the `icons` map of your CMS config, the same list
+ * the icon picker offers, so an icon picked in the editor always shows on the site.
+ */
+declare const CmsIcon: React.FC<CmsIconProps>;
+
+/**
+ * A collection record as the page should show it: the values you loaded (from your database
+ * or API), with the editor's unsaved changes laid over them while the studio preview is open.
+ * Visitors always get `values` unchanged.
+ *
+ *   const post = useCollectionItem('blog', props.post.slug, props.post);
+ */
+declare function useCollectionItem<T extends Record<string, unknown>>(collection: string, item: string | number, values: T): T;
 
 /** True when the current page is rendered inside the studio's preview iframe. */
 declare function isCmsPreview(): boolean;
@@ -83,4 +115,4 @@ declare function isCmsPreview(): boolean;
  */
 declare function useCmsEditMode(origins: string[]): boolean;
 
-export { CmsField, type CmsFieldProps, CmsProvider, type CmsProviderProps, CmsSection, type CmsSectionProps, isCmsPreview, useCmsConfig, useCmsEditMode, usePageContent };
+export { CmsField, type CmsFieldProps, CmsIcon, type CmsIconProps, CmsProvider, type CmsProviderProps, CmsSection, type CmsSectionProps, isCmsPreview, useCmsConfig, useCmsEditMode, useCollectionItem, usePageContent };

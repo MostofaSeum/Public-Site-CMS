@@ -104,6 +104,30 @@ describe('scan', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it('registers a [slug] page with its collection and parent, and asks for them', () => {
+    const post = `'use client';
+export default function Post() {
+  return (
+    <main>
+      <section>
+        <h2>Related posts</h2>
+      </section>
+    </main>
+  );
+}
+`;
+    makeProject(dir, post, ['app', 'blog', '[slug]', 'page.tsx']);
+    expect(() => runScan({ cwd: dir, file: 'app/blog/[slug]/page.tsx', dryRun: true })).toThrow(/--collection/);
+    expect(() => runScan({ cwd: dir, file: 'app/blog/[slug]/page.tsx', collection: 'blog', parent: 'blog', dryRun: true })).toThrow(
+      /is not a page/
+    );
+    const report = runScan({ cwd: dir, file: 'app/blog/[slug]/page.tsx', page: 'blog-post', collection: 'blog', dryRun: false });
+    expect(report.route).toBe('/blog/[slug]');
+    const config = fs.readFileSync(path.join(dir, 'cms.config.ts'), 'utf8');
+    expect(config).toMatch(/route: '\/blog\/\[slug\]',\r?\n\s*collection: 'blog',/);
+    expect(config).toContain("key: 'blog-post'");
+  });
+
   it('moves static texts into JSON and renders exactly the same HTML', () => {
     const file = makeProject(dir);
     const report = runScan({ cwd: dir, file: 'app/page.tsx', dryRun: false });
@@ -198,9 +222,9 @@ describe('scan', () => {
     expect(out).toContain('const cmsText = "mine";');
   });
 
-  it('rejects dynamic routes, existing content files and taken page keys', () => {
+  it('asks dynamic routes for their collection, and rejects existing content files and taken page keys', () => {
     makeProject(dir, PAGE, ['app', 'blog', '[slug]', 'page.tsx']);
-    expect(() => runScan({ cwd: dir, file: 'app/blog/[slug]/page.tsx', dryRun: false })).toThrow(/--route/);
+    expect(() => runScan({ cwd: dir, file: 'app/blog/[slug]/page.tsx', dryRun: false })).toThrow(/--collection/);
     fs.mkdirSync(path.join(dir, 'content'));
     fs.writeFileSync(path.join(dir, 'content', 'blog.json'), '{}');
     expect(() => runScan({ cwd: dir, file: 'app/blog/[slug]/page.tsx', route: '/blog', dryRun: false })).toThrow(/already exists/);

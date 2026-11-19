@@ -1,4 +1,4 @@
-import type { CmsStorageAdapter, ListOptions, MediaItem, SaveRecordInput, SectionRecord } from '../core/types';
+import type { CmsStorageAdapter, CollectionItemSummary, ListOptions, MediaItem, SaveRecordInput, SectionRecord } from '../core/types';
 
 export interface RestAdapterOptions {
   /** Base URL of the CMS API, e.g. "/api/cms" or "https://api.example.com/cms". */
@@ -33,6 +33,9 @@ const enc = encodeURIComponent;
  *   DELETE {base}/records/:page/:section     -> 204
  *   GET    {base}/media                      -> MediaItem[]
  *   POST   {base}/media                      multipart "files" -> { items: MediaItem[] }
+ *   GET    {base}/collections/:c/items       -> CollectionItemSummary[]
+ *   GET    {base}/collections/:c/items/:id   -> the record's editable values (404 when missing)
+ *   PUT    {base}/collections/:c/items/:id   body { values } -> the record's values after saving
  */
 export function restAdapter(options: RestAdapterOptions): CmsStorageAdapter {
   const base = options.baseUrl.replace(/\/+$/, '');
@@ -93,6 +96,24 @@ export function restAdapter(options: RestAdapterOptions): CmsStorageAdapter {
 
     async deleteRecord(page: string, sectionKey: string) {
       await request(`/records/${enc(page)}/${enc(sectionKey)}`, { method: 'DELETE' }, true);
+    },
+
+    async listItems(collection: string) {
+      const data = await request<CollectionItemSummary[]>(`/collections/${enc(collection)}/items`);
+      return Array.isArray(data) ? data : [];
+    },
+
+    async getItem(collection: string, id: string) {
+      return request<Record<string, unknown>>(`/collections/${enc(collection)}/items/${enc(id)}`, {}, true);
+    },
+
+    async saveItem(collection: string, id: string, values: Record<string, unknown>) {
+      const data = await request<Record<string, unknown>>(`/collections/${enc(collection)}/items/${enc(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ values }),
+      });
+      if (!data) throw new CmsRequestError('Empty response from server', 500);
+      return data;
     },
   };
 

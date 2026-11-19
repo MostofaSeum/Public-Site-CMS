@@ -1,4 +1,4 @@
-import { C as CmsStorageAdapter, S as SectionRecord } from './types-B3IuU7DM.js';
+import { C as CmsStorageAdapter, S as SectionRecord } from './types-Dz7fHJXe.js';
 import 'react';
 
 interface RestAdapterOptions {
@@ -28,6 +28,9 @@ declare class CmsRequestError extends Error {
  *   DELETE {base}/records/:page/:section     -> 204
  *   GET    {base}/media                      -> MediaItem[]
  *   POST   {base}/media                      multipart "files" -> { items: MediaItem[] }
+ *   GET    {base}/collections/:c/items       -> CollectionItemSummary[]
+ *   GET    {base}/collections/:c/items/:id   -> the record's editable values (404 when missing)
+ *   PUT    {base}/collections/:c/items/:id   body { values } -> the record's values after saving
  */
 declare function restAdapter(options: RestAdapterOptions): CmsStorageAdapter;
 

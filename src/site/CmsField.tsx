@@ -2,16 +2,28 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from 'rea
 import { createPortal } from 'react-dom';
 import { Pencil } from 'lucide-react';
 import { CMS_MESSAGE, EDIT_MODE_PARAM, postCmsMessage } from '../core/messages';
+import { getAtPath, parseFieldPath } from '../core/paths';
 import { CmsSectionContext, EDIT_BUTTON_Z_INDEX, claimFieldHover, releaseFieldHover } from './sectionContext';
+import { useCmsContext } from './CmsProvider';
+import { useCmsEditMode } from './preview';
+import { useItemDraft } from './itemDrafts';
 
 export interface CmsFieldProps {
   /**
-   * Where the value lives inside the section's content, in dot form:
-   * "title", "image", "items.0.title". It can also point to a whole object or list ("items.0").
+   * Where the value lives, in dot form: "title", "image", "items.0.title". Inside a section it is
+   * a path in the section's content; with `collection` it is a field of the record. It can also
+   * point to a whole object or list ("items.0").
    */
   path: string;
   /** Name shown on the pencil button. Default: made from the path. */
   label?: string;
+  /**
+   * Edit a field of a collection record (a blog post, a product...) instead of section content.
+   * Use the collection key of the page, e.g. "blog", together with `item`.
+   */
+  collection?: string;
+  /** The record's id, the same id your collection handler's `get` and `save` receive. */
+  item?: string | number;
   children: React.ReactNode;
 }
 
@@ -33,24 +45,21 @@ function labelFromPath(path: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/**
- * CmsField
- *
- * Gives one value of a section its own pencil, so an editor can change just the title, the
- * image or the icon. Place it inside a <CmsSection>.
- *
- * Visitors get the children only, with no extra element. In the studio preview the wrapper uses
- * `display: contents`, so it does not affect the page layout.
- */
-export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => {
-  const section = useContext(CmsSectionContext);
+interface FieldFrameProps {
+  path: string;
+  name: string;
+  isEditMode: boolean;
+  onOpen: () => void;
+  children: React.ReactNode;
+}
+
+/** The hover outline and pencil shared by section fields and record fields. */
+const FieldFrame: React.FC<FieldFrameProps> = ({ path, name, isEditMode, onOpen, children }) => {
   const wrapperRef = useRef<HTMLSpanElement>(null);
   const pencilRef = useRef<HTMLButtonElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [box, setBox] = useState<Box | null>(null);
-  const isEditMode = Boolean(section?.isEditMode);
   const showControls = isEditMode && isHovered;
-  const name = label ?? labelFromPath(path);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const hideNow: () => void = useCallback(() => {
@@ -78,12 +87,6 @@ export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => 
     [hideNow]
   );
 
-  useEffect(() => {
-    if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
-      console.warn(`[storio-editor] <CmsField path="${path}"> must be placed inside a <CmsSection>.`);
-    }
-  }, [section, path]);
-
   // Follow the field while the mouse is on it, including content that moves by itself.
   useEffect(() => {
     if (!showControls) {
@@ -110,17 +113,13 @@ export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => 
     return () => cancelAnimationFrame(frame);
   }, [showControls]);
 
-  if (!section || !isEditMode) return <>{children}</>;
+  if (!isEditMode) return <>{children}</>;
 
-  const openField = (e: React.MouseEvent) => {
+  const open = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (window.parent === window) return;
-    postCmsMessage(
-      window.parent,
-      { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: section.sectionKey, title: name, fieldPath: path },
-      section.origins
-    );
+    onOpen();
   };
 
   // Only the innermost field under the mouse is active.
@@ -145,7 +144,7 @@ export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => 
       ref={wrapperRef}
       data-cms-field={path}
       style={{ display: 'contents' }}
-      onClick={openField}
+      onClick={open}
       onMouseOver={handleMouseOver}
       onMouseLeave={hideSoon}
     >
@@ -173,7 +172,7 @@ export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => 
               ref={pencilRef}
               type="button"
               data-cms-field-button={path}
-              onClick={openField}
+              onClick={open}
               title={`Edit ${name}`}
               aria-label={`Edit ${name}`}
               style={{
@@ -202,4 +201,87 @@ export const CmsField: React.FC<CmsFieldProps> = ({ path, label, children }) => 
         )}
     </span>
   );
+};
+
+const SectionField: React.FC<Omit<CmsFieldProps, 'collection' | 'item'>> = ({ path, label, children }) => {
+  const section = useContext(CmsSectionContext);
+  const name = label ?? labelFromPath(path);
+
+  useEffect(() => {
+    if (!section && new URLSearchParams(window.location.search).has(EDIT_MODE_PARAM)) {
+      console.warn(`[storio-editor] <CmsField path="${path}"> must be placed inside a <CmsSection>, or given collection and item.`);
+    }
+  }, [section, path]);
+
+  if (!section) return <>{children}</>;
+  return (
+    <FieldFrame
+      path={path}
+      name={name}
+      isEditMode={section.isEditMode}
+      onOpen={() =>
+        postCmsMessage(
+          window.parent,
+          { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: section.sectionKey, title: name, fieldPath: path },
+          section.origins
+        )
+      }
+    >
+      {children}
+    </FieldFrame>
+  );
+};
+
+const RecordField: React.FC<Omit<CmsFieldProps, 'item'> & { collection: string; item: string }> = ({
+  path,
+  label,
+  collection,
+  item,
+  children,
+}) => {
+  const { origins } = useCmsContext();
+  const isEditMode = useCmsEditMode(origins);
+  const draft = useItemDraft(collection, item);
+  const name = label ?? labelFromPath(path);
+
+  // Plain text children follow the editor's typing; other content updates after saving.
+  let content = children;
+  if (draft && (typeof children === 'string' || typeof children === 'number')) {
+    const value = getAtPath(draft, parseFieldPath(path));
+    if (typeof value === 'string' || typeof value === 'number') content = value;
+  }
+
+  return (
+    <FieldFrame
+      path={path}
+      name={name}
+      isEditMode={isEditMode}
+      onOpen={() =>
+        postCmsMessage(
+          window.parent,
+          { type: CMS_MESSAGE.EDIT_SECTION, sectionKey: '', title: name, fieldPath: path, collection, item },
+          origins
+        )
+      }
+    >
+      {content}
+    </FieldFrame>
+  );
+};
+
+/**
+ * CmsField
+ *
+ * Gives one value its own pencil, so an editor can change just the title, the image or the icon.
+ * Place it inside a <CmsSection> for page content, or give it `collection` and `item` to edit a
+ * field of a database record (a blog post, a product) on a [slug] or [id] page.
+ *
+ * Visitors get the children only, with no extra element. In the studio preview the wrapper uses
+ * `display: contents`, so it does not affect the page layout.
+ */
+export const CmsField: React.FC<CmsFieldProps> = ({ collection, item, ...props }) => {
+  if (collection && item !== undefined && item !== null && item !== '') {
+    return <RecordField {...props} collection={collection} item={String(item)} />;
+  }
+  return <SectionField {...props} />;
 };

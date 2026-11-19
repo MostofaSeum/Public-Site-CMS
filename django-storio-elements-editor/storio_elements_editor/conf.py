@@ -12,6 +12,7 @@ Settings, read from the STORIO_EDITOR dict in your Django settings (the older na
         "TOKEN_MAX_AGE": 43_200,                 # seconds a login token stays valid (12 hours)
         "LOGIN_MAX_ATTEMPTS": 5,                 # wrong passwords per username+IP before a lockout
         "LOGIN_LOCKOUT_SECONDS": 300,            # how long that lockout lasts
+        "COLLECTIONS": {...},                    # models editable on [slug] pages (see collection_views.py)
     }
 """
 
@@ -32,6 +33,7 @@ DEFAULTS: dict[str, Any] = {
     "TOKEN_MAX_AGE": 12 * 60 * 60,
     "LOGIN_MAX_ATTEMPTS": 5,
     "LOGIN_LOCKOUT_SECONDS": 300,
+    "COLLECTIONS": {},
 }
 
 

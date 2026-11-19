@@ -35,6 +35,10 @@ export interface ScanOptions {
   component?: string;
   /** Add "use client" when the file does not have it. */
   addUseClient?: boolean;
+  /** For a [slug] or [id] page: the collection key whose records it shows. */
+  collection?: string;
+  /** For a [slug] or [id] page: the key of the page it belongs to (e.g. "blog" for the blog's post page). */
+  parent?: string;
   dryRun: boolean;
 }
 
@@ -132,11 +136,34 @@ export function runScan(options: ScanOptions): ScanReport {
 
   const route = options.route ?? routeFromFile(appDir, file);
   if (!route) throw new CliError(`${rel(file)} is not a page under app/. Pass --route (the URL that shows it) and --page (a key such as "home").`);
-  const pageKey = options.page ?? (route === '/' ? 'home' : route.slice(1).replace(/\//g, '-').toLowerCase());
+  const isRecordPage = /\[[^\]]+\]/.test(route);
+  if (isRecordPage && !options.collection) {
+    throw new CliError(
+      `${route} shows one record at a time (a blog post, a product...). Pass --collection <key> (the collection your CMS API serves, ` +
+        'e.g. blog) and --parent <page key> when it belongs to a list page. See the README, "Pages with [slug] or [id]".'
+    );
+  }
+  if (options.collection && !KEY.test(options.collection)) throw new CliError(`Invalid --collection "${options.collection}". Use lowercase letters, digits, "-" or "_".`);
+  if (options.collection && !isRecordPage) throw new CliError(`--collection is for routes with [slug] or [id]; ${route} has none.`);
+  if (options.parent && (!KEY.test(options.parent) || !options.collection)) {
+    throw new CliError('--parent needs a page key (lowercase letters, digits, "-" or "_") and goes together with --collection.');
+  }
+  const pageKey =
+    options.page ??
+    (route === '/'
+      ? 'home'
+      : route
+          .slice(1)
+          .replace(/\[(?:\.\.\.)?([^\]]+)\]/g, '$1')
+          .replace(/\//g, '-')
+          .toLowerCase());
   if (!KEY.test(pageKey)) throw new CliError(`Invalid page key "${pageKey}". Pass --page with lowercase letters, digits, "-" or "_".`);
   const jsonFile = path.join(base, 'content', `${pageKey}.json`);
   if (fs.existsSync(jsonFile)) throw new CliError(`${rel(jsonFile)} already exists. Pass another --page, or delete that file first.`);
   const configText = fs.readFileSync(configFile, 'utf8');
+  if (options.parent && !new RegExp(`key:\\s*['"]${options.parent}['"]`).test(configText)) {
+    throw new CliError(`--parent "${options.parent}" is not a page in ${rel(configFile)}. Scan the list page first, or leave --parent out.`);
+  }
   if (new RegExp(`key:\\s*['"]${pageKey}['"]`).test(configText)) {
     throw new CliError(`A page with key "${pageKey}" is already in ${rel(configFile)}. Pass another --page.`);
   }
@@ -383,7 +410,7 @@ export function runScan(options: ScanOptions): ScanReport {
   const entry = `{
   key: '${pageKey}',
   title: '${(options.title ?? (pageKey === 'home' ? 'Home' : titleCase(pageKey.replace(/[-_](.)/g, (_, c: string) => c.toUpperCase())))).replace(/'/g, "\\'")}',
-  route: '${route}',
+  route: '${route}',${options.collection ? `\n  collection: '${options.collection}',` : ''}${options.parent ? `\n  parent: '${options.parent}',` : ''}
   defaults: ${defaultsName},
   sections: [
 ${sectionInfo.map((s, i) => `    { key: '${s.key}', label: '${`${i + 1}. ${titleCase(s.key)}`.replace(/'/g, "\\'")}' },`).join('\n')}
@@ -415,7 +442,8 @@ export function routeFromFile(appDir: string, file: string): string | null {
   const relative = path.relative(appDir, file);
   if (relative.startsWith('..') || !/(^|[\\/])page\.(tsx|jsx)$/.test(relative)) return null;
   const segments = relative.split(/[\\/]/).slice(0, -1).filter((s) => !/^\(.*\)$/.test(s) && !s.startsWith('@'));
-  if (segments.some((s) => s.startsWith('['))) return null;
+  // Optional catch-all segments ([[...x]]) have no single URL to preview.
+  if (segments.some((s) => s.startsWith('[['))) return null;
   return `/${segments.join('/')}`;
 }
 

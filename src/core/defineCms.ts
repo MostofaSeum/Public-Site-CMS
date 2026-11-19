@@ -24,6 +24,15 @@ export function defineCms(config: CmsConfig): CmsConfig {
     if (!page.route.startsWith('/')) {
       throw new Error(`[storio-editor] Page "${page.key}" route must start with "/".`);
     }
+    if (page.collection !== undefined && !isValidKey(page.collection)) {
+      throw new Error(`[storio-editor] Invalid collection "${page.collection}" on page "${page.key}".`);
+    }
+    if (/\[[^\]]+\]/.test(page.route) && !page.collection) {
+      throw new Error(
+        `[storio-editor] Page "${page.key}" has the route "${page.route}", which shows one record at a time. ` +
+          'Add collection: "<key>" so the studio can list the records.'
+      );
+    }
     const sectionKeys = new Set<string>();
     for (const section of page.sections) {
       if (!isValidKey(section.key)) {
@@ -33,6 +42,17 @@ export function defineCms(config: CmsConfig): CmsConfig {
         throw new Error(`[storio-editor] Duplicate section key "${section.key}" on page "${page.key}".`);
       }
       sectionKeys.add(section.key);
+    }
+  }
+  for (const page of config.pages) {
+    if (!page.parent) continue;
+    const parent = config.pages.find((p) => p.key === page.parent);
+    if (!parent) throw new Error(`[storio-editor] Page "${page.key}" has the parent "${page.parent}", which is not a page.`);
+    if (parent.parent) {
+      throw new Error(`[storio-editor] Page "${page.key}": its parent "${parent.key}" has a parent itself. Use one level only.`);
+    }
+    if (!page.collection) {
+      throw new Error(`[storio-editor] Page "${page.key}" has a parent, so it must show records: add collection: "<key>".`);
     }
   }
   return config;

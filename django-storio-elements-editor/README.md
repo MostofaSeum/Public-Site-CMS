@@ -20,7 +20,7 @@ Supports Django 4.2, 5.x and 6.x (tested on 4.2, 5.2 and 6.0).
 To install it yourself, from GitHub (the package lives in the `django-storio-elements-editor` folder of the repository):
 
 ```bash
-pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.0.0#subdirectory=django-storio-elements-editor"
+pip install "git+https://github.com/MostofaSeum/storio-elements-editor.git@v1.1.0#subdirectory=django-storio-elements-editor"
 ```
 
 Then `python -m storio_elements_editor setup --project <folder with manage.py> --frontend-origin http://localhost:3000` makes the settings and urls changes below automatically (add `--dry-run` to preview them), or follow the steps by hand.
@@ -166,8 +166,11 @@ STORIO_EDITOR = {
     "TOKEN_MAX_AGE": 43_200,        # seconds a sign-in lasts (12 hours)
     "LOGIN_MAX_ATTEMPTS": 5,        # wrong passwords per username+IP before a lockout
     "LOGIN_LOCKOUT_SECONDS": 300,   # how long the lockout lasts
+    "COLLECTIONS": {},              # your models editable on [slug] pages, see below
 }
 ```
+
+The old name of this setting, `VISUAL_CMS`, still works.
 
 A custom permission check, for example for members of an "Editors" group:
 
@@ -181,6 +184,30 @@ def can_edit(request):
 ```python
 STORIO_EDITOR = {"AUTHORIZE": "myproject.cms.can_edit"}
 ```
+
+## Pages with [slug] or [id]
+
+A frontend page such as `/blog/[slug]` shows one row of one of your models. List that model under `COLLECTIONS`, and editors can change the row's fields from the visual editor (the CMS lists the rows in a second menu next to the page name). No views or serializers to write:
+
+```python
+STORIO_EDITOR = {
+    "COLLECTIONS": {
+        "blog": {
+            "model": "blog.Post",                     # app_label.ModelName
+            "lookup": "slug",                         # field used as the record id (default "pk")
+            "label": "title",                         # field shown in the CMS menu (default str(obj))
+            "fields": ["title", "summary", "cover_url"],  # the only fields editors may change
+            "queryset": "blog.cms.editable_posts",    # optional: callable(request) -> QuerySet
+            "on_save": "blog.cms.post_saved",         # optional: callable(obj, request), e.g. clear a cache
+        },
+    },
+}
+```
+
+- Only editors (your `AUTHORIZE` check) can list, read or save rows. A save changes only the listed `fields`, runs the model's field validation (`full_clean` on those fields) and saves with `update_fields`.
+- Text, slug, email, URL, number, boolean, date/time and JSON fields can be edited. Relations and file fields cannot; store an image as a URL text field to edit it here.
+- Without `queryset`, every row of the model can be opened. Use it to limit the rows, for example to published posts.
+- The key (`"blog"`) is the `collection` of the page in the frontend's `cms.config.ts`; the main README's section "Pages with [slug] or [id]" shows the frontend side.
 
 ## Django admin
 
@@ -204,6 +231,9 @@ All responses are JSON. Every path works with or without a trailing slash.
 | GET | `csrf` | anyone | `{"csrfToken": "..."}` and sets the CSRF cookie |
 | POST | `auth/login` | anyone | body `{"username", "password"}` → `{"token", "expiresIn", "user"}` (`401` wrong password, `403` not an editor, `429` locked out) |
 | GET | `auth/me` | editors | `{"user": {...}}`, or `401` |
+| GET | `collections/<key>/items` | editors | `[{"id", "label"}]` for a model listed in `COLLECTIONS` |
+| GET | `collections/<key>/items/<id>` | editors | the row's editable fields, or `404` |
+| PUT | `collections/<key>/items/<id>` | editors | body `{"values": {...}}` → the row's fields after saving (`400` with `errors` when invalid) |
 
 Writes need an editor (`401` otherwise). A request that relies on a session cookie also needs a valid `X-CSRFToken` header (`403` otherwise); a request with a valid `Authorization: Bearer` token does not, because it uses no cookie. Page and section keys may only contain letters, digits, `_` and `-`.
 

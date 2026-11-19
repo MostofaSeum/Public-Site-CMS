@@ -1282,11 +1282,25 @@ function runScan(options) {
   const alias = import_node_fs5.default.existsSync(tsconfig) ? detectAlias(import_node_fs5.default.readFileSync(tsconfig, "utf8"), root) : null;
   const route = options.route ?? routeFromFile(appDir, file);
   if (!route) throw new CliError(`${rel(file)} is not a page under app/. Pass --route (the URL that shows it) and --page (a key such as "home").`);
-  const pageKey = options.page ?? (route === "/" ? "home" : route.slice(1).replace(/\//g, "-").toLowerCase());
+  const isRecordPage = /\[[^\]]+\]/.test(route);
+  if (isRecordPage && !options.collection) {
+    throw new CliError(
+      `${route} shows one record at a time (a blog post, a product...). Pass --collection <key> (the collection your CMS API serves, e.g. blog) and --parent <page key> when it belongs to a list page. See the README, "Pages with [slug] or [id]".`
+    );
+  }
+  if (options.collection && !KEY2.test(options.collection)) throw new CliError(`Invalid --collection "${options.collection}". Use lowercase letters, digits, "-" or "_".`);
+  if (options.collection && !isRecordPage) throw new CliError(`--collection is for routes with [slug] or [id]; ${route} has none.`);
+  if (options.parent && (!KEY2.test(options.parent) || !options.collection)) {
+    throw new CliError('--parent needs a page key (lowercase letters, digits, "-" or "_") and goes together with --collection.');
+  }
+  const pageKey = options.page ?? (route === "/" ? "home" : route.slice(1).replace(/\[(?:\.\.\.)?([^\]]+)\]/g, "$1").replace(/\//g, "-").toLowerCase());
   if (!KEY2.test(pageKey)) throw new CliError(`Invalid page key "${pageKey}". Pass --page with lowercase letters, digits, "-" or "_".`);
   const jsonFile = import_node_path7.default.join(base, "content", `${pageKey}.json`);
   if (import_node_fs5.default.existsSync(jsonFile)) throw new CliError(`${rel(jsonFile)} already exists. Pass another --page, or delete that file first.`);
   const configText = import_node_fs5.default.readFileSync(configFile, "utf8");
+  if (options.parent && !new RegExp(`key:\\s*['"]${options.parent}['"]`).test(configText)) {
+    throw new CliError(`--parent "${options.parent}" is not a page in ${rel(configFile)}. Scan the list page first, or leave --parent out.`);
+  }
   if (new RegExp(`key:\\s*['"]${pageKey}['"]`).test(configText)) {
     throw new CliError(`A page with key "${pageKey}" is already in ${rel(configFile)}. Pass another --page.`);
   }
@@ -1506,7 +1520,9 @@ ${out}`;
   const entry = `{
   key: '${pageKey}',
   title: '${(options.title ?? (pageKey === "home" ? "Home" : titleCase2(pageKey.replace(/[-_](.)/g, (_, c) => c.toUpperCase())))).replace(/'/g, "\\'")}',
-  route: '${route}',
+  route: '${route}',${options.collection ? `
+  collection: '${options.collection}',` : ""}${options.parent ? `
+  parent: '${options.parent}',` : ""}
   defaults: ${defaultsName},
   sections: [
 ${sectionInfo.map((s, i) => `    { key: '${s.key}', label: '${`${i + 1}. ${titleCase2(s.key)}`.replace(/'/g, "\\'")}' },`).join("\n")}
@@ -1534,7 +1550,7 @@ function routeFromFile(appDir, file) {
   const relative = import_node_path7.default.relative(appDir, file);
   if (relative.startsWith("..") || !/(^|[\\/])page\.(tsx|jsx)$/.test(relative)) return null;
   const segments = relative.split(/[\\/]/).slice(0, -1).filter((s) => !/^\(.*\)$/.test(s) && !s.startsWith("@"));
-  if (segments.some((s) => s.startsWith("["))) return null;
+  if (segments.some((s) => s.startsWith("[["))) return null;
   return `/${segments.join("/")}`;
 }
 function findComponent(ts, sf, name) {
@@ -1594,6 +1610,8 @@ scan options
   --title <text>            Page name shown in the CMS
   --component <Name>        Component to convert (default: the default export)
   --add-use-client          Add "use client" to a page that has no server-only code
+  --collection <key>        For a [slug] or [id] page: the collection whose records it shows
+  --parent <page key>       For a [slug] or [id] page: the list page it belongs to (e.g. blog)
   --dry-run                 Show the texts it would move, change nothing
 
 add-page options
@@ -1636,7 +1654,7 @@ function parseArgs(argv) {
   const flags = /* @__PURE__ */ new Map();
   let command = null;
   const positionals = [];
-  const valueFlags = /* @__PURE__ */ new Set(["backend", "api-url", "admin-path", "cwd", "django-dir", "frontend-origin", "title", "route", "sections", "page", "component", "auth"]);
+  const valueFlags = /* @__PURE__ */ new Set(["backend", "api-url", "admin-path", "cwd", "django-dir", "frontend-origin", "title", "route", "sections", "page", "component", "auth", "collection", "parent"]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "-y") flags.set("yes", true);
@@ -1825,6 +1843,8 @@ async function main(argv) {
         title: flags.get("title"),
         component: flags.get("component"),
         addUseClient: flags.has("add-use-client"),
+        collection: flags.get("collection"),
+        parent: flags.get("parent"),
         dryRun
       });
       console.log("");
